@@ -1,5 +1,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
+import { useRef } from "react";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { CameraPreset, RenderNode, SectorId } from "../domain/types";
 import { CapitalMapScene } from "./CapitalMapScene";
 
@@ -11,6 +13,8 @@ interface HunterSceneProps {
 }
 
 export function HunterScene(props: HunterSceneProps) {
+  const orbitControlsRef = useRef<OrbitControlsImpl | null>(null);
+
   return (
     <Canvas
       className="hunter-canvas"
@@ -26,8 +30,14 @@ export function HunterScene(props: HunterSceneProps) {
         cameraPreset={props.cameraPreset}
         selectedSectorId={props.selectedSectorId}
         onSelectSector={props.onSelectSector}
+        orbitControlsRef={orbitControlsRef}
       />
-      <OrbitControls enableDamping dampingFactor={0.08} maxPolarAngle={Math.PI / 2.15} />
+      <OrbitControls
+        ref={orbitControlsRef}
+        enableDamping
+        dampingFactor={0.08}
+        maxPolarAngle={Math.PI / 2.15}
+      />
     </Canvas>
   );
 }
