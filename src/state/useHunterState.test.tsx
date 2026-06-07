@@ -1,6 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { useHunterState } from "./useHunterState";
+import { createMockScenarioDataProvider } from "../domain/scenarioDataProvider";
+import { getScenarioIds, useHunterState } from "./useHunterState";
+import type { ReadonlyNonEmptyArray } from "../domain/types";
 
 describe("useHunterState", () => {
   it("starts with all filters enabled and the first time slice", () => {
@@ -22,5 +24,12 @@ describe("useHunterState", () => {
 
     expect(result.current.activeScenarioId).toBe("t2");
     expect(result.current.selectedSectorId).toBeUndefined();
+  });
+
+  it("derives non-empty scenario ids from provider scenarios", () => {
+    const scenarios = createMockScenarioDataProvider().getScenarios();
+    const scenarioIds: ReadonlyNonEmptyArray<string> = getScenarioIds(scenarios);
+
+    expect(scenarioIds).toEqual(["t1", "t2", "t3", "t4"]);
   });
 });

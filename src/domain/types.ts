@@ -24,6 +24,7 @@ export type CapitalDirection = "inflow" | "outflow" | "flat";
 export type CapitalStateFilter = "all" | CapitalDirection;
 export type ThemeFilter = "all" | ThemeId;
 export type CameraPreset = "angled" | "top" | "side";
+export type ReadonlyNonEmptyArray<T> = readonly [T, ...T[]];
 
 export interface Theme {
   readonly id: ThemeId;
@@ -72,7 +73,7 @@ export interface MarketScenario {
 }
 
 export interface DataProvider {
-  getScenarios(): MarketScenario[];
+  getScenarios(): ReadonlyNonEmptyArray<MarketScenario>;
 }
 
 export interface NormalizedMetric {

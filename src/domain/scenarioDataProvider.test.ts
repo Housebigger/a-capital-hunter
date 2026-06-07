@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createMockScenarioDataProvider } from "./scenarioDataProvider";
 import { sectors } from "./themeRegistry";
+import type { MarketScenario, ReadonlyNonEmptyArray } from "./types";
 
 describe("createMockScenarioDataProvider", () => {
   it("returns four story-driven time slices", () => {
     const scenarios = createMockScenarioDataProvider().getScenarios();
+    const typedScenarios: ReadonlyNonEmptyArray<MarketScenario> = scenarios;
     expect(scenarios.map((scenario) => scenario.id)).toEqual(["t1", "t2", "t3", "t4"]);
+    expect(typedScenarios.length).toBeGreaterThan(0);
   });
 
   it("provides one value for every sector in every time slice", () => {

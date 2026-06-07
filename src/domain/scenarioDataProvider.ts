@@ -1,4 +1,4 @@
-import type { DataProvider, MarketScenario, SectorId } from "./types";
+import type { DataProvider, MarketScenario, ReadonlyNonEmptyArray, SectorId } from "./types";
 
 interface ScenarioSeed {
   readonly id: string;
@@ -7,7 +7,7 @@ interface ScenarioSeed {
   readonly values: Readonly<Record<SectorId, number>>;
 }
 
-const valuesByScenario: readonly ScenarioSeed[] = Object.freeze([
+const valuesByScenario: ReadonlyNonEmptyArray<ScenarioSeed> = Object.freeze([
   {
     id: "t1",
     label: "T1 AI算力主升",
@@ -120,8 +120,15 @@ const createScenario = (scenario: ScenarioSeed): MarketScenario => ({
   }))
 });
 
+function createScenarios(
+  scenarios: ReadonlyNonEmptyArray<ScenarioSeed>
+): ReadonlyNonEmptyArray<MarketScenario> {
+  const [firstScenario, ...remainingScenarios] = scenarios;
+  return [createScenario(firstScenario), ...remainingScenarios.map(createScenario)];
+}
+
 export function createMockScenarioDataProvider(): DataProvider {
   return {
-    getScenarios: () => valuesByScenario.map(createScenario)
+    getScenarios: () => createScenarios(valuesByScenario)
   };
 }
