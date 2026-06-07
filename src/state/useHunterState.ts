@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { CameraPreset, CapitalStateFilter, SectorId, ThemeFilter } from "../domain/types";
 
-export function useHunterState(scenarioIds: string[]) {
+export function useHunterState(scenarioIds: readonly [string, ...string[]]) {
   const [activeScenarioId, setActiveScenarioIdState] = useState(scenarioIds[0]);
   const [themeFilter, setThemeFilter] = useState<ThemeFilter>("all");
   const [capitalStateFilter, setCapitalStateFilter] = useState<CapitalStateFilter>("all");

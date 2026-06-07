@@ -22,6 +22,12 @@ interface ControlsPanelProps {
   onShowCentersOnlyChange: (show: boolean) => void;
 }
 
+const CAMERA_PRESET_OPTIONS: readonly { value: CameraPreset; label: string }[] = [
+  { value: "angled", label: "斜视" },
+  { value: "top", label: "俯视" },
+  { value: "side", label: "侧视" }
+];
+
 export function ControlsPanel(props: ControlsPanelProps) {
   return (
     <aside className="controls-panel" aria-label="A Capital Hunter 控制面板">
@@ -36,6 +42,7 @@ export function ControlsPanel(props: ControlsPanelProps) {
               key={scenario.id}
               className={scenario.id === props.activeScenarioId ? "active" : ""}
               type="button"
+              aria-pressed={scenario.id === props.activeScenarioId}
               onClick={() => props.onScenarioChange(scenario.id)}
             >
               {scenario.label}
@@ -95,16 +102,13 @@ export function ControlsPanel(props: ControlsPanelProps) {
           <span>视角</span>
         </div>
         <div className="segmented" role="group" aria-label="视角预设">
-          {[
-            ["angled", "斜视"],
-            ["top", "俯视"],
-            ["side", "侧视"]
-          ].map(([value, label]) => (
+          {CAMERA_PRESET_OPTIONS.map(({ value, label }) => (
             <button
               key={value}
               type="button"
               className={props.cameraPreset === value ? "active" : ""}
-              onClick={() => props.onCameraPresetChange(value as CameraPreset)}
+              aria-pressed={props.cameraPreset === value}
+              onClick={() => props.onCameraPresetChange(value)}
             >
               {label}
             </button>
