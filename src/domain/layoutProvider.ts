@@ -23,8 +23,12 @@ const manualLayout: SectorLayout = {
   ]
 };
 
+const cloneLayout = (layout: SectorLayout): SectorLayout => ({
+  cells: layout.cells.map((cell) => ({ ...cell }))
+});
+
 export function createManualLayoutProvider(): LayoutProvider {
   return {
-    getLayout: () => manualLayout
+    getLayout: () => cloneLayout(manualLayout)
   };
 }

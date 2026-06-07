@@ -26,21 +26,21 @@ export type ThemeFilter = "all" | ThemeId;
 export type CameraPreset = "angled" | "top" | "side";
 
 export interface Theme {
-  id: ThemeId;
-  name: string;
-  shortName: string;
-  color: string;
+  readonly id: ThemeId;
+  readonly name: string;
+  readonly shortName: string;
+  readonly color: string;
 }
 
 export interface Sector {
-  id: SectorId;
-  name: string;
-  shortName: string;
-  primaryThemeId: ThemeId;
-  relatedThemeIds: ThemeId[];
-  aliases: string[];
-  isThemeCenter: boolean;
-  relationshipNote: string;
+  readonly id: SectorId;
+  readonly name: string;
+  readonly shortName: string;
+  readonly primaryThemeId: ThemeId;
+  readonly relatedThemeIds: readonly ThemeId[];
+  readonly aliases: readonly string[];
+  readonly isThemeCenter: boolean;
+  readonly relationshipNote: string;
 }
 
 export interface LayoutCell {

@@ -1,12 +1,23 @@
 import type { Sector, Theme } from "./types";
 
-export const themes: Theme[] = [
+const freezeTheme = (theme: Theme): Readonly<Theme> => Object.freeze(theme);
+
+const freezeSector = (sector: Sector): Readonly<Sector> =>
+  Object.freeze({
+    ...sector,
+    relatedThemeIds: Object.freeze([...sector.relatedThemeIds]),
+    aliases: Object.freeze([...sector.aliases])
+  });
+
+const themeConfig = [
   { id: "ai-computing", name: "AI算力", shortName: "AI算力", color: "#d94a45" },
   { id: "robotics-physical-ai", name: "机器人（物理AI）", shortName: "机器人", color: "#d89a38" },
   { id: "low-altitude-economy", name: "低空经济", shortName: "低空经济", color: "#3b82c4" }
-];
+] satisfies readonly Theme[];
 
-export const sectors: Sector[] = [
+export const themes: readonly Readonly<Theme>[] = Object.freeze(themeConfig.map(freezeTheme));
+
+const sectorConfig = [
   {
     id: "ai-computing",
     name: "AI算力",
@@ -187,4 +198,6 @@ export const sectors: Sector[] = [
     isThemeCenter: false,
     relationshipNote: "低空飞行秩序和基础设施分支。"
   }
-];
+] satisfies readonly Sector[];
+
+export const sectors: readonly Readonly<Sector>[] = Object.freeze(sectorConfig.map(freezeSector));
