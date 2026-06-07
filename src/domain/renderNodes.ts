@@ -4,6 +4,8 @@ import type {
   CapitalStateFilter,
   MarketScenario,
   RenderNode,
+  ScenarioPoint,
+  SectorId,
   SectorLayout,
   ThemeFilter
 } from "./types";
@@ -16,15 +18,36 @@ interface BuildRenderNodesInput {
   showCentersOnly: boolean;
 }
 
+function buildScenarioPointMap(points: readonly ScenarioPoint[]): Map<SectorId, ScenarioPoint> {
+  const pointBySectorId = new Map<SectorId, ScenarioPoint>();
+
+  for (const point of points) {
+    if (pointBySectorId.has(point.sectorId)) {
+      throw new Error(`Duplicate scenario point for ${point.sectorId}`);
+    }
+
+    pointBySectorId.set(point.sectorId, point);
+  }
+
+  return pointBySectorId;
+}
+
 export function buildRenderNodes(input: BuildRenderNodesInput): RenderNode[] {
-  const maxAbsValue = Math.max(...input.scenario.points.map((point) => Math.abs(point.netInflow)), 1);
+  const pointBySectorId = buildScenarioPointMap(input.scenario.points);
+  const maxAbsValue = Math.max(
+    ...Array.from(pointBySectorId.values(), (point) => Math.abs(point.netInflow)),
+    1
+  );
 
   return input.layout.cells.map((cell) => {
     const sector = sectors.find((candidate) => candidate.id === cell.sectorId);
-    const point = input.scenario.points.find((candidate) => candidate.sectorId === cell.sectorId);
+    if (!sector) {
+      throw new Error(`Missing sector for ${cell.sectorId}`);
+    }
 
-    if (!sector || !point) {
-      throw new Error(`Missing sector or scenario point for ${cell.sectorId}`);
+    const point = pointBySectorId.get(cell.sectorId);
+    if (!point) {
+      throw new Error(`Missing scenario point for ${cell.sectorId}`);
     }
 
     const theme = themes.find((candidate) => candidate.id === sector.primaryThemeId);
@@ -33,6 +56,7 @@ export function buildRenderNodes(input: BuildRenderNodesInput): RenderNode[] {
     }
 
     const metric = normalizeCapitalValue(point.netInflow, maxAbsValue);
+    // First-version theme filtering follows the primary visual grouping, not every cross-theme relationship.
     const matchesTheme = input.themeFilter === "all" || sector.primaryThemeId === input.themeFilter;
     const matchesState =
       input.capitalStateFilter === "all" || metric.direction === input.capitalStateFilter;
