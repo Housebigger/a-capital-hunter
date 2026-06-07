@@ -16,7 +16,9 @@ const nodes = buildRenderNodes({
 describe("InspectorPanel", () => {
   it("renders selected sector details", () => {
     render(<InspectorPanel node={nodes.find((node) => node.sector.id === "ai-computing")} />);
+    expect(screen.getByText("主线：AI算力")).toBeInTheDocument();
     expect(screen.getByText("AI算力")).toBeInTheDocument();
+    expect(screen.getByText("流入")).toBeInTheDocument();
     expect(screen.getByText("+160.0亿")).toBeInTheDocument();
     expect(screen.getByText("AI主线核心，承接大模型训练和推理需求。")).toBeInTheDocument();
   });
