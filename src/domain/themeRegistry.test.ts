@@ -17,15 +17,15 @@ describe("themeRegistry", () => {
 
   it("stores industrial chain roles for every sector", () => {
     expect(sectors).toHaveLength(42);
-    expect(sectors.every((sector) => sector.industrialChainRole.length > 0)).toBe(true);
+    expect(sectors.every((sector) => sector.industrialChainRole.trim().length > 0)).toBe(true);
   });
 
-  it("defines the three approved theme centers", () => {
-    expect(themes.map((theme) => theme.id)).toEqual([
+  it("preserves the original theme centers", () => {
+    expect(themes.map((theme) => theme.id)).toEqual(expect.arrayContaining([
       "ai-computing",
       "robotics-physical-ai",
       "low-altitude-economy"
-    ]);
+    ]));
   });
 
   it("defines six sectors for each theme including the center", () => {

@@ -46,6 +46,12 @@ describe("buildRenderNodes", () => {
     expect(nodes.find((node) => node.sector.id === "robotics-physical-ai")?.dimmed).toBe(true);
   });
 
+  it("throws a useful error for an unknown theme filter", () => {
+    expect(() => buildNodes({ themeFilter: "not-a-theme" })).toThrow(
+      "Unknown theme filter: not-a-theme"
+    );
+  });
+
   it("filters by capital state and dims non-matching sectors", () => {
     const nodes = buildNodes({ capitalStateFilter: "outflow" });
     const visibleNodes = nodes.filter((node) => node.visible);

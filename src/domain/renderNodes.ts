@@ -33,6 +33,13 @@ function buildScenarioPointMap(points: readonly ScenarioPoint[]): Map<SectorId, 
 }
 
 export function buildRenderNodes(input: BuildRenderNodesInput): RenderNode[] {
+  if (
+    input.themeFilter !== "all" &&
+    !themes.some((candidate) => candidate.id === input.themeFilter)
+  ) {
+    throw new Error(`Unknown theme filter: ${input.themeFilter}`);
+  }
+
   const pointBySectorId = buildScenarioPointMap(input.scenario.points);
   const maxAbsValue = Math.max(
     ...Array.from(pointBySectorId.values(), (point) => Math.abs(point.netInflow)),
