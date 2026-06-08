@@ -15,6 +15,7 @@ function buildNode(visible: boolean): RenderNode {
       primaryThemeId: "ai-computing",
       relatedThemeIds: ["ai-computing"],
       aliases: [],
+      industrialChainRole: "theme center",
       isThemeCenter: true,
       relationshipNote: "center"
     },

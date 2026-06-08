@@ -25,6 +25,7 @@ const sectorConfig = [
     primaryThemeId: "ai-computing",
     relatedThemeIds: ["ai-computing"],
     aliases: ["人工智能算力", "算力主线"],
+    industrialChainRole: "主题中心",
     isThemeCenter: true,
     relationshipNote: "AI主线核心，承接大模型训练和推理需求。"
   },
@@ -35,6 +36,7 @@ const sectorConfig = [
     primaryThemeId: "ai-computing",
     relatedThemeIds: ["ai-computing"],
     aliases: ["高速光模块"],
+    industrialChainRole: "高速互联",
     isThemeCenter: false,
     relationshipNote: "AI数据中心高速互联的核心环节，常与算力主线共振。"
   },
@@ -45,6 +47,7 @@ const sectorConfig = [
     primaryThemeId: "ai-computing",
     relatedThemeIds: ["ai-computing"],
     aliases: ["共封装光学"],
+    industrialChainRole: "光互联技术",
     isThemeCenter: false,
     relationshipNote: "光互联技术分支，靠近光模块和AI算力。"
   },
@@ -55,6 +58,7 @@ const sectorConfig = [
     primaryThemeId: "ai-computing",
     relatedThemeIds: ["ai-computing"],
     aliases: ["服务器液冷"],
+    industrialChainRole: "算力基础设施",
     isThemeCenter: false,
     relationshipNote: "高功耗算力基础设施的散热分支。"
   },
@@ -65,6 +69,7 @@ const sectorConfig = [
     primaryThemeId: "ai-computing",
     relatedThemeIds: ["ai-computing"],
     aliases: ["国产AI芯片", "信创算力"],
+    industrialChainRole: "国产替代",
     isThemeCenter: false,
     relationshipNote: "国产替代与AI算力需求叠加。"
   },
@@ -75,6 +80,7 @@ const sectorConfig = [
     primaryThemeId: "ai-computing",
     relatedThemeIds: ["ai-computing"],
     aliases: ["IDC"],
+    industrialChainRole: "基础设施载体",
     isThemeCenter: false,
     relationshipNote: "AI算力落地的基础设施载体。"
   },
@@ -85,6 +91,7 @@ const sectorConfig = [
     primaryThemeId: "robotics-physical-ai",
     relatedThemeIds: ["robotics-physical-ai", "ai-computing"],
     aliases: ["物理AI", "人形机器人"],
+    industrialChainRole: "主题中心",
     isThemeCenter: true,
     relationshipNote: "AI能力向物理世界延伸的核心主线。"
   },
@@ -95,6 +102,7 @@ const sectorConfig = [
     primaryThemeId: "robotics-physical-ai",
     relatedThemeIds: ["robotics-physical-ai"],
     aliases: ["谐波减速器"],
+    industrialChainRole: "运动控制部件",
     isThemeCenter: false,
     relationshipNote: "机器人运动控制核心零部件。"
   },
@@ -105,6 +113,7 @@ const sectorConfig = [
     primaryThemeId: "robotics-physical-ai",
     relatedThemeIds: ["robotics-physical-ai"],
     aliases: ["伺服电机"],
+    industrialChainRole: "执行控制",
     isThemeCenter: false,
     relationshipNote: "机器人执行控制的重要分支。"
   },
@@ -115,6 +124,7 @@ const sectorConfig = [
     primaryThemeId: "robotics-physical-ai",
     relatedThemeIds: ["robotics-physical-ai", "low-altitude-economy"],
     aliases: ["感知硬件"],
+    industrialChainRole: "感知层",
     isThemeCenter: false,
     relationshipNote: "机器人和低空设备感知层的共用环节。"
   },
@@ -125,6 +135,7 @@ const sectorConfig = [
     primaryThemeId: "robotics-physical-ai",
     relatedThemeIds: ["robotics-physical-ai", "ai-computing"],
     aliases: ["工业视觉"],
+    industrialChainRole: "视觉感知",
     isThemeCenter: false,
     relationshipNote: "AI识别能力和机器人感知能力的交叉分支。"
   },
@@ -135,6 +146,7 @@ const sectorConfig = [
     primaryThemeId: "robotics-physical-ai",
     relatedThemeIds: ["robotics-physical-ai"],
     aliases: ["线性执行器"],
+    industrialChainRole: "末端执行",
     isThemeCenter: false,
     relationshipNote: "机器人末端动作和关节控制的关键部件。"
   },
@@ -145,6 +157,7 @@ const sectorConfig = [
     primaryThemeId: "low-altitude-economy",
     relatedThemeIds: ["low-altitude-economy"],
     aliases: ["低空主线"],
+    industrialChainRole: "主题中心",
     isThemeCenter: true,
     relationshipNote: "政策、航空器、运营和空域基础设施共同构成的主题中心。"
   },
@@ -155,6 +168,7 @@ const sectorConfig = [
     primaryThemeId: "low-altitude-economy",
     relatedThemeIds: ["low-altitude-economy"],
     aliases: ["电动垂直起降"],
+    industrialChainRole: "航空器制造",
     isThemeCenter: false,
     relationshipNote: "低空经济最具辨识度的航空器分支。"
   },
@@ -165,6 +179,7 @@ const sectorConfig = [
     primaryThemeId: "low-altitude-economy",
     relatedThemeIds: ["low-altitude-economy", "robotics-physical-ai"],
     aliases: ["飞行控制"],
+    industrialChainRole: "控制系统",
     isThemeCenter: false,
     relationshipNote: "低空航空器控制核心，也与机器人控制逻辑相近。"
   },
@@ -175,6 +190,7 @@ const sectorConfig = [
     primaryThemeId: "low-altitude-economy",
     relatedThemeIds: ["low-altitude-economy"],
     aliases: ["工业无人机"],
+    industrialChainRole: "应用载体",
     isThemeCenter: false,
     relationshipNote: "低空应用落地最成熟的载体。"
   },
@@ -185,6 +201,7 @@ const sectorConfig = [
     primaryThemeId: "low-altitude-economy",
     relatedThemeIds: ["low-altitude-economy"],
     aliases: ["低空运营"],
+    industrialChainRole: "运营服务",
     isThemeCenter: false,
     relationshipNote: "低空商业化场景和运营网络。"
   },
@@ -195,6 +212,7 @@ const sectorConfig = [
     primaryThemeId: "low-altitude-economy",
     relatedThemeIds: ["low-altitude-economy"],
     aliases: ["低空空管"],
+    industrialChainRole: "空域基础设施",
     isThemeCenter: false,
     relationshipNote: "低空飞行秩序和基础设施分支。"
   }
