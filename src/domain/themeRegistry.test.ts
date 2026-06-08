@@ -73,6 +73,7 @@ describe("themeRegistry", () => {
   it("provides aliases and relationship notes for every sector", () => {
     for (const sector of sectors) {
       expect(sector.aliases.length).toBeGreaterThan(0);
+      expect(sector.aliases.every((alias) => alias.trim().length > 0)).toBe(true);
       expect(sector.relationshipNote.trim().length).toBeGreaterThan(0);
     }
   });
