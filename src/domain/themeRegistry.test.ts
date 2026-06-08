@@ -2,6 +2,24 @@ import { describe, expect, it } from "vitest";
 import { sectors, themes } from "./themeRegistry";
 
 describe("themeRegistry", () => {
+  it("supports the second-generation theme universe", () => {
+    expect(themes).toHaveLength(7);
+    expect(themes.map((theme) => theme.id)).toEqual([
+      "ai-computing",
+      "robotics-physical-ai",
+      "low-altitude-economy",
+      "semiconductors",
+      "new-energy",
+      "defense-aerospace",
+      "innovative-medicine"
+    ]);
+  });
+
+  it("stores industrial chain roles for every sector", () => {
+    expect(sectors).toHaveLength(42);
+    expect(sectors.every((sector) => sector.industrialChainRole.length > 0)).toBe(true);
+  });
+
   it("defines the three approved theme centers", () => {
     expect(themes.map((theme) => theme.id)).toEqual([
       "ai-computing",
