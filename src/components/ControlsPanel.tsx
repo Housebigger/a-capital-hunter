@@ -124,9 +124,9 @@ export function ControlsPanel(props: ControlsPanelProps) {
         <p>二维位置表达关系，柱高表达资金强度，红色为流入，绿色为流出。</p>
         <div className="section-title">
           <Eye size={16} aria-hidden="true" />
-          <span>第一版策略</span>
+          <span>第二版策略</span>
         </div>
-        <p>使用模拟时间片和手工布局，接口保留给真实数据源和算法布局。</p>
+        <p>使用模拟阶段和算法布局，接口保留给真实公开数据源。</p>
       </section>
     </aside>
   );

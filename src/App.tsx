@@ -3,14 +3,15 @@ import { ControlsPanel } from "./components/ControlsPanel";
 import { HunterScene } from "./components/HunterScene";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { SceneLegend } from "./components/SceneLegend";
-import { createManualLayoutProvider } from "./domain/layoutProvider";
+import { createAlgorithmicLayoutProvider } from "./domain/layoutProvider";
+import { layoutStages } from "./domain/layoutStages";
 import { buildRenderNodes } from "./domain/renderNodes";
-import { createMockScenarioDataProvider } from "./domain/scenarioDataProvider";
+import { createScenarioDataProvider } from "./domain/scenarioDataProvider";
 import { themes } from "./domain/themeRegistry";
 import { getScenarioIds, useHunterState } from "./state/useHunterState";
 
-const layoutProvider = createManualLayoutProvider();
-const dataProvider = createMockScenarioDataProvider();
+const layoutProvider = createAlgorithmicLayoutProvider();
+const dataProvider = createScenarioDataProvider();
 const scenarios = dataProvider.getScenarios();
 const scenarioIds = getScenarioIds(scenarios);
 
@@ -18,17 +19,23 @@ export default function App() {
   const hunterState = useHunterState(scenarioIds);
   const activeScenario =
     scenarios.find((scenario) => scenario.id === hunterState.activeScenarioId) || scenarios[0];
+  const activeScenarioIndex = Math.max(
+    0,
+    scenarios.findIndex((scenario) => scenario.id === activeScenario.id)
+  );
+  const activeLayoutStage = layoutStages[activeScenarioIndex] || layoutStages[0];
 
   const nodes = useMemo(
     () =>
       buildRenderNodes({
-        layout: layoutProvider.getLayout(),
+        layout: layoutProvider.getLayout(activeLayoutStage.id),
         scenario: activeScenario,
         themeFilter: hunterState.themeFilter,
         capitalStateFilter: hunterState.capitalStateFilter,
         showCentersOnly: hunterState.showCentersOnly
       }),
     [
+      activeLayoutStage.id,
       activeScenario,
       hunterState.capitalStateFilter,
       hunterState.showCentersOnly,

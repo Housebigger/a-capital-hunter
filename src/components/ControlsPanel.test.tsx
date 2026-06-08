@@ -26,7 +26,7 @@ describe("ControlsPanel", () => {
       <ControlsPanel
         scenarios={createMockScenarioDataProvider().getScenarios()}
         themes={themes}
-        activeScenarioId={options?.activeScenarioId ?? "t1"}
+        activeScenarioId={options?.activeScenarioId ?? "S1"}
         themeFilter={options?.themeFilter ?? "all"}
         capitalStateFilter={options?.capitalStateFilter ?? "all"}
         cameraPreset={options?.cameraPreset ?? "angled"}
@@ -42,13 +42,13 @@ describe("ControlsPanel", () => {
     const user = userEvent.setup();
     const handlers = renderControlsPanel();
 
-    await user.click(screen.getByRole("button", { name: "T2 机器人接力" }));
+    await user.click(screen.getByRole("button", { name: "机器人/低空扩散" }));
     await user.selectOptions(screen.getByLabelText("主题筛选"), "ai-computing");
     await user.selectOptions(screen.getByLabelText("资金状态"), "inflow");
     await user.click(screen.getByRole("checkbox", { name: "只看主线中心" }));
     await user.click(screen.getByRole("button", { name: "俯视" }));
 
-    expect(handlers.onScenarioChange).toHaveBeenCalledWith("t2");
+    expect(handlers.onScenarioChange).toHaveBeenCalledWith("S2");
     expect(handlers.onThemeFilterChange).toHaveBeenCalledWith("ai-computing");
     expect(handlers.onCapitalStateFilterChange).toHaveBeenCalledWith("inflow");
     expect(handlers.onShowCentersOnlyChange).toHaveBeenCalledWith(true);
@@ -56,10 +56,10 @@ describe("ControlsPanel", () => {
   });
 
   it("exposes pressed state for active timeline and camera buttons", () => {
-    renderControlsPanel({ activeScenarioId: "t2", cameraPreset: "side" });
+    renderControlsPanel({ activeScenarioId: "S2", cameraPreset: "side" });
 
-    expect(screen.getByRole("button", { name: "T2 机器人接力", pressed: true })).toBeVisible();
-    expect(screen.getByRole("button", { name: "T1 AI算力主升", pressed: false })).toBeVisible();
+    expect(screen.getByRole("button", { name: "机器人/低空扩散", pressed: true })).toBeVisible();
+    expect(screen.getByRole("button", { name: "AI/半导体共振", pressed: false })).toBeVisible();
     expect(screen.getByRole("button", { name: "侧视", pressed: true })).toBeVisible();
     expect(screen.getByRole("button", { name: "斜视", pressed: false })).toBeVisible();
   });

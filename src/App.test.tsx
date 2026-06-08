@@ -12,7 +12,7 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByText("A Capital Hunter")).toBeInTheDocument();
-    expect(screen.getByText("AI算力领涨，光模块、CPO、液冷服务器共振。")).toBeInTheDocument();
+    expect(screen.getByText("AI算力与半导体供应链共振，硬科技主线靠近视觉中心。")).toBeInTheDocument();
     expect(screen.getByLabelText("A Capital Hunter 3D资金峰面")).toBeInTheDocument();
   });
 
@@ -20,8 +20,8 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "T4 低空经济主升" }));
+    await user.click(screen.getByRole("button", { name: "新能源/军工轮动" }));
 
-    expect(screen.getByText("低空经济成为主峰，AI与机器人部分流出或震荡。")).toBeInTheDocument();
+    expect(screen.getByText("新能源与军工航天获得资金关注，前期科技主线进入整理。")).toBeInTheDocument();
   });
 });

@@ -1,13 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createManualLayoutProvider } from "../domain/layoutProvider";
+import { createAlgorithmicLayoutProvider } from "../domain/layoutProvider";
 import { buildRenderNodes } from "../domain/renderNodes";
-import { createMockScenarioDataProvider } from "../domain/scenarioDataProvider";
+import { createScenarioDataProvider } from "../domain/scenarioDataProvider";
 import { InspectorPanel } from "./InspectorPanel";
 
 const nodes = buildRenderNodes({
-  layout: createManualLayoutProvider().getLayout(),
-  scenario: createMockScenarioDataProvider().getScenarios()[0],
+  layout: createAlgorithmicLayoutProvider().getLayout("ai-semiconductor-resonance"),
+  scenario: createScenarioDataProvider().getScenarios()[0],
   themeFilter: "all",
   capitalStateFilter: "all",
   showCentersOnly: false
@@ -15,11 +15,13 @@ const nodes = buildRenderNodes({
 
 describe("InspectorPanel", () => {
   it("renders selected sector details", () => {
-    render(<InspectorPanel node={nodes.find((node) => node.sector.id === "ai-computing")} />);
+    const node = nodes.find((candidate) => candidate.sector.id === "ai-computing");
+    render(<InspectorPanel node={node} />);
+
     expect(screen.getByText("主线：AI算力")).toBeInTheDocument();
     expect(screen.getByText("AI算力")).toBeInTheDocument();
     expect(screen.getByText("流入")).toBeInTheDocument();
-    expect(screen.getByText("+160.0亿")).toBeInTheDocument();
+    expect(screen.getByText(node?.metric.labelValue ?? "")).toBeInTheDocument();
     expect(screen.getByText("AI主线核心，承接大模型训练和推理需求。")).toBeInTheDocument();
   });
 
