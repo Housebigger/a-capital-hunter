@@ -6,7 +6,8 @@ const edge = (
   type: RelationshipEdge["type"],
   weight: number,
   note: string
-): RelationshipEdge => ({ sourceSectorId, targetSectorId, type, weight, note });
+): Readonly<RelationshipEdge> =>
+  Object.freeze({ sourceSectorId, targetSectorId, type, weight, note });
 
 export const relationshipEdges: readonly RelationshipEdge[] = Object.freeze([
   edge("ai-computing", "optical-modules", "industrial-chain", 0.95, "AI数据中心高速互联"),
@@ -102,7 +103,7 @@ export function validateRelationshipEdges(
     if (!validSectorIds.has(candidate.targetSectorId)) {
       errors.push(`Unknown target sector ${candidate.targetSectorId}`);
     }
-    if (candidate.weight <= 0 || candidate.weight > 1) {
+    if (!Number.isFinite(candidate.weight) || candidate.weight <= 0 || candidate.weight > 1) {
       errors.push(`Invalid relationship weight ${candidate.weight} for ${key}`);
     }
   }

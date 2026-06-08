@@ -19,4 +19,16 @@ describe("relationshipRegistry", () => {
     expect(result.valid).toBe(false);
     expect(result.errors[0]).toContain(`${duplicate.sourceSectorId}->${duplicate.targetSectorId}`);
   });
+
+  it("rejects non-finite weights", () => {
+    const invalidEdge = { ...relationshipEdges[0], weight: Number.NaN };
+    const result = validateRelationshipEdges([invalidEdge], sectors);
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toContain("Invalid relationship weight NaN");
+  });
+
+  it("freezes the exported relationship graph", () => {
+    expect(Object.isFrozen(relationshipEdges)).toBe(true);
+    expect(relationshipEdges.every((candidate) => Object.isFrozen(candidate))).toBe(true);
+  });
 });
