@@ -47,6 +47,29 @@ describe("themeRegistry", () => {
     }
   });
 
+  it("keeps every sector primary theme valid", () => {
+    const themeIds = new Set(themes.map((theme) => theme.id));
+
+    for (const sector of sectors) {
+      expect(themeIds.has(sector.primaryThemeId)).toBe(true);
+      expect(sector.relatedThemeIds.every((themeId) => themeIds.has(themeId))).toBe(true);
+    }
+  });
+
+  it("has exactly one center sector per theme", () => {
+    for (const theme of themes) {
+      const centers = sectors.filter(
+        (sector) => sector.primaryThemeId === theme.id && sector.isThemeCenter
+      );
+      expect(centers.map((sector) => sector.id)).toEqual([theme.id]);
+    }
+  });
+
+  it("uses unique sector ids", () => {
+    const ids = sectors.map((sector) => sector.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it("exports frozen theme and sector config", () => {
     expect(Object.isFrozen(themes)).toBe(true);
     expect(Object.isFrozen(sectors)).toBe(true);
