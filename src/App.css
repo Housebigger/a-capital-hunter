@@ -284,3 +284,84 @@ select {
     grid-template-columns: 250px minmax(520px, 1fr) 250px;
   }
 }
+
+@media (max-width: 900px) {
+  body {
+    min-width: 0;
+  }
+
+  .app-shell {
+    padding: 14px;
+  }
+
+  .top-bar {
+    align-items: start;
+    flex-direction: column;
+    gap: 12px;
+    height: auto;
+    padding-bottom: 14px;
+  }
+
+  h1 {
+    font-size: 30px;
+  }
+
+  .scenario-story {
+    max-width: none;
+    text-align: left;
+  }
+
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: auto;
+    min-height: 0;
+  }
+
+  .scene-panel {
+    order: 1;
+    height: min(68vh, 560px);
+    min-height: 420px;
+  }
+
+  .controls-panel {
+    order: 2;
+  }
+
+  .inspector-panel {
+    order: 3;
+  }
+
+  .controls-panel,
+  .inspector-panel {
+    max-height: none;
+  }
+
+  .segmented {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell {
+    padding: 10px;
+  }
+
+  .scene-panel {
+    height: 480px;
+    min-height: 480px;
+  }
+
+  .scene-toolbar {
+    left: 10px;
+    right: 10px;
+  }
+
+  .scene-legend {
+    right: 10px;
+    bottom: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

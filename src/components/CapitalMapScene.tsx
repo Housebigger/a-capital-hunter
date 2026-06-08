@@ -32,9 +32,9 @@ interface CapitalMapSceneProps {
 }
 
 const cameraPositions: Record<CameraPreset, [number, number, number]> = {
-  angled: [7, 8, 9],
-  top: [0, 13, 0.1],
-  side: [10, 4, 0]
+  angled: [9, 9.5, 12],
+  top: [0, 16, 0.1],
+  side: [14, 5, 0]
 };
 
 export function applyCameraPreset(

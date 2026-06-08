@@ -18,7 +18,7 @@ export function HunterScene(props: HunterSceneProps) {
   return (
     <Canvas
       className="hunter-canvas"
-      camera={{ position: [7, 8, 9], fov: 42 }}
+      camera={{ position: [9, 9.5, 12], fov: 45 }}
       shadows
       gl={{ antialias: true }}
     >
