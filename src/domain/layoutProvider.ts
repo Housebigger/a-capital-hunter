@@ -1,6 +1,12 @@
+import { createAlgorithmicLayout } from "./algorithmicLayoutEngine";
+import { layoutStages, getLayoutStageById } from "./layoutStages";
+import { relationshipEdges } from "./relationshipRegistry";
+import { sectors, themes } from "./themeRegistry";
 import type { LayoutProvider, SectorLayout } from "./types";
 
 const manualLayout: SectorLayout = {
+  version: "manual-v1",
+  stageId: "manual",
   cells: [
     { sectorId: "ai-computing", x: -5, z: 0, role: "theme-center", relationshipStrength: 3 },
     { sectorId: "optical-modules", x: -6, z: -1, role: "related-sector", relationshipStrength: 3 },
@@ -24,11 +30,39 @@ const manualLayout: SectorLayout = {
 };
 
 const cloneLayout = (layout: SectorLayout): SectorLayout => ({
+  ...layout,
   cells: layout.cells.map((cell) => ({ ...cell }))
 });
 
 export function createManualLayoutProvider(): LayoutProvider {
   return {
     getLayout: () => cloneLayout(manualLayout)
+  };
+}
+
+export function createAlgorithmicLayoutProvider(): LayoutProvider {
+  return {
+    getLayout: (stageId) => {
+      const stage = stageId ? getLayoutStageById(stageId) : layoutStages[0];
+      const previousStage = stage.previousStageId ? getLayoutStageById(stage.previousStageId) : undefined;
+      const result = createAlgorithmicLayout({
+        themes,
+        sectors,
+        relationshipEdges,
+        stage,
+        previousStage,
+        options: {
+          gridWidth: 15,
+          gridHeight: 11,
+          maxStageShift: 1.6,
+          centerPullStrength: 1.2
+        }
+      });
+
+      return {
+        ...result.layout,
+        cells: result.layout.cells.map((cell) => ({ ...cell }))
+      };
+    }
   };
 }

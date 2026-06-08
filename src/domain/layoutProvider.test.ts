@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createManualLayoutProvider } from "./layoutProvider";
+import { createAlgorithmicLayoutProvider, createManualLayoutProvider } from "./layoutProvider";
 import { sectors } from "./themeRegistry";
 
 describe("createManualLayoutProvider", () => {
-  it("returns a layout cell for every sector", () => {
+  it("returns the manual v1 comparison layout metadata", () => {
     const layout = createManualLayoutProvider().getLayout();
-    expect(layout.cells).toHaveLength(sectors.length);
-    expect(layout.cells.map((cell) => cell.sectorId).sort()).toEqual(
-      sectors.map((sector) => sector.id).sort()
-    );
+    expect(layout.version).toBe("manual-v1");
+    expect(layout.stageId).toBe("manual");
+    expect(layout.cells).toHaveLength(18);
   });
 
   it("keeps layout sector ids unique", () => {
@@ -50,5 +49,23 @@ describe("createManualLayoutProvider", () => {
         expect.objectContaining({ sectorId: "low-altitude-economy", x: 5, z: 0 })
       ])
     );
+  });
+});
+
+describe("createAlgorithmicLayoutProvider", () => {
+  it("creates an algorithmic layout provider with stage metadata", () => {
+    const provider = createAlgorithmicLayoutProvider();
+    const layout = provider.getLayout("robotics-low-altitude-diffusion");
+
+    expect(layout.stageId).toBe("robotics-low-altitude-diffusion");
+    expect(layout.version).toBe("algorithmic-robotics-low-altitude-diffusion");
+    expect(layout.cells).toHaveLength(42);
+    expect(layout.explanations?.["robotics-physical-ai"].reasons.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("falls back to the first layout stage when no stage id is passed", () => {
+    const provider = createAlgorithmicLayoutProvider();
+
+    expect(provider.getLayout().stageId).toBe("ai-semiconductor-resonance");
   });
 });
