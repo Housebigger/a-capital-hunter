@@ -20,6 +20,21 @@ describe("createScenarioDataProvider", () => {
     }
   });
 
+  it("returns fresh scenario and point objects on each call", () => {
+    const provider = createScenarioDataProvider();
+    const first = provider.getScenarios();
+    const second = provider.getScenarios();
+    const originalNetInflow = second[0].points[0].netInflow;
+
+    expect(first).not.toBe(second);
+    expect(first[0]).not.toBe(second[0]);
+    expect(first[0].points).not.toBe(second[0].points);
+    expect(first[0].points[0]).not.toBe(second[0].points[0]);
+
+    first[0].points[0].netInflow = -999;
+    expect(provider.getScenarios()[0].points[0].netInflow).toBe(originalNetInflow);
+  });
+
   it("keeps the mock provider export compatible", () => {
     expect(createMockScenarioDataProvider().getScenarios()).toEqual(
       createScenarioDataProvider().getScenarios()

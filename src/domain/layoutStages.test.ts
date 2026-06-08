@@ -22,6 +22,14 @@ describe("layoutStages", () => {
     }
   });
 
+  it("freezes stages and heat records", () => {
+    for (const stage of layoutStages) {
+      expect(Object.isFrozen(stage)).toBe(true);
+      expect(Object.isFrozen(stage.themeHeat)).toBe(true);
+      expect(Object.isFrozen(stage.sectorHeat)).toBe(true);
+    }
+  });
+
   it("looks up stages by id", () => {
     expect(getLayoutStageById("robotics-low-altitude-diffusion").label).toBe("机器人/低空扩散");
   });

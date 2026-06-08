@@ -1,5 +1,5 @@
 import { sectors, themes } from "./themeRegistry";
-import type { LayoutStage, LayoutStageId, SectorId, ThemeId } from "./types";
+import type { LayoutStage, LayoutStageId, ReadonlyNonEmptyArray, SectorId, ThemeId } from "./types";
 
 const heat = (
   highThemes: readonly ThemeId[],
@@ -33,15 +33,20 @@ const stage = (
   highThemes: readonly ThemeId[],
   warmThemes: readonly ThemeId[],
   previousStageId?: LayoutStageId
-): LayoutStage => ({
-  id,
-  label,
-  story,
-  previousStageId,
-  ...heat(highThemes, warmThemes)
-});
+): LayoutStage => {
+  const { sectorHeat, themeHeat } = heat(highThemes, warmThemes);
 
-export const layoutStages: readonly LayoutStage[] = Object.freeze([
+  return Object.freeze({
+    id,
+    label,
+    story,
+    previousStageId,
+    sectorHeat: Object.freeze(sectorHeat),
+    themeHeat: Object.freeze(themeHeat)
+  });
+};
+
+export const layoutStages: ReadonlyNonEmptyArray<LayoutStage> = Object.freeze([
   stage(
     "ai-semiconductor-resonance",
     "AI/半导体共振",
