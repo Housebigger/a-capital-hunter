@@ -9,10 +9,12 @@ export function InspectorPanel({ node }: InspectorPanelProps) {
     return (
       <section className="inspector-panel" aria-label="板块详情">
         <h2>点击板块查看资金状态</h2>
-        <p>第一版展示板块名、主线、资金方向和模拟净流入值。</p>
+        <p>第二版展示资金方向、模拟净流入和算法布局解释。</p>
       </section>
     );
   }
+
+  const explanationReasons = node.layoutExplanation?.reasons.slice(0, 3) ?? [];
 
   return (
     <section className="inspector-panel" aria-label="板块详情">
@@ -33,6 +35,19 @@ export function InspectorPanel({ node }: InspectorPanelProps) {
         </strong>
       </div>
       <p>{node.sector.relationshipNote}</p>
+      <div className="layout-explanation">
+        <h3>布局解释</h3>
+        <p>{node.layoutExplanation?.summary ?? "当前布局未提供算法解释。"}</p>
+        {explanationReasons.length > 0 && (
+          <ul>
+            {explanationReasons.map((reason) => (
+              <li key={`${reason.relatedSectorId}-${reason.note}`}>
+                <span>{reason.note}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }
