@@ -70,11 +70,18 @@ describe("buildRenderNodes", () => {
 
   it("can show only theme centers", () => {
     const nodes = buildNodes({ showCentersOnly: true });
-    expect(nodes.filter((node) => node.visible).map((node) => node.sector.id)).toEqual([
-      "ai-computing",
-      "robotics-physical-ai",
-      "low-altitude-economy"
-    ]);
+    const layoutSectorIds = new Set(layout.cells.map((cell) => cell.sectorId));
+    const scenarioSectorIds = new Set(defaultScenario.points.map((point) => point.sectorId));
+    const expectedCenterIds = sectors
+      .filter(
+        (sector) =>
+          sector.isThemeCenter && layoutSectorIds.has(sector.id) && scenarioSectorIds.has(sector.id)
+      )
+      .map((sector) => sector.id);
+
+    expect(nodes.filter((node) => node.visible).map((node) => node.sector.id)).toEqual(
+      expectedCenterIds
+    );
   });
 
   it("throws a useful error for duplicate scenario points", () => {
