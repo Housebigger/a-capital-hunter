@@ -1,0 +1,286 @@
+:root {
+  color: #e8eef5;
+  background: #101214;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 1180px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(154, 60, 48, 0.22), transparent 30%),
+    linear-gradient(180deg, #202124 0%, #101214 42%, #0d1010 100%);
+}
+
+button,
+select,
+input {
+  font: inherit;
+}
+
+button {
+  border: 1px solid #37424a;
+  background: #1a2022;
+  color: #dce6ef;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: #77838b;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid #d94a45;
+  outline-offset: 2px;
+}
+
+button.active {
+  border-color: #d94a45;
+  background: #35201e;
+  color: #ffffff;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.top-bar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  height: 92px;
+  padding: 0 2px 18px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: #9ba8a7;
+  font-size: 13px;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: 34px;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.scenario-story {
+  max-width: 520px;
+  color: #c8d2d0;
+  text-align: right;
+}
+
+.scenario-story span {
+  display: block;
+  margin-bottom: 6px;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.scenario-story p {
+  margin-bottom: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 280px minmax(640px, 1fr) 280px;
+  gap: 16px;
+  height: calc(100vh - 132px);
+  min-height: 680px;
+}
+
+.controls-panel,
+.inspector-panel {
+  overflow: auto;
+  border: 1px solid #2e3838;
+  border-radius: 8px;
+  background: rgba(19, 24, 24, 0.94);
+  padding: 16px;
+}
+
+.control-section + .control-section {
+  margin-top: 20px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #f2f5f2;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.timeline-buttons,
+.segmented {
+  display: grid;
+  gap: 8px;
+}
+
+.timeline-buttons button,
+.segmented button {
+  min-height: 38px;
+  border-radius: 6px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.segmented {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.segmented button {
+  text-align: center;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: #aeb8b5;
+  font-size: 13px;
+}
+
+select {
+  width: 100%;
+  border: 1px solid #37424a;
+  border-radius: 6px;
+  background: #101616;
+  color: #e8eef5;
+  padding: 8px 10px;
+}
+
+.checkbox-row {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.compact-note p {
+  color: #a4afad;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.scene-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #2e3838;
+  border-radius: 8px;
+  background: #10151b;
+}
+
+.scene-toolbar {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scene-toolbar span,
+.scene-legend span {
+  border: 1px solid #394342;
+  border-radius: 999px;
+  background: rgba(16, 21, 20, 0.78);
+  color: #d9e2df;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.hunter-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.scene-legend {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.legend-dot.inflow {
+  background: #e64646;
+}
+
+.legend-dot.outflow {
+  background: #2fa66a;
+}
+
+.legend-dot.flat {
+  background: #7b8794;
+}
+
+.inspector-panel h2 {
+  margin-bottom: 12px;
+  font-size: 20px;
+  letter-spacing: 0;
+}
+
+.inspector-kicker {
+  margin-bottom: 8px;
+  color: #9ba8a7;
+  font-size: 12px;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #2e3838;
+  padding: 10px 0;
+  color: #b7c3c0;
+}
+
+.metric-row strong {
+  color: #ffffff;
+}
+
+.inspector-panel p {
+  color: #aab7b3;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (max-width: 1250px) {
+  body {
+    min-width: 1024px;
+  }
+
+  .workspace {
+    grid-template-columns: 250px minmax(520px, 1fr) 250px;
+  }
+}
