@@ -41,6 +41,11 @@ describe("themeRegistry", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("keeps sector short names unique for scene labels", () => {
+    const shortNames = sectors.map((sector) => sector.shortName);
+    expect(new Set(shortNames).size).toBe(shortNames.length);
+  });
+
   it("keeps each sector related to its primary theme", () => {
     for (const sector of sectors) {
       expect(sector.relatedThemeIds).toContain(sector.primaryThemeId);
@@ -65,9 +70,11 @@ describe("themeRegistry", () => {
     }
   });
 
-  it("uses unique sector ids", () => {
-    const ids = sectors.map((sector) => sector.id);
-    expect(new Set(ids).size).toBe(ids.length);
+  it("provides aliases and relationship notes for every sector", () => {
+    for (const sector of sectors) {
+      expect(sector.aliases.length).toBeGreaterThan(0);
+      expect(sector.relationshipNote.trim().length).toBeGreaterThan(0);
+    }
   });
 
   it("exports frozen theme and sector config", () => {

@@ -421,7 +421,7 @@ const sectorConfig = [
   {
     id: "innovative-medicine",
     name: "创新药/医药",
-    shortName: "创新药",
+    shortName: "医药主线",
     primaryThemeId: "innovative-medicine",
     relatedThemeIds: ["innovative-medicine"],
     aliases: ["创新医药", "医药主线"],
