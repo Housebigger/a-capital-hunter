@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createManualLayoutProvider } from "./layoutProvider";
+import { createAlgorithmicLayoutProvider } from "./layoutProvider";
+import { normalizeCapitalValue } from "./metricNormalizer";
 import { buildRenderNodes } from "./renderNodes";
-import { createMockScenarioDataProvider } from "./scenarioDataProvider";
+import { createScenarioDataProvider } from "./scenarioDataProvider";
 import { sectors } from "./themeRegistry";
 import type { CapitalStateFilter, MarketScenario, SectorLayout, ThemeFilter } from "./types";
 
-const layout = createManualLayoutProvider().getLayout();
-const [defaultScenario] = createMockScenarioDataProvider().getScenarios();
+const layout = createAlgorithmicLayoutProvider().getLayout();
+const [defaultScenario] = createScenarioDataProvider().getScenarios();
 
 const buildNodes = ({
   scenario = defaultScenario,
@@ -30,6 +31,23 @@ const buildNodes = ({
   });
 
 describe("buildRenderNodes", () => {
+  it("attaches layout explanations to render nodes", () => {
+    const provider = createAlgorithmicLayoutProvider();
+    const layout = provider.getLayout("ai-semiconductor-resonance");
+    const scenario = createScenarioDataProvider().getScenarios()[0];
+
+    const nodes = buildRenderNodes({
+      layout,
+      scenario,
+      themeFilter: "all",
+      capitalStateFilter: "all",
+      showCentersOnly: false
+    });
+
+    const aiNode = nodes.find((node) => node.sector.id === "ai-computing");
+    expect(aiNode?.layoutExplanation?.reasons.length).toBeGreaterThanOrEqual(3);
+  });
+
   it("joins sector metadata, layout, and scenario data", () => {
     const nodes = buildNodes();
     expect(nodes).toHaveLength(sectors.length);
@@ -42,7 +60,17 @@ describe("buildRenderNodes", () => {
 
   it("filters by theme and dims non-matching sectors", () => {
     const nodes = buildNodes({ themeFilter: "ai-computing" });
-    expect(nodes.filter((node) => node.visible)).toHaveLength(6);
+    const expectedVisibleIds = sectors
+      .filter((sector) => sector.primaryThemeId === "ai-computing")
+      .map((sector) => sector.id)
+      .sort();
+
+    expect(
+      nodes
+        .filter((node) => node.visible)
+        .map((node) => node.sector.id)
+        .sort()
+    ).toEqual(expectedVisibleIds);
     expect(nodes.find((node) => node.sector.id === "robotics-physical-ai")?.dimmed).toBe(true);
   });
 
@@ -55,13 +83,17 @@ describe("buildRenderNodes", () => {
   it("filters by capital state and dims non-matching sectors", () => {
     const nodes = buildNodes({ capitalStateFilter: "outflow" });
     const visibleNodes = nodes.filter((node) => node.visible);
+    const maxAbsValue = Math.max(
+      ...defaultScenario.points.map((point) => Math.abs(point.netInflow)),
+      1
+    );
+    const expectedVisibleIds = defaultScenario.points
+      .filter((point) => normalizeCapitalValue(point.netInflow, maxAbsValue).direction === "outflow")
+      .map((point) => point.sectorId)
+      .sort();
 
-    expect(visibleNodes).toHaveLength(6);
+    expect(visibleNodes.map((node) => node.sector.id).sort()).toEqual(expectedVisibleIds);
     expect(visibleNodes.every((node) => node.metric.direction === "outflow")).toBe(true);
-    expect(nodes.find((node) => node.sector.id === "low-altitude-economy")).toMatchObject({
-      visible: true,
-      dimmed: false
-    });
     expect(nodes.find((node) => node.sector.id === "ai-computing")).toMatchObject({
       visible: false,
       dimmed: true
@@ -77,9 +109,10 @@ describe("buildRenderNodes", () => {
         (sector) =>
           sector.isThemeCenter && layoutSectorIds.has(sector.id) && scenarioSectorIds.has(sector.id)
       )
-      .map((sector) => sector.id);
+      .map((sector) => sector.id)
+      .sort();
 
-    expect(nodes.filter((node) => node.visible).map((node) => node.sector.id)).toEqual(
+    expect(nodes.filter((node) => node.visible).map((node) => node.sector.id).sort()).toEqual(
       expectedCenterIds
     );
   });

@@ -76,7 +76,8 @@ export function buildRenderNodes(input: BuildRenderNodesInput): RenderNode[] {
       cell,
       metric,
       visible,
-      dimmed: !visible
+      dimmed: !visible,
+      layoutExplanation: input.layout.explanations?.[cell.sectorId]
     };
   });
 }
