@@ -69,6 +69,22 @@ export const layoutStages: ReadonlyNonEmptyArray<LayoutStage> = Object.freeze([
     ["new-energy", "defense-aerospace"],
     ["innovative-medicine"],
     "robotics-low-altitude-diffusion"
+  ),
+  stage(
+    "consumer-digital-growth",
+    "消费电子/数字经济增长",
+    "消费电子和数字经济题材走强，VR/AR和数据要素活跃。",
+    ["consumer-electronics", "digital-economy"],
+    ["fintech", "ai-computing"],
+    "new-energy-defense-rotation"
+  ),
+  stage(
+    "nev-autonomous-driving-breakout",
+    "新能源汽车/智能驾驶爆发",
+    "新能源汽车和智能驾驶主题爆发，半导体芯片需求升温，产业链全面活跃。",
+    ["new-energy-vehicles", "semiconductors"],
+    ["new-energy", "consumer-electronics", "digital-economy"],
+    "consumer-digital-growth"
   )
 ]);
 
