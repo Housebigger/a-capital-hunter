@@ -102,7 +102,7 @@ describe("CapitalMapScene helpers", () => {
 
     applyCameraPreset(camera, "side", controls);
 
-    expect(camera.position.set).toHaveBeenCalledWith(14, 5, 0);
+    expect(camera.position.set).toHaveBeenCalledWith(18, 7, 0);
     expect(camera.lookAt).toHaveBeenCalledWith(0, 0, 0);
     expect(camera.updateProjectionMatrix).toHaveBeenCalledOnce();
     expect(controls.target.set).toHaveBeenCalledWith(0, 0, 0);

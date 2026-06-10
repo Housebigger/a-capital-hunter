@@ -9,7 +9,9 @@ interface HunterSceneProps {
   nodes: RenderNode[];
   cameraPreset: CameraPreset;
   selectedSectorId?: SectorId;
+  focusSubThemeId?: string;
   onSelectSector: (sectorId: SectorId) => void;
+  onFocusSubTheme?: (subThemeId: string | undefined) => void;
 }
 
 export function HunterScene(props: HunterSceneProps) {
@@ -18,7 +20,7 @@ export function HunterScene(props: HunterSceneProps) {
   return (
     <Canvas
       className="hunter-canvas"
-      camera={{ position: [9, 9.5, 12], fov: 45 }}
+      camera={{ position: [13, 13, 16], fov: 45 }}
       shadows
       gl={{ antialias: true }}
     >
@@ -29,7 +31,9 @@ export function HunterScene(props: HunterSceneProps) {
         nodes={props.nodes}
         cameraPreset={props.cameraPreset}
         selectedSectorId={props.selectedSectorId}
+        focusSubThemeId={props.focusSubThemeId}
         onSelectSector={props.onSelectSector}
+        onFocusSubTheme={props.onFocusSubTheme}
         orbitControlsRef={orbitControlsRef}
       />
       <OrbitControls
