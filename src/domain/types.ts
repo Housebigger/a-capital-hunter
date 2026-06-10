@@ -30,6 +30,7 @@ export interface SubTheme {
   readonly themeId: ThemeId;
   readonly displayOrder: number;
   readonly primarySectorId: SectorId;
+  readonly areaWeight: number;
 }
 
 export interface Sector {
@@ -74,6 +75,20 @@ export interface LayoutExplanation {
   readonly sectorId: SectorId;
   readonly summary: string;
   readonly reasons: readonly LayoutExplanationReason[];
+}
+
+export interface VoronoiCell {
+  readonly subThemeId: string;
+  readonly center: { readonly x: number; readonly z: number };
+  readonly polygon: ReadonlyArray<{ readonly x: number; readonly z: number }>;
+  readonly themeId: string;
+}
+
+export interface VoronoiLayout {
+  readonly cells: ReadonlyArray<VoronoiCell>;
+  readonly boundary: { readonly width: number; readonly height: number };
+  readonly version: string;
+  readonly stageId?: LayoutStageId;
 }
 
 export interface PreviousLayoutPosition {
@@ -137,6 +152,24 @@ export interface RenderNode {
   dimmed: boolean;
   isSubThemeCenter: boolean;
   layoutExplanation?: LayoutExplanation;
+}
+
+export interface Stock {
+  readonly id: string;
+  readonly name: string;
+  readonly shortName: string;
+  readonly subThemeId: string;
+  readonly code: string;
+}
+
+export interface StockRenderNode {
+  readonly stock: Stock;
+  readonly subTheme: SubTheme;
+  readonly theme: Theme;
+  readonly position: { readonly x: number; readonly z: number };
+  readonly metric: NormalizedMetric;
+  readonly visible: boolean;
+  readonly cell?: VoronoiCell;
 }
 
 export interface DatasetSummary {
