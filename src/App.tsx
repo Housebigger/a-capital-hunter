@@ -8,12 +8,12 @@ import { createScenarioDataProvider } from "./domain/scenarioDataProvider";
 import { themes } from "./domain/themeRegistry";
 import { createThemeLayoutProvider } from "./domain/themeVoronoiLayoutProvider";
 import { buildThemeRenderNodes } from "./domain/themeRenderNodes";
-import { createVoronoiLayoutProvider } from "./domain/voronoiLayoutProvider";
+import { createSubThemeLayoutProvider } from "./domain/voronoiLayoutProvider";
 import { buildSubThemeRenderNodes } from "./domain/subThemeRenderNodes";
 import { getScenarioIds, useHunterState } from "./state/useHunterState";
 
 const themeLayoutProvider = createThemeLayoutProvider();
-const subThemeLayoutProvider = createVoronoiLayoutProvider();
+const subThemeLayoutProvider = createSubThemeLayoutProvider();
 const dataProvider = createScenarioDataProvider();
 const scenarios = dataProvider.getScenarios();
 const scenarioIds = getScenarioIds(scenarios);
