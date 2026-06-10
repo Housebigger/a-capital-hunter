@@ -4,6 +4,7 @@ import type {
   RelationshipEdge,
   Sector,
   SectorLayout,
+  SubTheme,
   Theme
 } from "./types";
 
@@ -12,6 +13,9 @@ interface LayoutOptions {
   readonly gridHeight: number;
   readonly maxStageShift: number;
   readonly centerPullStrength: number;
+  readonly baseRadius?: number;
+  readonly subThemeDistance?: number;
+  readonly relationPullFactor?: number;
 }
 
 interface AlgorithmicLayoutInput {
@@ -21,6 +25,7 @@ interface AlgorithmicLayoutInput {
   readonly stage: LayoutStage;
   readonly previousStage?: LayoutStage;
   readonly options: LayoutOptions;
+  readonly subThemes?: readonly SubTheme[];
 }
 
 interface AlgorithmicLayoutResult {
@@ -39,9 +44,8 @@ const manhattan = (a: Point, b: Point): number => Math.abs(a.x - b.x) + Math.abs
 
 const themeAnchor = (index: number, count: number, stageHeat: number, options: LayoutOptions): Point => {
   const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
-  const baseRadius = 5.2;
   const inwardShift = clamp(stageHeat, 0, 1) * (options.centerPullStrength + options.maxStageShift);
-  const radius = Math.max(2.4, baseRadius - inwardShift);
+  const radius = Math.max(2.4, (options.baseRadius ?? 5.2) - inwardShift);
   return {
     x: Math.cos(angle) * radius,
     z: Math.sin(angle) * radius
@@ -58,11 +62,39 @@ const sectorOffset = (index: number, count: number): Point => {
   };
 };
 
+interface SubThemeAnchor {
+  readonly id: string;
+  readonly themeId: string;
+  readonly point: Point;
+}
+
+const subThemeAnchors = (
+  themeAnchorPoint: Point,
+  themeId: string,
+  subThemeCount: number,
+  subThemeDistance: number
+): SubThemeAnchor[] => {
+  const anchors: SubThemeAnchor[] = [];
+  for (let i = 0; i < subThemeCount; i++) {
+    const angle = (Math.PI * 2 * i) / subThemeCount - Math.PI / 2;
+    anchors.push({
+      id: `sub-${themeId}-${i}`,
+      themeId,
+      point: {
+        x: themeAnchorPoint.x + Math.cos(angle) * subThemeDistance,
+        z: themeAnchorPoint.z + Math.sin(angle) * subThemeDistance
+      }
+    });
+  }
+  return anchors;
+};
+
 const relationPull = (
   sector: Readonly<Sector>,
   edges: readonly RelationshipEdge[],
   anchorsByTheme: ReadonlyMap<string, Point>,
-  sectorsById: ReadonlyMap<string, Readonly<Sector>>
+  sectorsById: ReadonlyMap<string, Readonly<Sector>>,
+  pullFactor: number
 ): Point => {
   const related = edges
     .filter((edge) => edge.sourceSectorId === sector.id || edge.targetSectorId === sector.id)
@@ -89,8 +121,8 @@ const relationPull = (
   if (total === 0) return { x: 0, z: 0 };
 
   return {
-    x: (x / total) * 0.18,
-    z: (z / total) * 0.18
+    x: (x / total) * pullFactor,
+    z: (z / total) * pullFactor
   };
 };
 
@@ -158,12 +190,14 @@ const buildExplanations = (
         stageInfluenced: (stage.sectorHeat[sector.id] ?? 0) >= 0.55
       }));
 
+    const subThemeNote = sector.subThemeId ? `，属于${sector.subThemeId}分题材` : "";
+
     explanations[sector.id] = {
       sectorId: sector.id,
       summary:
         reasons.length > 0
-          ? `靠近 ${reasons[0].relatedSectorId}，主要因为${reasons[0].note}。`
-          : "主题中心锚定在本阶段的基础位置。",
+          ? `靠近 ${reasons[0].relatedSectorId}，主要因为${reasons[0].note}${subThemeNote}。`
+          : `主题中心锚定在本阶段的基础位置${subThemeNote}。`,
       reasons
     };
   }
@@ -179,26 +213,55 @@ export function createAlgorithmicLayout(input: AlgorithmicLayoutInput): Algorith
     ])
   );
   const sectorsById = new Map(input.sectors.map((sector) => [sector.id, sector]));
-  const sectorIndexByTheme = new Map<string, number>();
+
+  // Build SubTheme anchor map
+  const subThemeAnchorMap = new Map<string, Point>();
+  if (input.subThemes) {
+    for (const theme of input.themes) {
+      const themePoint = anchorsByTheme.get(theme.id)!;
+      const themeSubThemes = input.subThemes.filter(st => st.themeId === theme.id);
+      const anchors = subThemeAnchors(themePoint, theme.id, themeSubThemes.length, input.options.subThemeDistance ?? 1.5);
+      for (let i = 0; i < themeSubThemes.length; i++) {
+        subThemeAnchorMap.set(themeSubThemes[i].id, anchors[i].point);
+      }
+    }
+  }
+
+  const sectorIndexBySubTheme = new Map<string, number>();
 
   const desired = input.sectors.map((sector) => {
-    const themePosition = anchorsByTheme.get(sector.primaryThemeId) ?? { x: 0, z: 0 };
-    const localIndex = sectorIndexByTheme.get(sector.primaryThemeId) ?? 0;
-    sectorIndexByTheme.set(sector.primaryThemeId, localIndex + 1);
-    const offset = sectorOffset(
-      localIndex,
-      input.sectors.filter((candidate) => candidate.primaryThemeId === sector.primaryThemeId).length
-    );
-    const pull = relationPull(sector, input.relationshipEdges, anchorsByTheme, sectorsById);
     const heat = input.stage.sectorHeat[sector.id] ?? 0.2;
+    const strength = (heat >= 0.8 ? 3 : heat >= 0.5 ? 2 : 1) as 1 | 2 | 3;
+
+    // Theme centers use theme anchor directly
+    if (sector.isThemeCenter) {
+      const themePosition = anchorsByTheme.get(sector.primaryThemeId) ?? { x: 0, z: 0 };
+      return {
+        sector,
+        point: {
+          x: themePosition.x - heat * 0.15,
+          z: themePosition.z - heat * 0.15
+        },
+        strength
+      };
+    }
+
+    // Non-center: start from SubTheme anchor (fallback to theme anchor if no SubTheme)
+    const subThemePoint = subThemeAnchorMap.get(sector.subThemeId) ?? anchorsByTheme.get(sector.primaryThemeId) ?? { x: 0, z: 0 };
+    const localIndex = sectorIndexBySubTheme.get(sector.subThemeId) ?? 0;
+    sectorIndexBySubTheme.set(sector.subThemeId, localIndex + 1);
+
+    const sameSubThemeCount = input.sectors.filter(s => s.subThemeId === sector.subThemeId).length;
+    const offset = sectorOffset(localIndex, sameSubThemeCount);
+    const pull = relationPull(sector, input.relationshipEdges, anchorsByTheme, sectorsById, input.options.relationPullFactor ?? 0.18);
 
     return {
       sector,
       point: {
-        x: themePosition.x + offset.x + pull.x - heat * 0.25,
-        z: themePosition.z + offset.z + pull.z - heat * 0.25
+        x: subThemePoint.x + offset.x + pull.x - heat * 0.2,
+        z: subThemePoint.z + offset.z + pull.z - heat * 0.2
       },
-      strength: (heat >= 0.8 ? 3 : heat >= 0.5 ? 2 : 1) as 1 | 2 | 3
+      strength
     };
   });
 
