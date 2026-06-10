@@ -1,6 +1,6 @@
 import { Text } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { RefObject } from "react";
 import * as THREE from "three";
 import { subThemes as subThemeList } from "../domain/subThemeRegistry";
@@ -132,7 +132,7 @@ function VoronoiPlate({
   return (
     <mesh
       position={[cell.center.x, 0.04, cell.center.z]}
-      rotation={[-Math.PI / 2, 0, 0]}
+      rotation={[Math.PI / 2, 0, 0]}
       receiveShadow
       onClick={onClick}
     >
@@ -161,20 +161,20 @@ function ProvinceBorderLine({
   neighborCells: ReadonlyArray<VoronoiCell>;
   color: string;
 }) {
-  const borderPoints = useMemo(() => {
+  const geometry = useMemo(() => {
     const points: THREE.Vector3[] = [];
     const poly = cell.polygon;
-    if (poly.length < 3) return points;
+    if (poly.length < 3) {
+      const emptyGeo = new THREE.BufferGeometry();
+      return emptyGeo;
+    }
 
-    // For each edge of the polygon, check if the midpoint is closer to a
-    // different-theme neighbor. If so, add that edge as a border segment.
     for (let i = 0; i < poly.length; i++) {
       const a = poly[i];
       const b = poly[(i + 1) % poly.length];
       const mx = (a.x + b.x) / 2;
       const mz = (a.z + b.z) / 2;
 
-      // Find nearest neighbor center to edge midpoint
       let nearestOtherTheme = false;
       let minDist = Infinity;
       for (const nb of neighborCells) {
@@ -193,23 +193,26 @@ function ProvinceBorderLine({
         points.push(new THREE.Vector3(b.x, 0.09, b.z));
       }
     }
-    return points;
-  }, [cell, neighborCells]);
 
-  if (borderPoints.length < 2) return null;
+    const geo = new THREE.BufferGeometry();
+    if (points.length > 0) {
+      const positions = new Float32Array(points.length * 3);
+      for (let i = 0; i < points.length; i++) {
+        positions[i * 3] = points[i].x;
+        positions[i * 3 + 1] = points[i].y;
+        positions[i * 3 + 2] = points[i].z;
+      }
+      geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    }
+    return geo;
+  }, [cell.polygon, cell.center, cell.subThemeId, cell.themeId, neighborCells]);
 
-  const positionsArray = new Float32Array(borderPoints.flatMap((v) => [v.x, v.y, v.z]));
+  if (geometry.attributes.position === undefined || geometry.attributes.position.count < 2) {
+    return null;
+  }
 
   return (
-    <lineSegments>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positionsArray, 3]}
-          count={borderPoints.length}
-          itemSize={3}
-        />
-      </bufferGeometry>
+    <lineSegments geometry={geometry}>
       <lineBasicMaterial color={color} linewidth={2} />
     </lineSegments>
   );
@@ -484,6 +487,18 @@ function VoronoiCapitalMapScene(props: VoronoiCapitalMapSceneProps) {
 
   const borderLineColor = "#5a6a7a";
 
+  // Stable click handler factory to prevent re-renders on every click
+  const handlePlateClick = useCallback(
+    (subThemeId: string) => {
+      if (focusSubThemeId === subThemeId) {
+        props.onFocusSubTheme(undefined);
+      } else {
+        props.onFocusSubTheme(subThemeId);
+      }
+    },
+    [focusSubThemeId, props.onFocusSubTheme]
+  );
+
   return (
     <group>
       {/* Voronoi base plates */}
@@ -499,13 +514,7 @@ function VoronoiCapitalMapScene(props: VoronoiCapitalMapSceneProps) {
             cell={cell}
             themeColor={themeColor}
             opacity={opacity}
-            onClick={() => {
-              if (isFocused && focusSubThemeId === cell.subThemeId) {
-                props.onFocusSubTheme(undefined);
-              } else {
-                props.onFocusSubTheme(cell.subThemeId);
-              }
-            }}
+            onClick={() => handlePlateClick(cell.subThemeId)}
           />
         );
       })}

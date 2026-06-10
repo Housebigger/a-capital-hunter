@@ -15,11 +15,13 @@ interface ControlsPanelProps {
   capitalStateFilter: CapitalStateFilter;
   cameraPreset: CameraPreset;
   showCentersOnly: boolean;
+  capitalThreshold?: number;
   onScenarioChange: (scenarioId: string) => void;
   onThemeFilterChange: (themeFilter: ThemeFilter) => void;
   onCapitalStateFilterChange: (filter: CapitalStateFilter) => void;
   onCameraPresetChange: (preset: CameraPreset) => void;
   onShowCentersOnlyChange: (show: boolean) => void;
+  onCapitalThresholdChange?: (threshold: number) => void;
 }
 
 const CAMERA_PRESET_OPTIONS: readonly { value: CameraPreset; label: string }[] = [
@@ -95,6 +97,24 @@ export function ControlsPanel(props: ControlsPanelProps) {
           <span>只看主线中心</span>
         </label>
       </section>
+
+      {props.onCapitalThresholdChange != null && (
+        <section className="control-section">
+          <div className="section-title">
+            <span>资金门槛</span>
+          </div>
+          <label>
+            <input
+              type="range"
+              min="5"
+              max="50"
+              value={props.capitalThreshold ?? 20}
+              onChange={(e) => props.onCapitalThresholdChange!(Number(e.target.value))}
+            />
+            <span>{props.capitalThreshold ?? 20}亿</span>
+          </label>
+        </section>
+      )}
 
       <section className="control-section">
         <div className="section-title">

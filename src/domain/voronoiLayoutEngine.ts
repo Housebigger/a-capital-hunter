@@ -90,7 +90,7 @@ const insetPoint = (
  */
 const computeSubThemeCenters = (
   input: VoronoiLayoutInput
-): Map<string, Point> => {
+): { centers: Map<string, Point>; themeAnchors: Map<string, Point> } => {
   const { themes: themeList, subThemes, relationshipEdges, stage, options } = input;
   const halfW = options.mapWidth / 2;
   const halfH = options.mapHeight / 2;
@@ -173,7 +173,7 @@ const computeSubThemeCenters = (
     }
   }
 
-  return centers;
+  return { centers, themeAnchors: adjustedThemeAnchors };
 };
 
 // ---------------------------------------------------------------------------
@@ -183,7 +183,8 @@ const computeSubThemeCenters = (
 const computeWeightedVoronoi = (
   centersMap: Map<string, Point>,
   subThemes: readonly SubTheme[],
-  options: VoronoiLayoutOptions
+  options: VoronoiLayoutOptions,
+  themeAnchors: Map<string, Point>
 ): VoronoiCell[] => {
   const halfW = options.mapWidth / 2;
   const halfH = options.mapHeight / 2;
@@ -232,10 +233,19 @@ const computeWeightedVoronoi = (
       const stepScale = clamp(Math.log(areaRatio) * 0.3, -0.5, 0.5);
       const dx = c.x - points[i].x;
       const dz = c.z - points[i].z;
-      newPoints.push({
-        x: points[i].x + dx * stepScale,
-        z: points[i].z + dz * stepScale,
-      });
+      let nx = points[i].x + dx * stepScale;
+      let nz = points[i].z + dz * stepScale;
+
+      // Theme cohesion: pull back toward parent theme anchor to prevent
+      // relaxation from scattering SubTheme cells across the map.
+      const anchor = themeAnchors.get(stArray[i].themeId);
+      if (anchor) {
+        const cohesionStrength = 0.15;
+        nx += (anchor.x - nx) * cohesionStrength;
+        nz += (anchor.z - nz) * cohesionStrength;
+      }
+
+      newPoints.push({ x: nx, z: nz });
     }
 
     points = newPoints;
@@ -329,8 +339,8 @@ const computeWeightedVoronoi = (
 // ---------------------------------------------------------------------------
 
 export function createVoronoiLayout(input: VoronoiLayoutInput): VoronoiLayout {
-  const centers = computeSubThemeCenters(input);
-  const cells = computeWeightedVoronoi(centers, input.subThemes, input.options);
+  const { centers, themeAnchors } = computeSubThemeCenters(input);
+  const cells = computeWeightedVoronoi(centers, input.subThemes, input.options, themeAnchors);
 
   return {
     cells: Object.freeze(cells),

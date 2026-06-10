@@ -1,4 +1,4 @@
-import type { RenderNode } from "../domain/types";
+import type { RenderNode, StockRenderNode } from "../domain/types";
 
 const RELATIONSHIP_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   "industrial-chain": { label: "产业链", color: "#4a9eff" },
@@ -10,9 +10,44 @@ const RELATIONSHIP_TYPE_LABELS: Record<string, { label: string; color: string }>
 
 interface InspectorPanelProps {
   node?: RenderNode;
+  selectedStockNode?: StockRenderNode;
 }
 
-export function InspectorPanel({ node }: InspectorPanelProps) {
+export function InspectorPanel({ node, selectedStockNode }: InspectorPanelProps) {
+  // Stock-level detail view
+  if (selectedStockNode) {
+    const { stock, subTheme, theme, metric } = selectedStockNode;
+    return (
+      <section className="inspector-panel" aria-label="个股详情">
+        <div className="inspector-kicker">主线：{theme.name}</div>
+        <div className="inspector-kicker">分题材：{subTheme.name}</div>
+        <h2>{stock.name}</h2>
+        <div className="metric-row">
+          <span>代码</span>
+          <strong>{stock.code}</strong>
+        </div>
+        <div className="metric-row">
+          <span>模拟净流入</span>
+          <strong style={{ color: metric.color }}>{metric.labelValue}</strong>
+        </div>
+        <div className="metric-row">
+          <span>状态</span>
+          <strong>
+            {metric.direction === "inflow"
+              ? "流入"
+              : metric.direction === "outflow"
+                ? "流出"
+                : "平盘"}
+          </strong>
+        </div>
+        <div className="metric-row">
+          <span>强度</span>
+          <strong>{(metric.intensity * 100).toFixed(0)}%</strong>
+        </div>
+      </section>
+    );
+  }
+
   if (!node) {
     return (
       <section className="inspector-panel" aria-label="板块详情">
@@ -22,17 +57,50 @@ export function InspectorPanel({ node }: InspectorPanelProps) {
     );
   }
 
-  const explanationReasons = node.layoutExplanation?.reasons.slice(0, 3) ?? [];
-  const groupedReasons = [...explanationReasons].sort((a, b) =>
-    a.relationshipType.localeCompare(b.relationshipType)
-  );
+  // SubTheme area detail when a SubTheme area is focused
+  if (node.subTheme) {
+    const subTheme = node.subTheme;
+    return (
+      <section className="inspector-panel" aria-label="板块详情">
+        <div className="inspector-kicker">主线：{node.theme.name}</div>
+        <div className="inspector-kicker">分题材：{subTheme.name}</div>
+        <h2>{node.sector.name}</h2>
+        <div className="metric-row">
+          <span>模拟净流入</span>
+          <strong style={{ color: node.metric.color }}>{node.metric.labelValue}</strong>
+        </div>
+        <div className="metric-row">
+          <span>状态</span>
+          <strong>
+            {node.metric.direction === "inflow"
+              ? "流入"
+              : node.metric.direction === "outflow"
+                ? "流出"
+                : "平盘"}
+          </strong>
+        </div>
+        <div className="metric-row">
+          <span>面积权重</span>
+          <strong>{subTheme.areaWeight.toFixed(2)}</strong>
+        </div>
+        <div className="metric-row">
+          <span>面积占比</span>
+          <strong>{(subTheme.areaWeight * 100).toFixed(1)}%</strong>
+        </div>
+        <p>{node.sector.relationshipNote}</p>
+        <div className="layout-explanation">
+          <h3>布局解释</h3>
+          <p>{node.layoutExplanation?.summary ?? "当前布局未提供算法解释。"}</p>
+          {renderRelationshipReasons(node)}
+        </div>
+      </section>
+    );
+  }
 
+  // Fallback: sector-only view (no subTheme)
   return (
     <section className="inspector-panel" aria-label="板块详情">
       <div className="inspector-kicker">主线：{node.theme.name}</div>
-      {node.subTheme && (
-        <div className="inspector-kicker">分题材：{node.subTheme.name}</div>
-      )}
       <h2>{node.sector.name}</h2>
       <div className="metric-row">
         <span>模拟净流入</span>
@@ -52,22 +120,33 @@ export function InspectorPanel({ node }: InspectorPanelProps) {
       <div className="layout-explanation">
         <h3>布局解释</h3>
         <p>{node.layoutExplanation?.summary ?? "当前布局未提供算法解释。"}</p>
-        {explanationReasons.length > 0 && (
-          <ul>
-            {groupedReasons.map((reason) => {
-              const typeInfo = RELATIONSHIP_TYPE_LABELS[reason.relationshipType] ?? { label: reason.relationshipType, color: "#888" };
-              return (
-                <li key={`${reason.relatedSectorId}-${reason.note}`}>
-                  <span style={{ color: typeInfo.color, fontSize: "11px", fontWeight: 600 }}>
-                    [{typeInfo.label}]
-                  </span>{" "}
-                  <span>{reason.note}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        {renderRelationshipReasons(node)}
       </div>
     </section>
+  );
+}
+
+function renderRelationshipReasons(node: RenderNode) {
+  const explanationReasons = node.layoutExplanation?.reasons.slice(0, 3) ?? [];
+  const groupedReasons = [...explanationReasons].sort((a, b) =>
+    a.relationshipType.localeCompare(b.relationshipType)
+  );
+
+  if (groupedReasons.length === 0) return null;
+
+  return (
+    <ul>
+      {groupedReasons.map((reason) => {
+        const typeInfo = RELATIONSHIP_TYPE_LABELS[reason.relationshipType] ?? { label: reason.relationshipType, color: "#888" };
+        return (
+          <li key={`${reason.relatedSectorId}-${reason.note}`}>
+            <span style={{ color: typeInfo.color, fontSize: "11px", fontWeight: 600 }}>
+              [{typeInfo.label}]
+            </span>{" "}
+            <span>{reason.note}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

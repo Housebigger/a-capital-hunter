@@ -3,14 +3,15 @@ import { ControlsPanel } from "./components/ControlsPanel";
 import { HunterScene } from "./components/HunterScene";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { SceneLegend } from "./components/SceneLegend";
-import { createAlgorithmicLayoutProvider } from "./domain/layoutProvider";
 import { layoutStages } from "./domain/layoutStages";
-import { buildRenderNodes } from "./domain/renderNodes";
+import { buildRenderNodes, buildStockRenderNodes } from "./domain/renderNodes";
 import { createScenarioDataProvider } from "./domain/scenarioDataProvider";
 import { themes } from "./domain/themeRegistry";
+import { createVoronoiLayoutProvider } from "./domain/voronoiLayoutProvider";
+import type { StockRenderNode } from "./domain/types";
 import { getScenarioIds, useHunterState } from "./state/useHunterState";
 
-const layoutProvider = createAlgorithmicLayoutProvider();
+const voronoiLayoutProvider = createVoronoiLayoutProvider();
 const dataProvider = createScenarioDataProvider();
 const scenarios = dataProvider.getScenarios();
 const scenarioIds = getScenarioIds(scenarios);
@@ -25,25 +26,33 @@ export default function App() {
   );
   const activeLayoutStage = layoutStages[activeScenarioIndex] || layoutStages[0];
 
-  const nodes = useMemo(
+  const voronoiLayout = useMemo(
+    () => voronoiLayoutProvider.getLayout(activeLayoutStage.id),
+    [activeLayoutStage.id]
+  );
+
+  const stockNodes = useMemo(
     () =>
-      buildRenderNodes({
-        layout: layoutProvider.getLayout(activeLayoutStage.id),
+      buildStockRenderNodes({
+        layout: voronoiLayout,
         scenario: activeScenario,
         themeFilter: hunterState.themeFilter,
         capitalStateFilter: hunterState.capitalStateFilter,
-        showCentersOnly: hunterState.showCentersOnly
+        capitalThreshold: hunterState.capitalThreshold
       }),
     [
-      activeLayoutStage.id,
+      voronoiLayout,
       activeScenario,
       hunterState.capitalStateFilter,
-      hunterState.showCentersOnly,
+      hunterState.capitalThreshold,
       hunterState.themeFilter
     ]
   );
 
-  const selectedNode = nodes.find((node) => node.sector.id === hunterState.selectedSectorId);
+  const selectedStockNode: StockRenderNode | undefined = useMemo(
+    () => (hunterState.selectedStockId ? stockNodes.find((n) => n.stock.id === hunterState.selectedStockId) : undefined),
+    [hunterState.selectedStockId, stockNodes]
+  );
 
   return (
     <main className="app-shell">
@@ -67,11 +76,13 @@ export default function App() {
           capitalStateFilter={hunterState.capitalStateFilter}
           cameraPreset={hunterState.cameraPreset}
           showCentersOnly={hunterState.showCentersOnly}
+          capitalThreshold={hunterState.capitalThreshold}
           onScenarioChange={hunterState.setActiveScenarioId}
           onThemeFilterChange={hunterState.setThemeFilter}
           onCapitalStateFilterChange={hunterState.setCapitalStateFilter}
           onCameraPresetChange={hunterState.setCameraPreset}
           onShowCentersOnlyChange={hunterState.setShowCentersOnly}
+          onCapitalThresholdChange={hunterState.setCapitalThreshold}
         />
 
         <section className="scene-panel" aria-label="A Capital Hunter 3D资金峰面">
@@ -81,7 +92,8 @@ export default function App() {
             <span>时间片 = 轮动</span>
           </div>
           <HunterScene
-            nodes={nodes}
+            voronoiLayout={voronoiLayout}
+            stockNodes={stockNodes}
             cameraPreset={hunterState.cameraPreset}
             selectedSectorId={hunterState.selectedSectorId}
             focusSubThemeId={hunterState.focusSubThemeId}
@@ -91,7 +103,7 @@ export default function App() {
           <SceneLegend />
         </section>
 
-        <InspectorPanel node={selectedNode} />
+        <InspectorPanel selectedStockNode={selectedStockNode} />
       </section>
     </main>
   );

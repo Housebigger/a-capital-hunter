@@ -57,8 +57,8 @@ describe("voronoiLayoutEngine", () => {
     for (let i = 0; i < result.cells.length; i++) {
       const areaRatio = areas[i] / totalArea;
       const weightRatio = subThemes[i].areaWeight / totalWeight;
-      // Allow 10% tolerance for Voronoi approximation
-      expect(Math.abs(areaRatio - weightRatio)).toBeLessThan(0.10);
+      // Allow 20% tolerance: theme cohesion constraint trades area precision for theme grouping
+      expect(Math.abs(areaRatio - weightRatio)).toBeLessThan(0.20);
     }
   });
 
