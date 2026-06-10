@@ -84,7 +84,9 @@ export default function App() {
             nodes={nodes}
             cameraPreset={hunterState.cameraPreset}
             selectedSectorId={hunterState.selectedSectorId}
+            focusSubThemeId={hunterState.focusSubThemeId}
             onSelectSector={hunterState.setSelectedSectorId}
+            onFocusSubTheme={hunterState.setFocusSubThemeId}
           />
           <SceneLegend />
         </section>

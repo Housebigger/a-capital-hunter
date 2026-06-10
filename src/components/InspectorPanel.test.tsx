@@ -30,6 +30,6 @@ describe("InspectorPanel", () => {
   it("renders an empty state without a selection", () => {
     render(<InspectorPanel node={undefined} />);
     expect(screen.getByText("点击板块查看资金状态")).toBeInTheDocument();
-    expect(screen.getByText("第二版展示资金方向、模拟净流入和算法布局解释。")).toBeInTheDocument();
+    expect(screen.getByText("第三版展示资金方向、模拟净流入、算法布局解释和分题材信息。")).toBeInTheDocument();
   });
 });

@@ -27,7 +27,7 @@ Gen3 includes:
 - ~150–180 total relationship edges, with every theme pair having at least one edge.
 - 5 market stages (3 retained + 2 new) covering the expanded theme set.
 - Layout engine optimizations: larger grid (22×16), SubTheme anchor points, dual-layer relationship pull, and expanded relationship-type support.
-- 3D scene adaptations: larger ground grid, SubTheme region markers, two-tier label density control.
+- 3D scene adaptations: country-map continuous terrain base, two-tier label density control.
 - UI panel updates: expanded theme filter (11 options), stage selector (5 options), SubTheme info in inspector, 5 relationship-type labels.
 
 Gen3 does not include:
@@ -192,28 +192,39 @@ Stages form a linked list via `previousStageId`. Stages 1–3 are retained from 
 
 ## 3D Scene Adaptations
 
-### Ground Grid
+### Country Map Base Design
 
-`CapitalMapScene` ground grid expands from 15×11 to 22×16. Three.js `GridHelper` parameters update accordingly.
+The 3D scene uses a "country map" visual metaphor. Themes are not visually separated islands; instead, the entire ground is a continuous map where theme regions blend into each other like provinces on a country map.
 
-### SubTheme Region Markers
+| Map Concept | Data Mapping | Visual |
+| --- | --- | --- |
+| Province | Theme | Continuous colored region, naturally adjacent to neighboring themes |
+| City | SubTheme | Cluster of sector blocks within a theme region |
+| Provincial capital | SubTheme center sector | Larger base block with label |
+| Adjacency | Relationship strength | Adjacent blocks = closely related; distance = connection degree |
 
-Semi-transparent colored planes rendered beneath sectors of the same SubTheme. These provide visual grouping without adding label clutter. Implementation: a set of `Plane` geometries positioned between the grid floor and sector base cells, colored by SubTheme identity.
+### Continuous Terrain Surface
+
+Replace the Gen2 `GridHelper` with a continuous terrain base:
+
+- **Terrain plane:** A single large `PlaneGeometry` serves as the ground. Colors are applied per-region using Theme identity, with **gradient transitions** at theme boundaries — neighboring themes blend naturally rather than having hard borders.
+- **Sector blocks as terrain features:** Sector base blocks sit on top of the terrain plane like city markers on a map. Size varies: SubTheme centers are larger, ordinary sectors are smaller.
+- **Relationship-proximity encoding:** Closely related themes have sectors placed adjacently (grid cells touching), creating natural "border" areas. Unrelated themes have gaps between them, like geographic distance between distant provinces.
 
 ### Label Density Control
 
-Each SubTheme designates one sector as its "SubTheme center" — the sector whose `id` matches the SubTheme's primary sector (typically the first sector listed in the SubTheme's sector roster, or the one with the highest relationship weight within the SubTheme). This is a data attribute, not a computed property.
+Each SubTheme designates one sector as its "SubTheme center" — the sector whose `id` matches the SubTheme's primary sector. This is a data attribute, not a computed property.
 
 Two-tier label strategy:
 
 - **Default view:** Only theme centers (11) and SubTheme centers (~30) display `shortName` labels. Ordinary sectors render as small unlabeled blocks. Total visible labels: ~41, comparable to Gen2's 42.
-- **Focus mode:** When a user hovers over or selects a SubTheme region, all sectors within that SubTheme expand their labels. Non-focused SubThemes remain compact.
+- **Focus mode:** When a user clicks a SubTheme region, all sectors within that SubTheme expand their labels. Non-focused SubThemes remain compact. Click elsewhere or another SubTheme to exit focus.
 
 This keeps 90 sectors readable without requiring zoom-dependent logic.
 
 ### Camera
 
-Default camera position pulls back to accommodate the larger grid. `OrbitControls` min/max distance range adjusts proportionally.
+Default camera position pulls back to accommodate the larger 22×16 map. `OrbitControls` min/max distance range adjusts proportionally.
 
 ## UI Panel Updates
 
@@ -226,7 +237,12 @@ Default camera position pulls back to accommodate the larger grid. `OrbitControl
 ### InspectorPanel (Right Sidebar)
 
 - Sector detail section adds SubTheme membership display.
-- Layout explanation section shows all 5 relationship types with distinct labels.
+- Layout explanation section shows all 5 relationship types with distinct color labels:
+  - `industrial-chain` — 产业链 (blue)
+  - `market-comovement` — 市场共振 (green)
+  - `heat-correction` — 热度修正 (gray)
+  - `policy-linkage` — 政策联动 (orange)
+  - `capital-flow` — 资金流向 (red)
 - Relationship list grouped by type.
 
 ### DatasetSummary
@@ -248,9 +264,9 @@ Gen3 extends Gen2 boundaries without replacing the visualization stack:
 | `layoutStages.ts` | Expand to 5 stages with new theme heat values |
 | `algorithmicLayoutEngine.ts` | Add SubTheme anchor step, adjust grid/pull parameters, support new relationship types |
 | `renderNodes.ts` | Pass SubTheme info through to render nodes |
-| `CapitalMapScene.tsx` | Larger grid, SubTheme region markers, label density control |
+| `CapitalMapScene.tsx` | Country-map terrain base, sector blocks as terrain features, label density control |
 | `ControlsPanel.tsx` | More theme filter options, more stage options |
-| `InspectorPanel.tsx` | SubTheme info, 5 relationship types |
+| `InspectorPanel.tsx` | SubTheme info, 5 relationship types with color labels |
 
 New files:
 - `src/domain/subThemeRegistry.ts` — SubTheme definitions
@@ -294,18 +310,19 @@ No changes to:
 - Theme filter shows 11 options.
 - Stage selector shows 5 options.
 - Selecting a sector shows SubTheme membership.
-- Inspector shows all 5 relationship types.
+- Inspector shows all 5 relationship types with color labels.
 - Dataset summary reflects updated counts.
 
 ### Visual Tests
 
 - 3D scene is non-blank on desktop.
-- SubTheme region markers are visible as colored areas beneath sectors.
-- Label density control works: default view shows fewer labels, focus mode expands labels.
+- Country-map terrain base renders as a continuous colored surface with gradient theme transitions.
+- Label density control works: default view shows fewer labels, focus mode expands labels on click.
 - Multi-theme peaks remain distinguishable at the larger scale.
+- Closely related themes have adjacent sectors (visible border areas).
 
 ## Success Definition
 
-Gen3 is successful when a user opens the website and sees a substantially larger market cognition map with visible SubTheme groupings, switches between 5 market stages, and understands why any sector is placed where it is—including cross-theme relationships explained by policy or capital-flow dynamics.
+Gen3 is successful when a user opens the website and sees a substantially larger market cognition map that looks like a country map — with theme regions as provinces blending into each other, SubTheme clusters as cities, and sector blocks sized by importance. The user switches between 5 market stages and understands why any sector is placed where it is — including cross-theme relationships explained by policy or capital-flow dynamics.
 
-The result should feel like the map has grown from a focused prototype to a comprehensive market landscape without sacrificing readability or explainability.
+The result should feel like navigating a geographic market landscape rather than reading an isolated chart.

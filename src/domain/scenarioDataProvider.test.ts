@@ -4,10 +4,10 @@ import { sectors } from "./themeRegistry";
 import type { MarketScenario, ReadonlyNonEmptyArray } from "./types";
 
 describe("createScenarioDataProvider", () => {
-  it("returns three layout-stage scenarios", () => {
+  it("returns five layout-stage scenarios", () => {
     const scenarios = createScenarioDataProvider().getScenarios();
     const typedScenarios: ReadonlyNonEmptyArray<MarketScenario> = scenarios;
-    expect(scenarios.map((scenario) => scenario.id)).toEqual(["S1", "S2", "S3"]);
+    expect(scenarios.map((scenario) => scenario.id)).toEqual(["S1", "S2", "S3", "S4", "S5"]);
     expect(typedScenarios.length).toBeGreaterThan(0);
   });
 
