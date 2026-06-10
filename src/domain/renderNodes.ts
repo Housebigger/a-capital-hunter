@@ -1,5 +1,6 @@
 import { normalizeCapitalValue } from "./metricNormalizer";
 import { sectors, themes } from "./themeRegistry";
+import { subThemes } from "./subThemeRegistry";
 import type {
   CapitalStateFilter,
   MarketScenario,
@@ -70,14 +71,18 @@ export function buildRenderNodes(input: BuildRenderNodesInput): RenderNode[] {
     const matchesCenterMode = !input.showCentersOnly || sector.isThemeCenter;
     const visible = matchesTheme && matchesState && matchesCenterMode;
 
+    const subTheme = subThemes.find((st) => st.id === sector.subThemeId);
+    const isSubThemeCenter = subTheme?.primarySectorId === sector.id;
+
     return {
       sector,
       theme,
+      subTheme,
       cell,
       metric,
       visible,
       dimmed: !visible,
-      isSubThemeCenter: cell.role === "sub-theme-center",
+      isSubThemeCenter,
       layoutExplanation: input.layout.explanations?.[cell.sectorId]
     };
   });

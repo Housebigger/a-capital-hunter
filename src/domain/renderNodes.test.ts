@@ -137,4 +137,22 @@ describe("buildRenderNodes", () => {
 
     expect(() => buildNodes({ scenario })).toThrow("Missing scenario point for ai-computing");
   });
+
+  it("every render node has a subTheme if sector has valid subThemeId", () => {
+    const nodes = buildNodes();
+    for (const node of nodes) {
+      if (node.sector.subThemeId) {
+        expect(node.subTheme, `Node ${node.sector.id} missing subTheme`).toBeDefined();
+      }
+    }
+  });
+
+  it("isSubThemeCenter is true only for SubTheme primary sectors", () => {
+    const nodes = buildNodes();
+    for (const node of nodes) {
+      if (node.isSubThemeCenter) {
+        expect(node.subTheme?.primarySectorId).toBe(node.sector.id);
+      }
+    }
+  });
 });
