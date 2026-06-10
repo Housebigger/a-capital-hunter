@@ -2,6 +2,7 @@ import { createAlgorithmicLayout } from "./algorithmicLayoutEngine";
 import { layoutStages, getLayoutStageById } from "./layoutStages";
 import { relationshipEdges } from "./relationshipRegistry";
 import { sectors, themes } from "./themeRegistry";
+import { subThemes } from "./subThemeRegistry";
 import type { LayoutProvider, SectorLayout } from "./types";
 
 const manualLayout: SectorLayout = {
@@ -52,11 +53,15 @@ export function createAlgorithmicLayoutProvider(): LayoutProvider {
         stage,
         previousStage,
         options: {
-          gridWidth: 15,
-          gridHeight: 11,
+          gridWidth: 22,
+          gridHeight: 16,
           maxStageShift: 1.6,
-          centerPullStrength: 1.2
-        }
+          centerPullStrength: 1.2,
+          baseRadius: 6.8,
+          subThemeDistance: 1.5,
+          relationPullFactor: 0.15
+        },
+        subThemes
       });
 
       return {
