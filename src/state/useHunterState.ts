@@ -22,10 +22,12 @@ export function useHunterState(scenarioIds: ReadonlyNonEmptyArray<string>) {
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>("angled");
   const [showCentersOnly, setShowCentersOnly] = useState(false);
   const [selectedSectorId, setSelectedSectorId] = useState<SectorId | undefined>();
+  const [focusSubThemeId, setFocusSubThemeId] = useState<string | undefined>();
 
   function setActiveScenarioId(nextScenarioId: string) {
     setActiveScenarioIdState(nextScenarioId);
     setSelectedSectorId(undefined);
+    setFocusSubThemeId(undefined);
   }
 
   return {
@@ -40,6 +42,8 @@ export function useHunterState(scenarioIds: ReadonlyNonEmptyArray<string>) {
     showCentersOnly,
     setShowCentersOnly,
     selectedSectorId,
-    setSelectedSectorId
+    setSelectedSectorId,
+    focusSubThemeId,
+    setFocusSubThemeId
   };
 }

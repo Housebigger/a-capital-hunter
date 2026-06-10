@@ -30,6 +30,6 @@ describe("useHunterState", () => {
     const scenarios = createMockScenarioDataProvider().getScenarios();
     const scenarioIds: ReadonlyNonEmptyArray<string> = getScenarioIds(scenarios);
 
-    expect(scenarioIds).toEqual(["S1", "S2", "S3"]);
+    expect(scenarioIds).toEqual(["S1", "S2", "S3", "S4", "S5"]);
   });
 });
