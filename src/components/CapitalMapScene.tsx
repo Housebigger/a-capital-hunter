@@ -219,6 +219,75 @@ function ProvinceBorderLine({
 }
 
 /* ================================================================== */
+/*  CityBorderLine — thin lines between same-theme SubTheme cells      */
+/* ================================================================== */
+
+function CityBorderLine({
+  cell,
+  neighborCells
+}: {
+  cell: VoronoiCell;
+  neighborCells: ReadonlyArray<VoronoiCell>;
+}) {
+  const geometry = useMemo(() => {
+    const poly = cell.polygon;
+    if (poly.length < 3) {
+      return new THREE.BufferGeometry();
+    }
+
+    const points: THREE.Vector3[] = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i];
+      const b = poly[(i + 1) % poly.length];
+      const mx = (a.x + b.x) / 2;
+      const mz = (a.z + b.z) / 2;
+
+      // Find the nearest neighbor center to the edge midpoint
+      let sameThemeNeighbor = false;
+      let minDist = Infinity;
+      for (const nb of neighborCells) {
+        if (nb.subThemeId === cell.subThemeId) continue;
+        const dx = mx - nb.center.x;
+        const dz = mz - nb.center.z;
+        const dist = dx * dx + dz * dz;
+        if (dist < minDist) {
+          minDist = dist;
+          sameThemeNeighbor = nb.themeId === cell.themeId;
+        }
+      }
+
+      // Only draw lines between same-theme SubTheme cells
+      if (sameThemeNeighbor) {
+        points.push(new THREE.Vector3(a.x, 0.09, a.z));
+        points.push(new THREE.Vector3(b.x, 0.09, b.z));
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    if (points.length > 0) {
+      const positions = new Float32Array(points.length * 3);
+      for (let i = 0; i < points.length; i++) {
+        positions[i * 3] = points[i].x;
+        positions[i * 3 + 1] = points[i].y;
+        positions[i * 3 + 2] = points[i].z;
+      }
+      geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    }
+    return geo;
+  }, [cell.polygon, cell.center, cell.subThemeId, cell.themeId, neighborCells]);
+
+  if (geometry.attributes.position === undefined || geometry.attributes.position.count < 2) {
+    return null;
+  }
+
+  return (
+    <lineSegments geometry={geometry}>
+      <lineBasicMaterial color="#ffffff" linewidth={1} transparent opacity={0.15} />
+    </lineSegments>
+  );
+}
+
+/* ================================================================== */
 /*  StockMarker — small cylinder for a single stock                    */
 /* ================================================================== */
 
@@ -229,10 +298,19 @@ function StockMarker({
   node: StockRenderNode;
   onClick?: () => void;
 }) {
-  const height = Math.max(Math.abs(node.metric.height), MIN_COLUMN_HEIGHT);
+  const rawHeight = Math.abs(node.metric.height);
+  const height = Math.max(rawHeight, MIN_COLUMN_HEIGHT);
+  const isInflow = node.metric.direction === "inflow";
+  const isOutflow = node.metric.direction === "outflow";
+
+  // Base plate top surface at y=0.08, bottom at y=0
+  // Inflow: column rises above the base plate top
+  // Outflow: column hangs below the base plate bottom
+  const baseY = isInflow ? 0.08 : isOutflow ? 0.00 : 0.04;
+  const positionY = isInflow ? baseY + height / 2 : isOutflow ? baseY - height / 2 : baseY;
 
   return (
-    <group position={[node.position.x, 0.04, node.position.z]}>
+    <group position={[node.position.x, positionY, node.position.z]}>
       <mesh castShadow visible={node.visible} onClick={onClick}>
         <cylinderGeometry args={[STOCK_CYLINDER_RADIUS, STOCK_CYLINDER_RADIUS, height, STOCK_CYLINDER_SEGMENTS]} />
         <meshStandardMaterial
@@ -519,13 +597,22 @@ function VoronoiCapitalMapScene(props: VoronoiCapitalMapSceneProps) {
         );
       })}
 
-      {/* Province border lines */}
+      {/* Province border lines (cross-theme) */}
       {voronoiLayout.cells.map((cell) => (
         <ProvinceBorderLine
           key={`border-${cell.subThemeId}`}
           cell={cell}
           neighborCells={voronoiLayout.cells}
           color={borderLineColor}
+        />
+      ))}
+
+      {/* City border lines (within same theme) */}
+      {voronoiLayout.cells.map((cell) => (
+        <CityBorderLine
+          key={`city-${cell.subThemeId}`}
+          cell={cell}
+          neighborCells={voronoiLayout.cells}
         />
       ))}
 

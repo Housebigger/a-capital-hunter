@@ -23,8 +23,8 @@ export function createVoronoiLayoutProvider(): VoronoiLayoutProvider {
           mapHeight: 22,
           relaxationIterations: 20,
           areaConvergenceThreshold: 0.05,
-          provinceBorderGap: 0.15,
-          cityBorderGap: 0.06,
+          provinceBorderGap: 0.25,
+          cityBorderGap: 0,
         },
       });
     },
