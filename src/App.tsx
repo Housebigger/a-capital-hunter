@@ -1,23 +1,27 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ControlsPanel } from "./components/ControlsPanel";
 import { HunterScene } from "./components/HunterScene";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { SceneLegend } from "./components/SceneLegend";
 import { layoutStages } from "./domain/layoutStages";
-import { buildRenderNodes, buildStockRenderNodes } from "./domain/renderNodes";
 import { createScenarioDataProvider } from "./domain/scenarioDataProvider";
 import { themes } from "./domain/themeRegistry";
 import { createThemeLayoutProvider } from "./domain/themeVoronoiLayoutProvider";
 import { buildThemeRenderNodes } from "./domain/themeRenderNodes";
-import type { StockRenderNode } from "./domain/types";
+import { createVoronoiLayoutProvider } from "./domain/voronoiLayoutProvider";
+import { buildSubThemeRenderNodes } from "./domain/subThemeRenderNodes";
 import { getScenarioIds, useHunterState } from "./state/useHunterState";
 
 const themeLayoutProvider = createThemeLayoutProvider();
+const subThemeLayoutProvider = createVoronoiLayoutProvider();
 const dataProvider = createScenarioDataProvider();
 const scenarios = dataProvider.getScenarios();
 const scenarioIds = getScenarioIds(scenarios);
 
+export type ViewMode = "P1" | "P2";
+
 export default function App() {
+  const [viewMode, setViewMode] = useState<ViewMode>("P1");
   const hunterState = useHunterState(scenarioIds);
   const activeScenario =
     scenarios.find((scenario) => scenario.id === hunterState.activeScenarioId) || scenarios[0];
@@ -27,12 +31,11 @@ export default function App() {
   );
   const activeLayoutStage = layoutStages[activeScenarioIndex] || layoutStages[0];
 
-  // Theme-level layout (11 cells)
+  // P1: Theme-level layout (11 cells)
   const themeLayout = useMemo(
     () => themeLayoutProvider.getLayout(activeLayoutStage.id),
     [activeLayoutStage.id]
   );
-
   const themeNodes = useMemo(
     () =>
       buildThemeRenderNodes({
@@ -41,6 +44,22 @@ export default function App() {
         themeFilter: hunterState.themeFilter,
       }),
     [themeLayout, activeScenario, hunterState.themeFilter]
+  );
+
+  // P2: SubTheme-level layout (~30 cells)
+  const subThemeLayout = useMemo(
+    () => subThemeLayoutProvider.getLayout(activeLayoutStage.id),
+    [activeLayoutStage.id]
+  );
+  const subThemeNodes = useMemo(
+    () =>
+      buildSubThemeRenderNodes({
+        voronoiCells: subThemeLayout.cells,
+        scenario: activeScenario,
+        themeFilter: hunterState.themeFilter,
+        capitalStateFilter: hunterState.capitalStateFilter,
+      }),
+    [subThemeLayout, activeScenario, hunterState.themeFilter, hunterState.capitalStateFilter]
   );
 
   return (
@@ -72,6 +91,8 @@ export default function App() {
           onCameraPresetChange={hunterState.setCameraPreset}
           onShowCentersOnlyChange={hunterState.setShowCentersOnly}
           onCapitalThresholdChange={hunterState.setCapitalThreshold}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
 
         <section className="scene-panel" aria-label="A Capital Hunter 3D资金峰面">
@@ -80,13 +101,23 @@ export default function App() {
             <span>柱高 = 强度</span>
             <span>时间片 = 轮动</span>
           </div>
-          <HunterScene
-            themeCells={themeLayout.cells}
-            themeNodes={themeNodes}
-            cameraPreset={hunterState.cameraPreset}
-            selectedSectorId={hunterState.selectedSectorId}
-            onSelectSector={hunterState.setSelectedSectorId}
-          />
+          {viewMode === "P1" ? (
+            <HunterScene
+              themeCells={themeLayout.cells}
+              themeNodes={themeNodes}
+              cameraPreset={hunterState.cameraPreset}
+              selectedSectorId={hunterState.selectedSectorId}
+              onSelectSector={hunterState.setSelectedSectorId}
+            />
+          ) : (
+            <HunterScene
+              subThemeCells={subThemeLayout.cells}
+              subThemeNodes={subThemeNodes}
+              cameraPreset={hunterState.cameraPreset}
+              selectedSectorId={hunterState.selectedSectorId}
+              onSelectSector={hunterState.setSelectedSectorId}
+            />
+          )}
           <SceneLegend />
         </section>
 

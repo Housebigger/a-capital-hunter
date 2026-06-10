@@ -16,6 +16,8 @@ interface ControlsPanelProps {
   cameraPreset: CameraPreset;
   showCentersOnly: boolean;
   capitalThreshold?: number;
+  viewMode?: "P1" | "P2";
+  onViewModeChange?: (mode: "P1" | "P2") => void;
   onScenarioChange: (scenarioId: string) => void;
   onThemeFilterChange: (themeFilter: ThemeFilter) => void;
   onCapitalStateFilterChange: (filter: CapitalStateFilter) => void;
@@ -52,6 +54,33 @@ export function ControlsPanel(props: ControlsPanelProps) {
           ))}
         </div>
       </section>
+
+      {props.onViewModeChange && (
+        <section className="control-section">
+          <div className="section-title">
+            <Layers3 size={16} aria-hidden="true" />
+            <span>视图层级</span>
+          </div>
+          <div className="segmented" role="group" aria-label="视图层级">
+            <button
+              type="button"
+              className={props.viewMode === "P1" ? "active" : ""}
+              aria-pressed={props.viewMode === "P1"}
+              onClick={() => props.onViewModeChange!("P1")}
+            >
+              P1 主线
+            </button>
+            <button
+              type="button"
+              className={props.viewMode === "P2" ? "active" : ""}
+              aria-pressed={props.viewMode === "P2"}
+              onClick={() => props.onViewModeChange!("P2")}
+            >
+              P2 子题材
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="control-section">
         <div className="section-title">

@@ -16,6 +16,7 @@ import type {
 } from "../domain/types";
 import type { ThemeCell } from "../domain/themeVoronoiLayoutEngine";
 import type { ThemeRenderNode } from "../domain/themeRenderNodes";
+import type { SubThemeRenderNode } from "../domain/subThemeRenderNodes";
 
 /* ================================================================== */
 /*  Constants                                                          */
@@ -671,7 +672,111 @@ function VoronoiCapitalMapScene(props: VoronoiCapitalMapSceneProps) {
 }
 
 /* ================================================================== */
-/*  Theme-level scene (11 big plates + 11 thick columns)               */
+/*  SubTheme-level scene (P2: ~30 Voronoi cells + columns)             */
+/* ================================================================== */
+
+export interface SubThemeCapitalMapSceneProps {
+  voronoiCells: ReadonlyArray<VoronoiCell>;
+  subThemeNodes: SubThemeRenderNode[];
+  cameraPreset: CameraPreset;
+  onSelectSector: (sectorId: SectorId) => void;
+  orbitControlsRef?: RefObject<SceneOrbitControls | null>;
+}
+
+const SUBTHEME_PLATE_THICKNESS = 0.10;
+const SUBTHEME_COLUMN_RADIUS = 0.3;
+const SUBTHEME_COLUMN_SEGMENTS = 10;
+
+function SubThemeCapitalMapScene(props: SubThemeCapitalMapSceneProps) {
+  const { camera } = useThree();
+  const { voronoiCells, subThemeNodes } = props;
+
+  useEffect(() => {
+    applyCameraPreset(camera, props.cameraPreset, props.orbitControlsRef?.current);
+  }, [camera, props.cameraPreset, props.orbitControlsRef]);
+
+  const themeColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const theme of themeList) {
+      map.set(theme.id, theme.color);
+    }
+    return map;
+  }, []);
+
+  return (
+    <group>
+      {/* SubTheme Voronoi base plates */}
+      {voronoiCells.map((cell) => {
+        const color = themeColorMap.get(cell.themeId) ?? "#26313d";
+        const poly = cell.polygon;
+        if (poly.length < 3) return null;
+        const shape = new THREE.Shape();
+        shape.moveTo(poly[0].x - cell.center.x, poly[0].z - cell.center.z);
+        for (let i = 1; i < poly.length; i++) {
+          shape.lineTo(poly[i].x - cell.center.x, poly[i].z - cell.center.z);
+        }
+        shape.closePath();
+
+        return (
+          <mesh
+            key={`plate-${cell.subThemeId}`}
+            position={[cell.center.x, SUBTHEME_PLATE_THICKNESS / 2, cell.center.z]}
+            rotation={[Math.PI / 2, 0, 0]}
+            receiveShadow
+          >
+            <extrudeGeometry args={[shape, { depth: SUBTHEME_PLATE_THICKNESS, bevelEnabled: false }]} />
+            <meshStandardMaterial color={color} opacity={0.7} transparent roughness={0.7} />
+          </mesh>
+        );
+      })}
+
+      {/* SubTheme columns */}
+      {subThemeNodes.map((node) => {
+        const rawHeight = Math.abs(node.metric.height);
+        const height = Math.max(rawHeight, 0.12);
+        const isInflow = node.metric.direction === "inflow";
+        const isOutflow = node.metric.direction === "outflow";
+        const baseY = isInflow ? SUBTHEME_PLATE_THICKNESS : isOutflow ? 0 : SUBTHEME_PLATE_THICKNESS / 2;
+        const positionY = isInflow ? baseY + height / 2 : isOutflow ? baseY - height / 2 : baseY;
+
+        return (
+          <group key={`stcol-${node.subTheme.id}`}>
+            <mesh
+              position={[node.position.x, positionY, node.position.z]}
+              castShadow
+            >
+              <cylinderGeometry
+                args={[SUBTHEME_COLUMN_RADIUS, SUBTHEME_COLUMN_RADIUS, height, SUBTHEME_COLUMN_SEGMENTS]}
+              />
+              <meshStandardMaterial
+                color={node.metric.color}
+                opacity={0.9}
+                transparent
+                emissive={node.metric.color}
+                emissiveIntensity={0.08}
+                roughness={0.4}
+              />
+            </mesh>
+            <Text
+              position={[node.position.x, SUBTHEME_PLATE_THICKNESS + 0.02, node.position.z]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              fontSize={0.22}
+              color="#ffffff"
+              anchorX="center"
+              anchorY="middle"
+              maxWidth={1.8}
+            >
+              {node.subTheme.shortName}
+            </Text>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+/* ================================================================== */
+/*  Theme-level scene (P1: 11 big plates + 11 thick columns)           */
 /* ================================================================== */
 
 export interface ThemeCapitalMapSceneProps {
@@ -826,9 +931,22 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
 export type CapitalMapSceneProps =
   | ({ mode?: "legacy" } & LegacyCapitalMapSceneProps)
   | ({ mode: "voronoi" } & VoronoiCapitalMapSceneProps)
-  | ({ mode: "theme" } & ThemeCapitalMapSceneProps);
+  | ({ mode: "theme" } & ThemeCapitalMapSceneProps)
+  | ({ mode: "subtheme" } & SubThemeCapitalMapSceneProps);
 
 export function CapitalMapScene(props: CapitalMapSceneProps) {
+  if (props.mode === "subtheme") {
+    return (
+      <SubThemeCapitalMapScene
+        voronoiCells={(props as SubThemeCapitalMapSceneProps).voronoiCells}
+        subThemeNodes={(props as SubThemeCapitalMapSceneProps).subThemeNodes}
+        cameraPreset={props.cameraPreset}
+        onSelectSector={props.onSelectSector}
+        orbitControlsRef={props.orbitControlsRef}
+      />
+    );
+  }
+
   if (props.mode === "theme") {
     return (
       <ThemeCapitalMapScene
