@@ -1,6 +1,7 @@
 import { normalizeCapitalValue } from "./metricNormalizer";
 import { sectors, themes } from "./themeRegistry";
 import { subThemes } from "./subThemeRegistry";
+import { stocks } from "./stockRegistry";
 import type {
   CapitalStateFilter,
   MarketScenario,
@@ -8,7 +9,9 @@ import type {
   ScenarioPoint,
   SectorId,
   SectorLayout,
-  ThemeFilter
+  ThemeFilter,
+  VoronoiLayout,
+  StockRenderNode
 } from "./types";
 
 interface BuildRenderNodesInput {
@@ -85,5 +88,56 @@ export function buildRenderNodes(input: BuildRenderNodesInput): RenderNode[] {
       isSubThemeCenter,
       layoutExplanation: input.layout.explanations?.[cell.sectorId]
     };
+  });
+}
+
+interface BuildStockRenderNodesInput {
+  layout: VoronoiLayout;
+  scenario: MarketScenario;
+  themeFilter: ThemeFilter;
+  capitalStateFilter: CapitalStateFilter;
+  capitalThreshold?: number;
+}
+
+export function buildStockRenderNodes(input: BuildStockRenderNodesInput): StockRenderNode[] {
+  const threshold = input.capitalThreshold ?? 10;
+
+  return input.layout.cells.flatMap((cell) => {
+    const cellStocks = stocks.filter((s) => s.subThemeId === cell.subThemeId);
+    const subTheme = subThemes.find((st) => st.id === cell.subThemeId);
+    if (!subTheme) return [];
+    const theme = themes.find((t) => t.id === subTheme.themeId);
+    if (!theme) return [];
+
+    // Filter by theme
+    if (input.themeFilter !== "all" && theme.id !== input.themeFilter) return [];
+
+    // Position stocks within cell: first at center, rest in ring
+    return cellStocks.map((stock, index) => {
+      const point = input.scenario.points.find((p) => p.sectorId === stock.id);
+      // Use simulated metric based on position in list
+      const mockNetInflow = index === 0 ? 45 : 20 - index * 3;
+      const maxAbsValue = 50;
+      const metric = normalizeCapitalValue(mockNetInflow, maxAbsValue);
+
+      const matchesState = input.capitalStateFilter === "all" || metric.direction === input.capitalStateFilter;
+
+      // Position: center for first, ring for rest
+      const angle = index === 0 ? 0 : (Math.PI * 2 * (index - 1)) / Math.max(1, cellStocks.length - 1);
+      const radius = index === 0 ? 0 : 0.4;
+
+      return {
+        stock,
+        subTheme,
+        theme,
+        position: {
+          x: cell.center.x + Math.cos(angle) * radius,
+          z: cell.center.z + Math.sin(angle) * radius,
+        },
+        metric,
+        visible: matchesState,
+        cell,
+      };
+    });
   });
 }
