@@ -1,7 +1,12 @@
 export type ThemeId = string;
 export type SectorId = string;
 
-export type RelationshipType = "industrial-chain" | "market-comovement" | "heat-correction";
+export type RelationshipType =
+  | "industrial-chain"
+  | "market-comovement"
+  | "heat-correction"
+  | "policy-linkage"
+  | "capital-flow";
 export type LayoutMode = "manual" | "algorithmic";
 export type LayoutStageId = string;
 
@@ -18,11 +23,21 @@ export interface Theme {
   readonly color: string;
 }
 
+export interface SubTheme {
+  readonly id: string;
+  readonly name: string;
+  readonly shortName: string;
+  readonly themeId: ThemeId;
+  readonly displayOrder: number;
+  readonly primarySectorId: SectorId;
+}
+
 export interface Sector {
   readonly id: SectorId;
   readonly name: string;
   readonly shortName: string;
   readonly primaryThemeId: ThemeId;
+  readonly subThemeId: string;
   readonly relatedThemeIds: readonly ThemeId[];
   readonly aliases: readonly string[];
   readonly industrialChainRole: string;
@@ -70,8 +85,9 @@ export interface LayoutCell {
   sectorId: SectorId;
   x: number;
   z: number;
-  role: "theme-center" | "related-sector";
+  role: "theme-center" | "sub-theme-center" | "related-sector";
   relationshipStrength: 1 | 2 | 3;
+  subThemeId?: string;
   previousPosition?: PreviousLayoutPosition;
 }
 
@@ -114,10 +130,12 @@ export interface NormalizedMetric {
 export interface RenderNode {
   sector: Sector;
   theme: Theme;
+  subTheme?: SubTheme;
   cell: LayoutCell;
   metric: NormalizedMetric;
   visible: boolean;
   dimmed: boolean;
+  isSubThemeCenter: boolean;
   layoutExplanation?: LayoutExplanation;
 }
 
