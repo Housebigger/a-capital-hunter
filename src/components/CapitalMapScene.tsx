@@ -3,6 +3,8 @@ import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import type { RefObject } from "react";
 import * as THREE from "three";
+import { subThemes as subThemeList } from "../domain/subThemeRegistry";
+import { themes as themeList } from "../domain/themeRegistry";
 import type {
   CameraPreset,
   NormalizedMetric,
@@ -128,7 +130,12 @@ function VoronoiPlate({
   if (!shape) return null;
 
   return (
-    <mesh position={[cell.center.x, 0, cell.center.z]} receiveShadow onClick={onClick}>
+    <mesh
+      position={[cell.center.x, 0.04, cell.center.z]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      receiveShadow
+      onClick={onClick}
+    >
       <extrudeGeometry args={[shape, { depth: 0.08, bevelEnabled: false }]} />
       <meshStandardMaterial
         color={themeColor}
@@ -446,21 +453,14 @@ function VoronoiCapitalMapScene(props: VoronoiCapitalMapSceneProps) {
     applyCameraPreset(camera, props.cameraPreset, props.orbitControlsRef?.current);
   }, [camera, props.cameraPreset, props.orbitControlsRef]);
 
-  // Build a lookup from subThemeId → theme color from cells
+  // Build a lookup from themeId → hex color from the theme registry
   const cellColorMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const cell of voronoiLayout.cells) {
-      // Use a neutral base color derived from themeId; actual per-theme
-      // colors come from the theme registry. For now, use a hash of themeId
-      // to assign a palette color.
-      if (!map.has(cell.themeId)) {
-        // Determine color from themeId using a simple hash palette
-        const hue = hashStringToHue(cell.themeId);
-        map.set(cell.themeId, `hsl(${hue}, 35%, 28%)`);
-      }
+    for (const theme of themeList) {
+      map.set(theme.id, theme.color);
     }
     return map;
-  }, [voronoiLayout]);
+  }, []);
 
   // Compute stock ranks per SubTheme (for label visibility)
   const stockRankBySubTheme = useMemo(() => {
@@ -472,6 +472,15 @@ function VoronoiCapitalMapScene(props: VoronoiCapitalMapSceneProps) {
     }
     return rank;
   }, [stockNodes]);
+
+  // Build a lookup from subThemeId → readable name
+  const subThemeNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const st of subThemeList) {
+      map.set(st.id, st.name);
+    }
+    return map;
+  }, []);
 
   const borderLineColor = "#5a6a7a";
 
@@ -563,7 +572,7 @@ function VoronoiCapitalMapScene(props: VoronoiCapitalMapSceneProps) {
             anchorY="middle"
             maxWidth={1.6}
           >
-            {cell.subThemeId}
+            {subThemeNameMap.get(cell.subThemeId) ?? cell.subThemeId}
           </Text>
         );
       })}
@@ -608,12 +617,3 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
 /* ================================================================== */
 /*  Utility                                                            */
 /* ================================================================== */
-
-/** Simple deterministic string hash → hue (0-360). */
-function hashStringToHue(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0;
-  }
-  return ((hash % 360) + 360) % 360;
-}
