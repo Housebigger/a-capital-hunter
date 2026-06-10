@@ -10,12 +10,15 @@ import type {
   VoronoiLayout
 } from "../domain/types";
 import { CapitalMapScene } from "./CapitalMapScene";
-import type { CapitalMapSceneProps } from "./CapitalMapScene";
+import type { ThemeCell } from "../domain/themeVoronoiLayoutEngine";
+import type { ThemeRenderNode } from "../domain/themeRenderNodes";
 
 export interface HunterSceneProps {
   nodes?: RenderNode[];
   voronoiLayout?: VoronoiLayout;
   stockNodes?: StockRenderNode[];
+  themeCells?: ReadonlyArray<ThemeCell>;
+  themeNodes?: ThemeRenderNode[];
   cameraPreset: CameraPreset;
   selectedSectorId?: SectorId;
   focusSubThemeId?: string;
@@ -26,10 +29,21 @@ export interface HunterSceneProps {
 export function HunterScene(props: HunterSceneProps) {
   const orbitControlsRef = useRef<OrbitControlsImpl | null>(null);
 
-  // Build CapitalMapSceneProps based on available data
-  const sceneProps: CapitalMapSceneProps = props.voronoiLayout
-    ? {
-        mode: "voronoi",
+  // Build scene props based on available data
+  const sceneProps = (() => {
+    if (props.themeCells) {
+      return {
+        mode: "theme" as const,
+        themeCells: props.themeCells,
+        themeNodes: props.themeNodes ?? [],
+        cameraPreset: props.cameraPreset,
+        onSelectSector: props.onSelectSector,
+        orbitControlsRef,
+      };
+    }
+    if (props.voronoiLayout) {
+      return {
+        mode: "voronoi" as const,
         voronoiLayout: props.voronoiLayout,
         stockNodes: props.stockNodes ?? [],
         cameraPreset: props.cameraPreset,
@@ -37,18 +51,20 @@ export function HunterScene(props: HunterSceneProps) {
         focusSubThemeId: props.focusSubThemeId,
         onSelectSector: props.onSelectSector,
         onFocusSubTheme: props.onFocusSubTheme ?? (() => {}),
-        orbitControlsRef
-      }
-    : {
-        mode: undefined,
-        nodes: props.nodes ?? [],
-        cameraPreset: props.cameraPreset,
-        selectedSectorId: props.selectedSectorId,
-        focusSubThemeId: props.focusSubThemeId,
-        onSelectSector: props.onSelectSector,
-        onFocusSubTheme: props.onFocusSubTheme,
-        orbitControlsRef
+        orbitControlsRef,
       };
+    }
+    return {
+      mode: undefined as undefined,
+      nodes: props.nodes ?? [],
+      cameraPreset: props.cameraPreset,
+      selectedSectorId: props.selectedSectorId,
+      focusSubThemeId: props.focusSubThemeId,
+      onSelectSector: props.onSelectSector,
+      onFocusSubTheme: props.onFocusSubTheme,
+      orbitControlsRef,
+    };
+  })();
 
   return (
     <Canvas

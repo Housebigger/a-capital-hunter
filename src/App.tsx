@@ -7,11 +7,12 @@ import { layoutStages } from "./domain/layoutStages";
 import { buildRenderNodes, buildStockRenderNodes } from "./domain/renderNodes";
 import { createScenarioDataProvider } from "./domain/scenarioDataProvider";
 import { themes } from "./domain/themeRegistry";
-import { createVoronoiLayoutProvider } from "./domain/voronoiLayoutProvider";
+import { createThemeLayoutProvider } from "./domain/themeVoronoiLayoutProvider";
+import { buildThemeRenderNodes } from "./domain/themeRenderNodes";
 import type { StockRenderNode } from "./domain/types";
 import { getScenarioIds, useHunterState } from "./state/useHunterState";
 
-const voronoiLayoutProvider = createVoronoiLayoutProvider();
+const themeLayoutProvider = createThemeLayoutProvider();
 const dataProvider = createScenarioDataProvider();
 const scenarios = dataProvider.getScenarios();
 const scenarioIds = getScenarioIds(scenarios);
@@ -26,32 +27,20 @@ export default function App() {
   );
   const activeLayoutStage = layoutStages[activeScenarioIndex] || layoutStages[0];
 
-  const voronoiLayout = useMemo(
-    () => voronoiLayoutProvider.getLayout(activeLayoutStage.id),
+  // Theme-level layout (11 cells)
+  const themeLayout = useMemo(
+    () => themeLayoutProvider.getLayout(activeLayoutStage.id),
     [activeLayoutStage.id]
   );
 
-  const stockNodes = useMemo(
+  const themeNodes = useMemo(
     () =>
-      buildStockRenderNodes({
-        layout: voronoiLayout,
+      buildThemeRenderNodes({
+        cells: themeLayout.cells,
         scenario: activeScenario,
         themeFilter: hunterState.themeFilter,
-        capitalStateFilter: hunterState.capitalStateFilter,
-        capitalThreshold: hunterState.capitalThreshold
       }),
-    [
-      voronoiLayout,
-      activeScenario,
-      hunterState.capitalStateFilter,
-      hunterState.capitalThreshold,
-      hunterState.themeFilter
-    ]
-  );
-
-  const selectedStockNode: StockRenderNode | undefined = useMemo(
-    () => (hunterState.selectedStockId ? stockNodes.find((n) => n.stock.id === hunterState.selectedStockId) : undefined),
-    [hunterState.selectedStockId, stockNodes]
+    [themeLayout, activeScenario, hunterState.themeFilter]
   );
 
   return (
@@ -92,18 +81,16 @@ export default function App() {
             <span>时间片 = 轮动</span>
           </div>
           <HunterScene
-            voronoiLayout={voronoiLayout}
-            stockNodes={stockNodes}
+            themeCells={themeLayout.cells}
+            themeNodes={themeNodes}
             cameraPreset={hunterState.cameraPreset}
             selectedSectorId={hunterState.selectedSectorId}
-            focusSubThemeId={hunterState.focusSubThemeId}
             onSelectSector={hunterState.setSelectedSectorId}
-            onFocusSubTheme={hunterState.setFocusSubThemeId}
           />
           <SceneLegend />
         </section>
 
-        <InspectorPanel selectedStockNode={selectedStockNode} />
+        <InspectorPanel />
       </section>
     </main>
   );

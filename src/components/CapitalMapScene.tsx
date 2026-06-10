@@ -14,6 +14,8 @@ import type {
   VoronoiCell,
   VoronoiLayout
 } from "../domain/types";
+import type { ThemeCell } from "../domain/themeVoronoiLayoutEngine";
+import type { ThemeRenderNode } from "../domain/themeRenderNodes";
 
 /* ================================================================== */
 /*  Constants                                                          */
@@ -439,14 +441,6 @@ export interface VoronoiCapitalMapSceneProps {
 }
 
 /* ================================================================== */
-/*  Union props — supports both Gen3 and Gen4                         */
-/* ================================================================== */
-
-export type CapitalMapSceneProps =
-  | ({ mode?: "legacy" } & LegacyCapitalMapSceneProps)
-  | ({ mode: "voronoi" } & VoronoiCapitalMapSceneProps);
-
-/* ================================================================== */
 /*  Legacy scene (Gen3 grid rendering)                                  */
 /* ================================================================== */
 
@@ -677,15 +671,181 @@ function VoronoiCapitalMapScene(props: VoronoiCapitalMapSceneProps) {
 }
 
 /* ================================================================== */
-/*  Main exported component — dispatches to legacy or voronoi mode    */
+/*  Theme-level scene (11 big plates + 11 thick columns)               */
 /* ================================================================== */
 
+export interface ThemeCapitalMapSceneProps {
+  themeCells: ReadonlyArray<ThemeCell>;
+  themeNodes: ThemeRenderNode[];
+  cameraPreset: CameraPreset;
+  onSelectSector: (sectorId: SectorId) => void;
+  orbitControlsRef?: RefObject<SceneOrbitControls | null>;
+}
+
+const THEME_PLATE_THICKNESS = 0.12;
+const THEME_COLUMN_RADIUS = 0.6;
+const THEME_COLUMN_SEGMENTS = 12;
+
+function ThemePlate({
+  cell,
+  themeColor,
+}: {
+  cell: ThemeCell;
+  themeColor: string;
+}) {
+  const shape = useMemo(() => {
+    const poly = cell.polygon;
+    if (poly.length < 3) return null;
+    const s = new THREE.Shape();
+    s.moveTo(poly[0].x - cell.center.x, poly[0].z - cell.center.z);
+    for (let i = 1; i < poly.length; i++) {
+      s.lineTo(poly[i].x - cell.center.x, poly[i].z - cell.center.z);
+    }
+    s.closePath();
+    return s;
+  }, [cell.polygon, cell.center]);
+
+  if (!shape) return null;
+
+  return (
+    <mesh
+      position={[cell.center.x, THEME_PLATE_THICKNESS / 2, cell.center.z]}
+      rotation={[Math.PI / 2, 0, 0]}
+      receiveShadow
+    >
+      <extrudeGeometry args={[shape, { depth: THEME_PLATE_THICKNESS, bevelEnabled: false }]} />
+      <meshStandardMaterial
+        color={themeColor}
+        opacity={0.75}
+        transparent
+        roughness={0.7}
+      />
+    </mesh>
+  );
+}
+
+function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
+  const { camera } = useThree();
+  const { themeCells, themeNodes } = props;
+
+  useEffect(() => {
+    applyCameraPreset(camera, props.cameraPreset, props.orbitControlsRef?.current);
+  }, [camera, props.cameraPreset, props.orbitControlsRef]);
+
+  return (
+    <group>
+      {/* Theme base plates */}
+      {themeCells.map((cell, i) => {
+        const theme = themeList[i];
+        return (
+          <ThemePlate
+            key={theme.id}
+            cell={cell}
+            themeColor={theme.color}
+          />
+        );
+      })}
+
+      {/* Theme border outlines */}
+      {themeCells.map((cell, i) => {
+        const poly = cell.polygon;
+        if (poly.length < 3) return null;
+
+        const y = THEME_PLATE_THICKNESS + 0.01;
+        // Build line segments: each edge as a pair of points
+        const positions: number[] = [];
+        for (let j = 0; j < poly.length; j++) {
+          const a = poly[j];
+          const b = poly[(j + 1) % poly.length];
+          positions.push(a.x, y, a.z, b.x, y, b.z);
+        }
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute(
+          "position",
+          new THREE.Float32BufferAttribute(positions, 3)
+        );
+
+        return (
+          <lineSegments key={`outline-${i}`} geometry={geo}>
+            <lineBasicMaterial color={themeList[i].color} transparent opacity={0.6} />
+          </lineSegments>
+        );
+      })}
+
+      {/* Capital columns */}
+      {themeNodes.map((node) => {
+        const rawHeight = Math.abs(node.metric.height);
+        const height = Math.max(rawHeight, 0.15);
+        const isInflow = node.metric.direction === "inflow";
+        const isOutflow = node.metric.direction === "outflow";
+        const baseY = isInflow ? THEME_PLATE_THICKNESS : isOutflow ? 0 : THEME_PLATE_THICKNESS / 2;
+        const positionY = isInflow ? baseY + height / 2 : isOutflow ? baseY - height / 2 : baseY;
+
+        return (
+          <group key={`col-${node.theme.id}`}>
+            <mesh
+              position={[node.position.x, positionY, node.position.z]}
+              castShadow
+            >
+              <cylinderGeometry
+                args={[THEME_COLUMN_RADIUS, THEME_COLUMN_RADIUS, height, THEME_COLUMN_SEGMENTS]}
+              />
+              <meshStandardMaterial
+                color={node.metric.color}
+                opacity={0.9}
+                transparent
+                emissive={node.metric.color}
+                emissiveIntensity={0.08}
+                roughness={0.4}
+              />
+            </mesh>
+            {/* Theme label */}
+            <Text
+              position={[node.position.x, THEME_PLATE_THICKNESS + 0.02, node.position.z]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              fontSize={0.35}
+              color="#ffffff"
+              anchorX="center"
+              anchorY="middle"
+              maxWidth={2}
+            >
+              {node.theme.shortName}
+            </Text>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+/* ================================================================== */
+/*  Main exported component — dispatches to mode                        */
+/* ================================================================== */
+
+export type CapitalMapSceneProps =
+  | ({ mode?: "legacy" } & LegacyCapitalMapSceneProps)
+  | ({ mode: "voronoi" } & VoronoiCapitalMapSceneProps)
+  | ({ mode: "theme" } & ThemeCapitalMapSceneProps);
+
 export function CapitalMapScene(props: CapitalMapSceneProps) {
+  if (props.mode === "theme") {
+    return (
+      <ThemeCapitalMapScene
+        themeCells={(props as ThemeCapitalMapSceneProps).themeCells}
+        themeNodes={(props as ThemeCapitalMapSceneProps).themeNodes}
+        cameraPreset={props.cameraPreset}
+        onSelectSector={props.onSelectSector}
+        orbitControlsRef={props.orbitControlsRef}
+      />
+    );
+  }
+
   if (props.mode === "voronoi") {
     return (
       <VoronoiCapitalMapScene
-        voronoiLayout={props.voronoiLayout}
-        stockNodes={props.stockNodes}
+        voronoiLayout={(props as VoronoiCapitalMapSceneProps).voronoiLayout}
+        stockNodes={(props as VoronoiCapitalMapSceneProps).stockNodes}
         cameraPreset={props.cameraPreset}
         selectedSectorId={props.selectedSectorId}
         focusSubThemeId={props.focusSubThemeId}
@@ -699,7 +859,7 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
   // Legacy mode — backward compat for existing consumers (App.tsx Gen3)
   return (
     <LegacyCapitalMapScene
-      nodes={props.nodes}
+      nodes={(props as LegacyCapitalMapSceneProps).nodes}
       cameraPreset={props.cameraPreset}
       selectedSectorId={props.selectedSectorId}
       focusSubThemeId={props.focusSubThemeId}
