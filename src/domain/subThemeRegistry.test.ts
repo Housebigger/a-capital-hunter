@@ -44,4 +44,11 @@ describe("subThemeRegistry", () => {
       expect(Object.isFrozen(st)).toBe(true);
     }
   });
+
+  it("every sub-theme has areaWeight between 0 and 1", () => {
+    for (const st of subThemes) {
+      expect(st.areaWeight, `SubTheme ${st.id} has invalid areaWeight`).toBeGreaterThanOrEqual(0);
+      expect(st.areaWeight, `SubTheme ${st.id} has invalid areaWeight`).toBeLessThanOrEqual(1);
+    }
+  });
 });
