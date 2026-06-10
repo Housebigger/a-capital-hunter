@@ -13,6 +13,7 @@ function buildNode(visible: boolean): RenderNode {
       name: "AI Computing",
       shortName: "AI",
       primaryThemeId: "ai-computing",
+      subThemeId: "ai-computing-infra",
       relatedThemeIds: ["ai-computing"],
       aliases: [],
       industrialChainRole: "theme center",
@@ -41,7 +42,8 @@ function buildNode(visible: boolean): RenderNode {
       labelValue: "+10.0亿"
     },
     visible,
-    dimmed: !visible
+    dimmed: !visible,
+    isSubThemeCenter: false
   };
 }
 

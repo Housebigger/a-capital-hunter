@@ -59,7 +59,7 @@ describe("createAlgorithmicLayoutProvider", () => {
 
     expect(layout.stageId).toBe("robotics-low-altitude-diffusion");
     expect(layout.version).toBe("algorithmic-robotics-low-altitude-diffusion");
-    expect(layout.cells).toHaveLength(42);
+    expect(layout.cells).toHaveLength(sectors.length);
     expect(layout.explanations?.["robotics-physical-ai"].reasons.length).toBeGreaterThanOrEqual(3);
   });
 

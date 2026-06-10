@@ -77,6 +77,7 @@ export function buildRenderNodes(input: BuildRenderNodesInput): RenderNode[] {
       metric,
       visible,
       dimmed: !visible,
+      isSubThemeCenter: cell.role === "sub-theme-center",
       layoutExplanation: input.layout.explanations?.[cell.sectorId]
     };
   });
