@@ -196,13 +196,12 @@ const clampInside = (pt: Point, poly: ReadonlyArray<Point2D>, polyCenter: Point)
 
 /**
  * Place SubTheme centers within a theme polygon using heat-weighted radial layout.
- * Hotter SubThemes are placed closer to the theme center, giving them larger
- * Voronoi cells (more area for future P3 stock view). Colder SubThemes are
- * pushed outward, receiving smaller cells.
+ * Uses absolute heat (cross-theme) so hot SubThemes like AI应用, 光互连, 芯片架构
+ * get much larger cells than cold SubThemes on the map periphery.
  *
- * Heat is normalized per-theme so the hottest SubTheme in each theme gets the
- * largest area. A ratio of 0.5 means hottest SubTheme at 50% of max spread,
- * coldest at 100% — giving ~2:1 area ratio between hottest and coldest.
+ * Radius formula: maxSpread * (1.0 - heat * 0.65)
+ *   heat=1.0 → radius=0.35×max (close to center → large cell)
+ *   heat=0.28 → radius=0.82×max (far from center → small cell)
  */
 const placeSubThemeCenters = (
   themeCell: ThemeCell,
@@ -217,25 +216,15 @@ const placeSubThemeCenters = (
   // Max spread from theme center
   const maxSpread = avgDistFromCenter(themeCell.polygon, center) * 0.25;
 
-  // Normalize heat within this theme's SubThemes (0 = coldest, 1 = hottest)
-  const heats = themeSubThemes.map(
-    (st) => heatMap.get(st.id) ?? 0.2
-  );
-  const minHeat = Math.min(...heats);
-  const maxHeat = Math.max(...heats);
-  const heatRange = maxHeat - minHeat;
-
   return themeSubThemes.map((st, i) => {
     const angle = (Math.PI * 2 * i) / count - Math.PI / 2;
 
-    // Normalize heat to [0, 1] within this theme
-    const normalizedHeat = heatRange > 0.001
-      ? (heats[i] - minHeat) / heatRange
-      : 0.5; // all equal → use midpoint
+    // Absolute heat from stage (0–1 scale, cross-theme)
+    const heat = heatMap.get(st.id) ?? 0.2;
 
     // Hot → small radius (close to center) = larger Voronoi cell
     // Cold → large radius (far from center) = smaller Voronoi cell
-    const radius = maxSpread * (1.0 - normalizedHeat * 0.5);
+    const radius = maxSpread * (1.0 - heat * 0.65);
 
     const raw: Point = {
       x: center.x + Math.cos(angle) * radius,
