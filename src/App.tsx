@@ -46,10 +46,10 @@ export default function App() {
     [themeLayout, activeScenario, hunterState.themeFilter]
   );
 
-  // P2: SubTheme-level layout (~30 cells)
+  // P2: SubTheme-level layout (~30 cells, constrained to theme polygons)
   const subThemeLayout = useMemo(
-    () => subThemeLayoutProvider.getLayout(activeLayoutStage.id),
-    [activeLayoutStage.id]
+    () => subThemeLayoutProvider.getLayout(activeLayoutStage.id, themeLayout.cells),
+    [activeLayoutStage.id, themeLayout]
   );
   const subThemeNodes = useMemo(
     () =>

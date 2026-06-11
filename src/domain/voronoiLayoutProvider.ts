@@ -1,58 +1,38 @@
 import { createVoronoiLayout } from "./voronoiLayoutEngine";
 import { layoutStages, getLayoutStageById } from "./layoutStages";
-import { relationshipEdges } from "./relationshipRegistry";
 import { subThemes } from "./subThemeRegistry";
-import { themes } from "./themeRegistry";
 import type { VoronoiLayout } from "./types";
+import type { ThemeCell } from "./themeVoronoiLayoutEngine";
 
 export interface VoronoiLayoutProvider {
-  getLayout(stageId?: string): VoronoiLayout;
+  getLayout(stageId?: string, themeCells?: ReadonlyArray<ThemeCell>): VoronoiLayout;
 }
 
 /**
- * P1 SubTheme layout: cityBorderGap=0 so same-theme cells form continuous regions.
- * Used internally by the theme-level engine for theme plate backgrounds.
- */
-export function createVoronoiLayoutProvider(): VoronoiLayoutProvider {
-  return {
-    getLayout: (stageId) => {
-      const stage = stageId ? getLayoutStageById(stageId) : layoutStages[0];
-      return createVoronoiLayout({
-        subThemes,
-        themes,
-        relationshipEdges,
-        stage,
-        options: {
-          mapRadius: 11,
-          relaxationIterations: 20,
-          areaConvergenceThreshold: 0.05,
-          provinceBorderGap: 0.25,
-          cityBorderGap: 0,
-        },
-      });
-    },
-  };
-}
-
-/**
- * P2 SubTheme layout: each SubTheme gets its own distinct island with visible gaps.
- * cityBorderGap > 0 creates space between all SubTheme cells.
+ * P2 SubTheme layout: each SubTheme gets its own territory within the
+ * parent theme's polygon. Requires themeCells from P1 layout.
  */
 export function createSubThemeLayoutProvider(): VoronoiLayoutProvider {
   return {
-    getLayout: (stageId) => {
+    getLayout: (stageId, themeCells) => {
       const stage = stageId ? getLayoutStageById(stageId) : layoutStages[0];
+      if (!themeCells || themeCells.length === 0) {
+        // Fallback: return empty layout if no theme cells provided
+        return {
+          cells: [],
+          boundary: { radius: 11 },
+          version: `voronoi-${stage.id}`,
+          stageId: stage.id,
+        };
+      }
       return createVoronoiLayout({
         subThemes,
-        themes,
-        relationshipEdges,
+        themeCells,
         stage,
         options: {
           mapRadius: 11,
-          relaxationIterations: 20,
-          areaConvergenceThreshold: 0.05,
-          provinceBorderGap: 0.30,
-          cityBorderGap: 0.08,
+          cityBorderGap: 0.12,
+          smoothIterations: 2,
         },
       });
     },

@@ -21,6 +21,8 @@ export function createThemeLayoutProvider(): ThemeLayoutProvider {
         options: {
           mapRadius: 11,
           borderGap: 0.20,
+          lloydIterations: 3,
+          smoothIterations: 2,
         },
       });
     },

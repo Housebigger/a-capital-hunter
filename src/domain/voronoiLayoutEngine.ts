@@ -1,14 +1,12 @@
 import { Delaunay } from "d3-delaunay";
 import type {
-  RelationshipEdge,
   SubTheme,
-  Theme,
   LayoutStage,
   VoronoiCell,
   VoronoiLayout,
-  SectorId,
 } from "./types";
-import { clipPolygonToCircle } from "./circleClip";
+import type { ThemeCell } from "./themeVoronoiLayoutEngine";
+import { clipPolygonToConvexPolygon, type Point2D } from "./polygonClip";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -16,16 +14,13 @@ import { clipPolygonToCircle } from "./circleClip";
 
 export interface VoronoiLayoutOptions {
   readonly mapRadius: number;
-  readonly relaxationIterations: number;
-  readonly areaConvergenceThreshold: number;
-  readonly provinceBorderGap: number;
   readonly cityBorderGap: number;
+  readonly smoothIterations?: number;
 }
 
 export interface VoronoiLayoutInput {
   readonly subThemes: readonly SubTheme[];
-  readonly themes: readonly Theme[];
-  readonly relationshipEdges: readonly RelationshipEdge[];
+  readonly themeCells: ReadonlyArray<ThemeCell>;
   readonly stage: LayoutStage;
   readonly options: VoronoiLayoutOptions;
 }
@@ -38,33 +33,6 @@ interface Point {
   readonly x: number;
   readonly z: number;
 }
-
-const clamp = (v: number, lo: number, hi: number): number =>
-  Math.max(lo, Math.min(hi, v));
-
-/** Shoelace formula for polygon area. */
-const shoelaceArea = (poly: ReadonlyArray<{ x: number; z: number }>): number => {
-  let area = 0;
-  const n = poly.length;
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    area += poly[i].x * poly[j].z;
-    area -= poly[j].x * poly[i].z;
-  }
-  return Math.abs(area / 2);
-};
-
-/** Centroid of a polygon (arithmetic mean of vertices). */
-const centroid = (poly: ReadonlyArray<{ x: number; z: number }>): Point => {
-  const n = poly.length;
-  let sx = 0;
-  let sz = 0;
-  for (const p of poly) {
-    sx += p.x;
-    sz += p.z;
-  }
-  return { x: sx / n, z: sz / n };
-};
 
 /** Move a polygon vertex toward the cell center by `gap` amount. */
 const insetPoint = (
@@ -80,257 +48,204 @@ const insetPoint = (
   return { x: px + (dx / dist) * gap, z: pz + (dz / dist) * gap };
 };
 
-// ---------------------------------------------------------------------------
-// Phase 1 — SubTheme center positioning
-// ---------------------------------------------------------------------------
+/** Compute axis-aligned bounding box of a polygon. */
+const polygonBounds = (poly: ReadonlyArray<Point2D>) => {
+  let minX = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxZ = -Infinity;
+  for (const p of poly) {
+    if (p.x < minX) minX = p.x;
+    if (p.z < minZ) minZ = p.z;
+    if (p.x > maxX) maxX = p.x;
+    if (p.z > maxZ) maxZ = p.z;
+  }
+  return { minX, minZ, maxX, maxZ };
+};
+
+/** Centroid of a polygon (arithmetic mean of vertices). */
+const centroid = (poly: ReadonlyArray<Point2D>): Point => {
+  let sx = 0;
+  let sz = 0;
+  for (const p of poly) {
+    sx += p.x;
+    sz += p.z;
+  }
+  return { x: sx / poly.length, z: sz / poly.length };
+};
+
+/** Average distance from center to polygon vertices — estimates polygon extent. */
+const avgDistFromCenter = (
+  poly: ReadonlyArray<Point2D>,
+  center: Point
+): number => {
+  let sum = 0;
+  for (const p of poly) {
+    sum += Math.sqrt((p.x - center.x) ** 2 + (p.z - center.z) ** 2);
+  }
+  return sum / poly.length;
+};
 
 /**
- * Arrange theme anchors radially (tighter than Gen3) and then offset
- * SubTheme centers around their parent theme anchor.
+ * Chaikin's corner-cutting algorithm — smooths a polygon by cutting corners.
+ * Each iteration inserts two new points per edge at 1/4 and 3/4 positions,
+ * producing rounder shapes. Doubles vertex count per iteration.
  */
-const computeSubThemeCenters = (
-  input: VoronoiLayoutInput
-): { centers: Map<string, Point>; themeAnchors: Map<string, Point> } => {
-  const { themes: themeList, subThemes, relationshipEdges, stage, options } = input;
-  const mapR = options.mapRadius;
-
-  // --- 1a. Theme anchors (radial, tighter radius) ---
-  const themeCount = themeList.length;
-  const baseRadius = mapR * 0.55;
-  const maxInward = baseRadius * 0.35;
-
-  const themeAnchors: Map<string, Point> = new Map();
-  for (let i = 0; i < themeCount; i++) {
-    const theme = themeList[i];
-    const heat = stage.themeHeat[theme.id] ?? 0.2;
-    const angle = (Math.PI * 2 * i) / themeCount - Math.PI / 2;
-    const inwardShift = clamp(heat, 0, 1) * maxInward;
-    const r = Math.max(2, baseRadius - inwardShift);
-    themeAnchors.set(theme.id, { x: Math.cos(angle) * r, z: Math.sin(angle) * r });
-  }
-
-  // --- 1b. Cross-theme relationship pull on theme anchors ---
-  // Map sectors that share a theme ID to that theme (theme centers)
-  const sectorToTheme = new Map<SectorId, string>();
-  for (const t of themeList) {
-    sectorToTheme.set(t.id, t.id);
-  }
-
-  // Apply pull: for each theme, compute net pull toward related themes
-  const adjustedThemeAnchors = new Map(themeAnchors);
-  const pullStrength = 0.25;
-  for (const theme of themeList) {
-    const themePos = adjustedThemeAnchors.get(theme.id)!;
-    let pullX = 0;
-    let pullZ = 0;
-    let totalW = 0;
-
-    for (const edge of relationshipEdges) {
-      const srcTheme = sectorToTheme.get(edge.sourceSectorId);
-      const tgtTheme = sectorToTheme.get(edge.targetSectorId);
-
-      if (srcTheme === theme.id && tgtTheme && tgtTheme !== theme.id) {
-        const other = adjustedThemeAnchors.get(tgtTheme)!;
-        pullX += other.x * edge.weight;
-        pullZ += other.z * edge.weight;
-        totalW += edge.weight;
-      } else if (tgtTheme === theme.id && srcTheme && srcTheme !== theme.id) {
-        const other = adjustedThemeAnchors.get(srcTheme)!;
-        pullX += other.x * edge.weight;
-        pullZ += other.z * edge.weight;
-        totalW += edge.weight;
-      }
-    }
-
-    if (totalW > 0) {
-      adjustedThemeAnchors.set(theme.id, {
-        x: themePos.x + (pullX / totalW - themePos.x) * pullStrength,
-        z: themePos.z + (pullZ / totalW - themePos.z) * pullStrength,
-      });
+const smoothPolygon = (
+  poly: ReadonlyArray<Point2D>,
+  iterations: number
+): Point2D[] => {
+  let result: Point2D[] = [...poly];
+  for (let iter = 0; iter < iterations; iter++) {
+    const input = result;
+    result = [];
+    for (let i = 0; i < input.length; i++) {
+      const curr = input[i];
+      const next = input[(i + 1) % input.length];
+      result.push(
+        { x: curr.x * 0.75 + next.x * 0.25, z: curr.z * 0.75 + next.z * 0.25 },
+        { x: curr.x * 0.25 + next.x * 0.75, z: curr.z * 0.25 + next.z * 0.75 }
+      );
     }
   }
-
-  // --- 1c. SubTheme offsets around theme anchor ---
-  const centers = new Map<string, Point>();
-  const subThemeDistance = 1.8;
-
-  for (const theme of themeList) {
-    const themePos = adjustedThemeAnchors.get(theme.id)!;
-    const themeSubThemes = subThemes.filter((st) => st.themeId === theme.id);
-    const count = themeSubThemes.length;
-
-    for (let i = 0; i < count; i++) {
-      const st = themeSubThemes[i];
-      // Higher areaWeight = closer to theme center ("provincial capital")
-      const distFactor = 1 - st.areaWeight * 0.4;
-      const dist = subThemeDistance * distFactor;
-      const angle = (Math.PI * 2 * i) / count - Math.PI / 2;
-      centers.set(st.id, {
-        x: themePos.x + Math.cos(angle) * dist,
-        z: themePos.z + Math.sin(angle) * dist,
-      });
-    }
-  }
-
-  return { centers, themeAnchors: adjustedThemeAnchors };
+  return result;
 };
 
 // ---------------------------------------------------------------------------
-// Phase 2 — Weighted Voronoi with iterative relaxation
+// Per-theme center placement
 // ---------------------------------------------------------------------------
 
-const computeWeightedVoronoi = (
-  centersMap: Map<string, Point>,
-  subThemes: readonly SubTheme[],
-  options: VoronoiLayoutOptions,
-  themeAnchors: Map<string, Point>
-): VoronoiCell[] => {
-  const r = options.mapRadius;
+/**
+ * Place SubTheme centers within a theme polygon.
+ * Arranges points radially around the theme center at ~35% of polygon extent.
+ * Higher areaWeight → closer to center (like a "capital city").
+ */
+const placeSubThemeCenters = (
+  themeCell: ThemeCell,
+  themeSubThemes: readonly SubTheme[]
+): Point[] => {
+  const { center } = themeCell;
+  const count = themeSubThemes.length;
 
-  // Build ordered array of points matching subThemes order
-  const stArray = [...subThemes];
-  let points: Point[] = stArray.map((st) => centersMap.get(st.id)!);
+  if (count === 1) return [center];
 
-  const totalWeight = stArray.reduce((s, st) => s + st.areaWeight, 0);
-  const totalMapArea = Math.PI * r * r;
+  const spread = avgDistFromCenter(themeCell.polygon, center) * 0.25;
 
-  // Target area for each cell
-  const targetAreas = stArray.map((st) => (st.areaWeight / totalWeight) * totalMapArea);
-
-  // Relaxation: adjust point positions so cell areas converge to target areas.
-  // Uses log-proportional step for fast convergence (standard weighted Voronoi technique).
-  for (let iter = 0; iter < options.relaxationIterations; iter++) {
-    const delaunay = Delaunay.from(points, (p) => p.x, (p) => p.z);
-    const voronoi = delaunay.voronoi([-r, -r, r, r]);
-
-    let maxError = 0;
-    const newPoints: Point[] = [];
-
-    for (let i = 0; i < points.length; i++) {
-      const cellPolygon = voronoi.cellPolygon(i);
-      if (!cellPolygon || cellPolygon.length < 4) {
-        newPoints.push(points[i]);
-        continue;
-      }
-
-      // Convert d3 polygon format to our Point format
-      const poly: Array<{ x: number; z: number }> = [];
-      for (let j = 0; j < cellPolygon.length - 1; j++) {
-        poly.push({ x: cellPolygon[j][0], z: cellPolygon[j][1] });
-      }
-
-      const area = shoelaceArea(poly);
-      const c = centroid(poly);
-      const areaRatio = area / targetAreas[i];
-      const error = Math.abs(areaRatio - 1);
-      maxError = Math.max(maxError, error);
-
-      // Log-proportional step: move toward centroid when too small, away when too large.
-      // The log scale prevents oscillation and converges faster than linear steps.
-      // Clamp to prevent extreme movements.
-      const stepScale = clamp(Math.log(areaRatio) * 0.3, -0.5, 0.5);
-      const dx = c.x - points[i].x;
-      const dz = c.z - points[i].z;
-      let nx = points[i].x + dx * stepScale;
-      let nz = points[i].z + dz * stepScale;
-
-      // Theme cohesion: pull back toward parent theme anchor to prevent
-      // relaxation from scattering SubTheme cells across the map.
-      const anchor = themeAnchors.get(stArray[i].themeId);
-      if (anchor) {
-        const cohesionStrength = 0.15;
-        nx += (anchor.x - nx) * cohesionStrength;
-        nz += (anchor.z - nz) * cohesionStrength;
-      }
-
-      newPoints.push({ x: nx, z: nz });
-    }
-
-    points = newPoints;
-    if (maxError < options.areaConvergenceThreshold) break;
-  }
-
-  // --- Final Voronoi generation (no insets for area measurement) ---
-  const delaunay = Delaunay.from(points, (p) => p.x, (p) => p.z);
-  const voronoi = delaunay.voronoi([-r, -r, r, r]);
-
-  // Build neighbor map from Delaunay triangulation for province border detection
-  const neighborSet = new Set<string>();
-  for (let i = 0; i < delaunay.triangles.length; i += 3) {
-    const a = delaunay.triangles[i];
-    const b = delaunay.triangles[i + 1];
-    const c = delaunay.triangles[i + 2];
-    const addPair = (x: number, y: number) => {
-      const lo = Math.min(x, y);
-      const hi = Math.max(x, y);
-      neighborSet.add(`${lo}-${hi}`);
+  return themeSubThemes.map((st, i) => {
+    const angle = (Math.PI * 2 * i) / count - Math.PI / 2;
+    // Higher areaWeight → closer to center
+    const distFactor = 1 - (st.areaWeight - 0.3) * 0.3;
+    const dist = spread * Math.max(0.3, distFactor);
+    return {
+      x: center.x + Math.cos(angle) * dist,
+      z: center.z + Math.sin(angle) * dist,
     };
-    addPair(a, b);
-    addPair(b, c);
-    addPair(a, c);
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Per-theme Voronoi computation
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute Voronoi cells for a single theme's SubThemes, strictly contained
+ * within the theme's polygon boundary.
+ */
+const computePerThemeVoronoi = (
+  themeCell: ThemeCell,
+  themeSubThemes: readonly SubTheme[],
+  options: VoronoiLayoutOptions
+): VoronoiCell[] => {
+  if (themeSubThemes.length === 0) return [];
+
+  // Theme polygon as the clip boundary
+  const themePoly = themeCell.polygon as ReadonlyArray<Point2D>;
+
+  // Single SubTheme: entire theme polygon (with border gap inset)
+  if (themeSubThemes.length === 1) {
+    const insetPoly = themePoly.map((p) =>
+      insetPoint(p.x, p.z, themeCell.center, options.cityBorderGap)
+    );
+    const smoothIter = options.smoothIterations ?? 2;
+    const smoothed = smoothPolygon(insetPoly.length >= 3 ? insetPoly : [], smoothIter);
+    // Re-clip after smoothing
+    const finalPoly = smoothed.length >= 3
+      ? clipPolygonToConvexPolygon(smoothed, themePoly)
+      : [];
+    return [
+      {
+        subThemeId: themeSubThemes[0].id,
+        themeId: themeCell.themeId,
+        center: themeCell.center,
+        polygon: finalPoly.length >= 3 ? finalPoly : [],
+      },
+    ];
   }
 
-  // Convert to VoronoiCell[] with per-vertex inset
-  return stArray.map((st, i) => {
+  // Multiple SubThemes: mini Voronoi within theme polygon
+  const centers = placeSubThemeCenters(themeCell, themeSubThemes);
+  const bbox = polygonBounds(themePoly);
+
+  // Small padding to bounding box so Voronoi edges extend past polygon
+  const pad = 0.5;
+  const delaunay = Delaunay.from(centers, (p) => p.x, (p) => p.z);
+  const voronoi = delaunay.voronoi([
+    bbox.minX - pad,
+    bbox.minZ - pad,
+    bbox.maxX + pad,
+    bbox.maxZ + pad,
+  ]);
+
+  return themeSubThemes.map((st, i) => {
     const cellPoly = voronoi.cellPolygon(i);
     if (!cellPoly || cellPoly.length < 4) {
       return {
         subThemeId: st.id,
-        center: centersMap.get(st.id)!,
+        themeId: themeCell.themeId,
+        center: centers[i],
         polygon: [] as VoronoiCell["polygon"],
-        themeId: st.themeId,
       };
     }
 
-    // Find neighbors of this cell
-    const neighbors: number[] = [];
-    for (let j = 0; j < stArray.length; j++) {
-      if (j === i) continue;
-      const lo = Math.min(i, j);
-      const hi = Math.max(i, j);
-      if (neighborSet.has(`${lo}-${hi}`)) {
-        neighbors.push(j);
-      }
-    }
-
-    // Determine per-vertex inset based on neighbor theme
-    const cellCenter = centersMap.get(st.id)!;
-    const openPoly: Array<{ x: number; z: number }> = [];
-
+    // Convert d3 format to our Point format (d3 repeats first vertex)
+    const rawPoly: Point2D[] = [];
     for (let j = 0; j < cellPoly.length - 1; j++) {
-      const vx = cellPoly[j][0];
-      const vz = cellPoly[j][1];
-
-      // Default: same-theme inset
-      let maxGap = options.cityBorderGap;
-
-      for (const ni of neighbors) {
-        if (stArray[ni].themeId !== st.themeId) {
-          // Cross-theme border: use province gap for vertices near the border midpoint
-          const neighborCenter = centersMap.get(stArray[ni].id)!;
-          const midX = (cellCenter.x + neighborCenter.x) / 2;
-          const midZ = (cellCenter.z + neighborCenter.z) / 2;
-          const distToMid = Math.sqrt((vx - midX) ** 2 + (vz - midZ) ** 2);
-          const cellDist = Math.sqrt(
-            (cellCenter.x - neighborCenter.x) ** 2 + (cellCenter.z - neighborCenter.z) ** 2
-          );
-          if (distToMid < cellDist * 0.6) {
-            maxGap = Math.max(maxGap, options.provinceBorderGap);
-          }
-        }
-      }
-
-      openPoly.push(insetPoint(vx, vz, cellCenter, maxGap));
+      rawPoly.push({ x: cellPoly[j][0], z: cellPoly[j][1] });
     }
 
-    // Clip polygon to circular boundary
-    const clipped = clipPolygonToCircle(openPoly, r);
+    // Clip to theme polygon — guarantees containment
+    const clipped = clipPolygonToConvexPolygon(rawPoly, themePoly);
+    if (clipped.length < 3) {
+      return {
+        subThemeId: st.id,
+        themeId: themeCell.themeId,
+        center: centers[i],
+        polygon: [],
+      };
+    }
+
+    // Apply city border gap inset
+    const insetPoly = clipped.map((p) =>
+      insetPoint(p.x, p.z, centers[i], options.cityBorderGap)
+    );
+
+    // Smooth the polygon for rounder shapes
+    const smoothIter = options.smoothIterations ?? 2;
+    const smoothed = smoothPolygon(insetPoly.length >= 3 ? insetPoly : [], smoothIter);
+
+    // Re-clip to theme polygon after smoothing — belt-and-suspenders containment
+    const finalPoly = smoothed.length >= 3
+      ? clipPolygonToConvexPolygon(smoothed, themePoly)
+      : [];
+
+    // Use polygon centroid as center so column aligns with visible region
+    const finalCenter = finalPoly.length >= 3 ? centroid(finalPoly) : centers[i];
 
     return {
       subThemeId: st.id,
-      center: cellCenter,
-      polygon: clipped.length >= 3 ? clipped : [],
-      themeId: st.themeId,
+      themeId: themeCell.themeId,
+      center: finalCenter,
+      polygon: finalPoly.length >= 3 ? finalPoly : [],
     };
   });
 };
@@ -339,14 +254,31 @@ const computeWeightedVoronoi = (
 // Main export
 // ---------------------------------------------------------------------------
 
+/**
+ * Create a Voronoi layout where each theme's SubThemes are computed
+ * independently and strictly contained within the theme's polygon.
+ */
 export function createVoronoiLayout(input: VoronoiLayoutInput): VoronoiLayout {
-  const { centers, themeAnchors } = computeSubThemeCenters(input);
-  const cells = computeWeightedVoronoi(centers, input.subThemes, input.options, themeAnchors);
+  const { subThemes, themeCells, stage, options } = input;
+
+  const cells: VoronoiCell[] = [];
+
+  for (const themeCell of themeCells) {
+    const themeSubThemes = subThemes.filter(
+      (st) => st.themeId === themeCell.themeId
+    );
+    const themeVoronoiCells = computePerThemeVoronoi(
+      themeCell,
+      themeSubThemes,
+      options
+    );
+    cells.push(...themeVoronoiCells);
+  }
 
   return {
     cells: Object.freeze(cells),
-    boundary: { radius: input.options.mapRadius },
-    version: `voronoi-${input.stage.id}`,
-    stageId: input.stage.id,
+    boundary: { radius: options.mapRadius },
+    version: `voronoi-${stage.id}`,
+    stageId: stage.id,
   };
 }

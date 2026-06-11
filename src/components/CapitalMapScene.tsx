@@ -1,6 +1,6 @@
 import { Text } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import * as THREE from "three";
 import { subThemes as subThemeList } from "../domain/subThemeRegistry";
@@ -29,6 +29,11 @@ const BASE_CELL_HALF_THICKNESS = BASE_CELL_THICKNESS / 2;
 const MIN_COLUMN_HEIGHT = 0.08;
 const STOCK_CYLINDER_RADIUS = 0.12;
 const STOCK_CYLINDER_SEGMENTS = 8;
+export const THEME_PLATE_THICKNESS = 0.12;
+export const THEME_COLUMN_SEGMENTS = 12;
+const THEME_COLUMN_RADIUS = 0.5;
+const SUBTHEME_COLUMN_RADIUS = 0.25;
+const SUBTHEME_COLUMN_SEGMENTS = 10;
 
 /* ================================================================== */
 /*  Camera & types                                                     */
@@ -684,15 +689,24 @@ export interface SubThemeCapitalMapSceneProps {
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
 }
 
-const POLYGON_SCALE_FACTOR = 0.75;
-
-/** Batched SubTheme boundary lines within each theme region. */
+/** Golden SubTheme boundary lines with 5-second breathing/pulsing opacity. */
 function SubThemeBoundaryLines({
   voronoiCells,
+  themeCells,
 }: {
   voronoiCells: ReadonlyArray<VoronoiCell>;
+  themeCells: ReadonlyArray<ThemeCell>;
 }) {
   const lineY = THEME_PLATE_THICKNESS + 0.01;
+  const materialRef = useRef<THREE.LineBasicMaterial>(null);
+
+  // Breathing: 5-second cycle, opacity oscillates between 0.3 and 0.9
+  useFrame(({ clock }) => {
+    if (materialRef.current) {
+      const t = clock.getElapsedTime();
+      materialRef.current.opacity = 0.6 + 0.3 * Math.sin((2 * Math.PI * t) / 5);
+    }
+  });
 
   const geometry = useMemo(() => {
     const points: THREE.Vector3[] = [];
@@ -707,20 +721,31 @@ function SubThemeBoundaryLines({
         const mx = (a.x + b.x) / 2;
         const mz = (a.z + b.z) / 2;
 
-        let minDist = Infinity;
-        let nearestSameTheme = false;
+        let minDistSameTheme = Infinity;
         for (const nb of voronoiCells) {
           if (nb.subThemeId === cell.subThemeId) continue;
+          if (nb.themeId !== cell.themeId) continue;
           const dx = mx - nb.center.x;
           const dz = mz - nb.center.z;
           const dist = dx * dx + dz * dz;
-          if (dist < minDist) {
-            minDist = dist;
-            nearestSameTheme = nb.themeId === cell.themeId;
+          if (dist < minDistSameTheme) {
+            minDistSameTheme = dist;
           }
         }
 
-        if (nearestSameTheme) {
+        let minDistOtherTheme = Infinity;
+        for (const nb of voronoiCells) {
+          if (nb.subThemeId === cell.subThemeId) continue;
+          if (nb.themeId === cell.themeId) continue;
+          const dx = mx - nb.center.x;
+          const dz = mz - nb.center.z;
+          const dist = dx * dx + dz * dz;
+          if (dist < minDistOtherTheme) {
+            minDistOtherTheme = dist;
+          }
+        }
+
+        if (minDistSameTheme < minDistOtherTheme) {
           points.push(
             new THREE.Vector3(a.x, lineY, a.z),
             new THREE.Vector3(b.x, lineY, b.z)
@@ -740,7 +765,7 @@ function SubThemeBoundaryLines({
       geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     }
     return geo;
-  }, [voronoiCells, lineY]);
+  }, [voronoiCells, themeCells, lineY]);
 
   if (geometry.attributes.position === undefined || geometry.attributes.position.count < 2) {
     return null;
@@ -748,58 +773,36 @@ function SubThemeBoundaryLines({
 
   return (
     <lineSegments geometry={geometry}>
-      <lineBasicMaterial color="#ffffff" transparent opacity={0.25} />
+      <lineBasicMaterial
+        ref={materialRef}
+        color="#ffd700"
+        transparent
+        opacity={0.6}
+      />
     </lineSegments>
   );
 }
 
-/** Polygon cross-section column that matches SubTheme territory shape. */
-function SubThemePolygonColumn({
+/** Cylindrical column for SubTheme, centered on cell centroid. */
+function SubThemeCylinderColumn({
   node,
 }: {
   node: SubThemeRenderNode;
 }) {
-  const { cell, metric, position } = node;
+  const { metric, position } = node;
   const rawHeight = Math.max(Math.abs(metric.height), 0.12);
   const isInflow = metric.direction === "inflow";
   const isOutflow = metric.direction === "outflow";
 
-  const shape = useMemo(() => {
-    const poly = cell.polygon;
-    if (poly.length < 3) return null;
-    const s = new THREE.Shape();
-    s.moveTo(
-      (poly[0].x - cell.center.x) * POLYGON_SCALE_FACTOR,
-      (poly[0].z - cell.center.z) * POLYGON_SCALE_FACTOR
-    );
-    for (let i = 1; i < poly.length; i++) {
-      s.lineTo(
-        (poly[i].x - cell.center.x) * POLYGON_SCALE_FACTOR,
-        (poly[i].z - cell.center.z) * POLYGON_SCALE_FACTOR
-      );
-    }
-    s.closePath();
-    return s;
-  }, [cell]);
-
-  if (!shape) return null;
-
-  // ExtrudeGeometry extrudes along +Z. Rotate to align with Y axis.
-  // Inflow: -PI/2 around X → extrude upward. Outflow: +PI/2 → extrude downward.
-  const rotationX = isInflow ? -Math.PI / 2 : isOutflow ? Math.PI / 2 : -Math.PI / 2;
-  const meshY = isInflow
-    ? THEME_PLATE_THICKNESS
-    : isOutflow
-      ? 0
-      : THEME_PLATE_THICKNESS / 2;
+  const baseY = isInflow ? THEME_PLATE_THICKNESS : isOutflow ? 0 : THEME_PLATE_THICKNESS / 2;
+  const positionY = isInflow ? baseY + rawHeight / 2 : isOutflow ? baseY - rawHeight / 2 : baseY;
 
   return (
     <mesh
-      position={[position.x, meshY, position.z]}
-      rotation={[rotationX, 0, 0]}
+      position={[position.x, positionY, position.z]}
       castShadow
     >
-      <extrudeGeometry args={[shape, { depth: rawHeight, bevelEnabled: false }]} />
+      <cylinderGeometry args={[SUBTHEME_COLUMN_RADIUS, SUBTHEME_COLUMN_RADIUS, rawHeight, SUBTHEME_COLUMN_SEGMENTS]} />
       <meshStandardMaterial
         color={metric.color}
         opacity={0.9}
@@ -852,11 +855,11 @@ function SubThemeCapitalMapScene(props: SubThemeCapitalMapSceneProps) {
       })}
 
       {/* Layer 3: SubTheme boundary lines */}
-      <SubThemeBoundaryLines voronoiCells={voronoiCells} />
+      <SubThemeBoundaryLines voronoiCells={voronoiCells} themeCells={themeCells} />
 
-      {/* Layer 4: Polygon cross-section columns */}
+      {/* Layer 4: Cylindrical columns */}
       {subThemeNodes.map((node) => (
-        <SubThemePolygonColumn key={`p2-col-${node.subTheme.id}`} node={node} />
+        <SubThemeCylinderColumn key={`p2-col-${node.subTheme.id}`} node={node} />
       ))}
 
       {/* Layer 5: SubTheme labels */}
@@ -870,6 +873,8 @@ function SubThemeCapitalMapScene(props: SubThemeCapitalMapSceneProps) {
           anchorX="center"
           anchorY="middle"
           maxWidth={1.6}
+          outlineWidth={0.02}
+          outlineColor="#000000"
         >
           {node.subTheme.shortName}
         </Text>
@@ -890,9 +895,6 @@ export interface ThemeCapitalMapSceneProps {
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
 }
 
-const THEME_PLATE_THICKNESS = 0.12;
-const THEME_COLUMN_RADIUS = 0.6;
-const THEME_COLUMN_SEGMENTS = 12;
 
 function ThemePlate({
   cell,
@@ -1001,7 +1003,7 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
               />
               <meshStandardMaterial
                 color={node.metric.color}
-                opacity={0.9}
+                opacity={0.7}
                 transparent
                 emissive={node.metric.color}
                 emissiveIntensity={0.08}
@@ -1017,6 +1019,8 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
               anchorX="center"
               anchorY="middle"
               maxWidth={2}
+              outlineWidth={0.03}
+              outlineColor="#000000"
             >
               {node.theme.shortName}
             </Text>

@@ -20,6 +20,8 @@ export interface ThemeVoronoiLayout {
 export interface ThemeLayoutOptions {
   readonly mapRadius: number;
   readonly borderGap: number;
+  readonly lloydIterations?: number;
+  readonly smoothIterations?: number;
 }
 
 export interface ThemeLayoutInput {
@@ -38,6 +40,10 @@ interface Point {
   readonly z: number;
 }
 
+const clamp = (v: number, lo: number, hi: number): number =>
+  Math.max(lo, Math.min(hi, v));
+
+/** Move a polygon vertex toward the cell center by `gap` amount. */
 const insetPoint = (
   px: number,
   pz: number,
@@ -51,18 +57,50 @@ const insetPoint = (
   return { x: px + (dx / dist) * gap, z: pz + (dz / dist) * gap };
 };
 
+/** Centroid of a polygon (arithmetic mean of vertices). */
+const centroid = (poly: ReadonlyArray<{ x: number; z: number }>): Point => {
+  let sx = 0;
+  let sz = 0;
+  for (const p of poly) {
+    sx += p.x;
+    sz += p.z;
+  }
+  return { x: sx / poly.length, z: sz / poly.length };
+};
+
+/**
+ * Chaikin's corner-cutting algorithm — smooths a polygon by cutting corners.
+ * Each iteration inserts two new points per edge at 1/4 and 3/4 positions.
+ */
+const chaikinSmooth = (
+  poly: ReadonlyArray<{ x: number; z: number }>,
+  iterations: number
+): Array<{ x: number; z: number }> => {
+  let result: Array<{ x: number; z: number }> = [...poly];
+  for (let iter = 0; iter < iterations; iter++) {
+    const input = result;
+    result = [];
+    for (let i = 0; i < input.length; i++) {
+      const curr = input[i];
+      const next = input[(i + 1) % input.length];
+      result.push(
+        { x: curr.x * 0.75 + next.x * 0.25, z: curr.z * 0.75 + next.z * 0.25 },
+        { x: curr.x * 0.25 + next.x * 0.75, z: curr.z * 0.25 + next.z * 0.75 }
+      );
+    }
+  }
+  return result;
+};
+
 // ---------------------------------------------------------------------------
-// Theme center positioning
+// Phase 1: Initial center placement
 // ---------------------------------------------------------------------------
 
-const computeThemeCenters = (input: ThemeLayoutInput): Point[] => {
+const computeInitialCenters = (input: ThemeLayoutInput): Point[] => {
   const { themes, relationshipEdges, stage, options } = input;
   const themeCount = themes.length;
   const baseRadius = options.mapRadius * 0.6;
   const maxInward = baseRadius * 0.4;
-
-  const clamp = (v: number, lo: number, hi: number): number =>
-    Math.max(lo, Math.min(hi, v));
 
   // 1. Radial anchors with heat-based inward shift
   const anchors: Point[] = themes.map((theme, i) => {
@@ -115,22 +153,85 @@ const computeThemeCenters = (input: ThemeLayoutInput): Point[] => {
 };
 
 // ---------------------------------------------------------------------------
-// Voronoi computation with circular clip
+// Phase 2: Lloyd's relaxation (produces more regular polygon-like cells)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lloyd's relaxation: iteratively move each center to the centroid of its
+ * Voronoi cell. This converges toward a centroidal Voronoi tessellation
+ * where cells become more uniform and regular (hexagonal-like).
+ *
+ * A heat-based inward bias keeps hot themes closer to the map center,
+ * so they end up with more neighbors.
+ */
+const lloydRelaxation = (
+  centers: Point[],
+  input: ThemeLayoutInput,
+  iterations: number
+): Point[] => {
+  const r = input.options.mapRadius;
+  const { themes, stage } = input;
+  const maxInward = r * 0.15; // gentle center-pull for hot themes
+  let points = [...centers];
+
+  for (let iter = 0; iter < iterations; iter++) {
+    const delaunay = Delaunay.from(points, (p) => p.x, (p) => p.z);
+    const voronoi = delaunay.voronoi([-r, -r, r, r]);
+
+    const next: Point[] = [];
+    for (let i = 0; i < points.length; i++) {
+      const cellPoly = voronoi.cellPolygon(i);
+      if (!cellPoly || cellPoly.length < 4) {
+        next.push(points[i]);
+        continue;
+      }
+
+      // Compute centroid of the cell
+      const poly: Array<{ x: number; z: number }> = [];
+      for (let j = 0; j < cellPoly.length - 1; j++) {
+        poly.push({ x: cellPoly[j][0], z: cellPoly[j][1] });
+      }
+      let cx = centroid(poly);
+
+      // Heat-based inward bias: hot themes get pulled toward origin
+      const heat = stage.themeHeat[themes[i].id] ?? 0.2;
+      const inwardBias = clamp(heat, 0, 1) * maxInward;
+      const distFromCenter = Math.sqrt(cx.x * cx.x + cx.z * cx.z);
+      if (distFromCenter > 0.01) {
+        cx = {
+          x: cx.x - (cx.x / distFromCenter) * inwardBias,
+          z: cx.z - (cx.z / distFromCenter) * inwardBias,
+        };
+      }
+
+      next.push(cx);
+    }
+    points = next;
+  }
+
+  return points;
+};
+
+// ---------------------------------------------------------------------------
+// Phase 3: Voronoi computation with circular clip + Chaikin smoothing
 // ---------------------------------------------------------------------------
 
 const computeThemeVoronoi = (
   centers: Point[],
+  themeIds: readonly string[],
   options: ThemeLayoutOptions
 ): ThemeCell[] => {
   const r = options.mapRadius;
-  // d3-delaunay needs rectangular bounds — use inscribed square
+  const smoothIter = options.smoothIterations ?? 2;
+
   const delaunay = Delaunay.from(centers, (p) => p.x, (p) => p.z);
   const voronoi = delaunay.voronoi([-r, -r, r, r]);
 
   return centers.map((center, i) => {
+    const themeId = themeIds[i] ?? `theme-${i}`;
     const cellPoly = voronoi.cellPolygon(i);
     if (!cellPoly || cellPoly.length < 4) {
-      return { themeId: `theme-${i}`, center, polygon: [] as ThemeCell["polygon"] };
+      return { themeId, center, polygon: [] as ThemeCell["polygon"] };
     }
 
     // Convert d3 polygon → apply inset → clip to circle
@@ -141,10 +242,13 @@ const computeThemeVoronoi = (
 
     const clipped = clipPolygonToCircle(rawPoly, r);
     if (clipped.length < 3) {
-      return { themeId: `theme-${i}`, center, polygon: [] };
+      return { themeId, center, polygon: [] };
     }
 
-    return { themeId: `theme-${i}`, center, polygon: clipped };
+    // Smooth the theme polygon for rounder shapes
+    const smoothed = smoothIter > 0 ? chaikinSmooth(clipped, smoothIter) : clipped;
+
+    return { themeId, center, polygon: smoothed.length >= 3 ? smoothed : clipped };
   });
 };
 
@@ -153,8 +257,17 @@ const computeThemeVoronoi = (
 // ---------------------------------------------------------------------------
 
 export function createThemeVoronoiLayout(input: ThemeLayoutInput): ThemeVoronoiLayout {
-  const centers = computeThemeCenters(input);
-  const cells = computeThemeVoronoi(centers, input.options);
+  const themeIds = input.themes.map((t) => t.id);
+  const lloydIter = input.options.lloydIterations ?? 3;
+
+  // Phase 1: Initial placement (radial + heat + relationship)
+  const initial = computeInitialCenters(input);
+
+  // Phase 2: Lloyd's relaxation → more regular, hexagonal-like cells
+  const relaxed = lloydRelaxation(initial, input, lloydIter);
+
+  // Phase 3: Voronoi computation + clip + smooth
+  const cells = computeThemeVoronoi(relaxed, themeIds, input.options);
 
   return {
     cells: Object.freeze(cells),
