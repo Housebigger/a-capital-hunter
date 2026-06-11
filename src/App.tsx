@@ -111,6 +111,7 @@ export default function App() {
             />
           ) : (
             <HunterScene
+              themeCells={themeLayout.cells}
               subThemeCells={subThemeLayout.cells}
               subThemeNodes={subThemeNodes}
               cameraPreset={hunterState.cameraPreset}

@@ -38,6 +38,7 @@ export function HunterScene(props: HunterSceneProps) {
     if (props.subThemeCells) {
       return {
         mode: "subtheme" as const,
+        themeCells: props.themeCells ?? [],
         voronoiCells: props.subThemeCells,
         subThemeNodes: props.subThemeNodes ?? [],
         cameraPreset: props.cameraPreset,
