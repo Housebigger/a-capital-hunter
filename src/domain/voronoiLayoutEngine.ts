@@ -76,6 +76,17 @@ const centroid = (poly: ReadonlyArray<Point2D>): Point => {
   return { x: sx / poly.length, z: sz / poly.length };
 };
 
+/** Shoelace formula for polygon area. */
+const polygonArea = (poly: ReadonlyArray<Point2D>): number => {
+  let area = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const j = (i + 1) % poly.length;
+    area += poly[i].x * poly[j].z;
+    area -= poly[j].x * poly[i].z;
+  }
+  return Math.abs(area) / 2;
+};
+
 /** Average distance from center to polygon vertices — estimates polygon extent. */
 const avgDistFromCenter = (
   poly: ReadonlyArray<Point2D>,
@@ -112,6 +123,9 @@ const smoothPolygon = (
   }
   return result;
 };
+
+/** Minimum SubTheme cell area as fraction of the theme's average cell area. */
+const SUBTHEME_AREA_FLOOR_RATIO = 0.35;
 
 // ---------------------------------------------------------------------------
 // SubTheme heat computation
@@ -236,50 +250,21 @@ const placeSubThemeCenters = (
 };
 
 // ---------------------------------------------------------------------------
-// Per-theme Voronoi computation
+// Voronoi cell building and area enforcement
 // ---------------------------------------------------------------------------
 
 /**
- * Compute Voronoi cells for a single theme's SubThemes, strictly contained
- * within the theme's polygon boundary.
+ * Build final Voronoi cells from a set of centers, clipped to theme polygon.
+ * Handles clip → inset → smooth → re-clip for each cell.
  */
-const computePerThemeVoronoi = (
+const buildFinalCells = (
+  centers: Point[],
   themeCell: ThemeCell,
   themeSubThemes: readonly SubTheme[],
-  options: VoronoiLayoutOptions,
-  heatMap: ReadonlyMap<string, number>
+  options: VoronoiLayoutOptions
 ): VoronoiCell[] => {
-  if (themeSubThemes.length === 0) return [];
-
-  // Theme polygon as the clip boundary
   const themePoly = themeCell.polygon as ReadonlyArray<Point2D>;
-
-  // Single SubTheme: entire theme polygon (with border gap inset)
-  if (themeSubThemes.length === 1) {
-    const insetPoly = themePoly.map((p) =>
-      insetPoint(p.x, p.z, themeCell.center, options.cityBorderGap)
-    );
-    const smoothIter = options.smoothIterations ?? 2;
-    const smoothed = smoothPolygon(insetPoly.length >= 3 ? insetPoly : [], smoothIter);
-    // Re-clip after smoothing
-    const finalPoly = smoothed.length >= 3
-      ? clipPolygonToConvexPolygon(smoothed, themePoly)
-      : [];
-    return [
-      {
-        subThemeId: themeSubThemes[0].id,
-        themeId: themeCell.themeId,
-        center: themeCell.center,
-        polygon: finalPoly.length >= 3 ? finalPoly : [],
-      },
-    ];
-  }
-
-  // Multiple SubThemes: mini Voronoi within theme polygon
-  const centers = placeSubThemeCenters(themeCell, themeSubThemes, heatMap);
   const bbox = polygonBounds(themePoly);
-
-  // Small padding to bounding box so Voronoi edges extend past polygon
   const pad = 0.5;
   const delaunay = Delaunay.from(centers, (p) => p.x, (p) => p.z);
   const voronoi = delaunay.voronoi([
@@ -342,6 +327,98 @@ const computePerThemeVoronoi = (
       polygon: finalPoly.length >= 3 ? finalPoly : [],
     };
   });
+};
+
+/**
+ * Ensure every SubTheme cell has area ≥ SUBTHEME_AREA_FLOOR_RATIO × average.
+ * If a cell is below threshold, pull its center toward the theme center
+ * (giving it more area) then recompute the Voronoi once.
+ */
+const enforceAreaFloor = (
+  cells: VoronoiCell[],
+  centers: Point[],
+  themeCell: ThemeCell,
+  themeSubThemes: readonly SubTheme[],
+  options: VoronoiLayoutOptions
+): VoronoiCell[] => {
+  const themePoly = themeCell.polygon as ReadonlyArray<Point2D>;
+
+  // Calculate areas
+  const areas = cells.map(c =>
+    c.polygon.length >= 3 ? polygonArea(c.polygon) : 0
+  );
+  const validAreas = areas.filter(a => a > 0);
+  if (validAreas.length <= 1) return cells;
+
+  const avgArea = validAreas.reduce((s, a) => s + a, 0) / validAreas.length;
+  const threshold = avgArea * SUBTHEME_AREA_FLOOR_RATIO;
+
+  // Check if any cell is below threshold
+  const underThreshold = areas.some(a => a > 0 && a < threshold);
+  if (!underThreshold) return cells;
+
+  // Adjust: pull under-threshold cells toward theme center
+  const adjustedCenters = centers.map((c, i) => {
+    if (areas[i] > 0 && areas[i] < threshold) {
+      const pullFactor = 0.6;
+      const nx = c.x + (themeCell.center.x - c.x) * pullFactor;
+      const nz = c.z + (themeCell.center.z - c.z) * pullFactor;
+      return clampInside({ x: nx, z: nz }, themePoly, themeCell.center);
+    }
+    return c;
+  });
+
+  // Recompute Voronoi with adjusted centers
+  return buildFinalCells(adjustedCenters, themeCell, themeSubThemes, options);
+};
+
+// ---------------------------------------------------------------------------
+// Per-theme Voronoi computation
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute Voronoi cells for a single theme's SubThemes, strictly contained
+ * within the theme's polygon boundary. Enforces minimum area threshold.
+ */
+const computePerThemeVoronoi = (
+  themeCell: ThemeCell,
+  themeSubThemes: readonly SubTheme[],
+  options: VoronoiLayoutOptions,
+  heatMap: ReadonlyMap<string, number>
+): VoronoiCell[] => {
+  if (themeSubThemes.length === 0) return [];
+
+  // Theme polygon as the clip boundary
+  const themePoly = themeCell.polygon as ReadonlyArray<Point2D>;
+
+  // Single SubTheme: entire theme polygon (with border gap inset)
+  if (themeSubThemes.length === 1) {
+    const insetPoly = themePoly.map((p) =>
+      insetPoint(p.x, p.z, themeCell.center, options.cityBorderGap)
+    );
+    const smoothIter = options.smoothIterations ?? 2;
+    const smoothed = smoothPolygon(insetPoly.length >= 3 ? insetPoly : [], smoothIter);
+    const finalPoly = smoothed.length >= 3
+      ? clipPolygonToConvexPolygon(smoothed, themePoly)
+      : [];
+    return [
+      {
+        subThemeId: themeSubThemes[0].id,
+        themeId: themeCell.themeId,
+        center: themeCell.center,
+        polygon: finalPoly.length >= 3 ? finalPoly : [],
+      },
+    ];
+  }
+
+  // Multiple SubThemes: mini Voronoi within theme polygon
+  const centers = placeSubThemeCenters(themeCell, themeSubThemes, heatMap);
+  let cells = buildFinalCells(centers, themeCell, themeSubThemes, options);
+
+  // Enforce minimum area: every cell ≥ 35% of average within theme
+  cells = enforceAreaFloor(cells, centers, themeCell, themeSubThemes, options);
+
+  return cells;
 };
 
 // ---------------------------------------------------------------------------
