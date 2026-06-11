@@ -23,8 +23,7 @@ export function createVoronoiLayoutProvider(): VoronoiLayoutProvider {
         relationshipEdges,
         stage,
         options: {
-          mapWidth: 30,
-          mapHeight: 22,
+          mapRadius: 11,
           relaxationIterations: 20,
           areaConvergenceThreshold: 0.05,
           provinceBorderGap: 0.25,
@@ -49,8 +48,7 @@ export function createSubThemeLayoutProvider(): VoronoiLayoutProvider {
         relationshipEdges,
         stage,
         options: {
-          mapWidth: 30,
-          mapHeight: 22,
+          mapRadius: 11,
           relaxationIterations: 20,
           areaConvergenceThreshold: 0.05,
           provinceBorderGap: 0.30,

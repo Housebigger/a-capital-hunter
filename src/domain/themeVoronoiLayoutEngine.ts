@@ -1,5 +1,6 @@
 import { Delaunay } from "d3-delaunay";
 import type { LayoutStage, RelationshipEdge, Theme } from "./types";
+import { clipPolygonToCircle } from "./circleClip";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -13,12 +14,11 @@ export interface ThemeCell {
 
 export interface ThemeVoronoiLayout {
   readonly cells: ReadonlyArray<ThemeCell>;
-  readonly boundary: { readonly width: number; readonly height: number };
+  readonly boundary: { readonly radius: number };
 }
 
 export interface ThemeLayoutOptions {
-  readonly mapWidth: number;
-  readonly mapHeight: number;
+  readonly mapRadius: number;
   readonly borderGap: number;
 }
 
@@ -37,9 +37,6 @@ interface Point {
   readonly x: number;
   readonly z: number;
 }
-
-const clamp = (v: number, lo: number, hi: number): number =>
-  Math.max(lo, Math.min(hi, v));
 
 const insetPoint = (
   px: number,
@@ -60,12 +57,12 @@ const insetPoint = (
 
 const computeThemeCenters = (input: ThemeLayoutInput): Point[] => {
   const { themes, relationshipEdges, stage, options } = input;
-  const halfW = options.mapWidth / 2;
-  const halfH = options.mapHeight / 2;
-
   const themeCount = themes.length;
-  const baseRadius = Math.min(halfW, halfH) * 0.5;
+  const baseRadius = options.mapRadius * 0.6;
   const maxInward = baseRadius * 0.4;
+
+  const clamp = (v: number, lo: number, hi: number): number =>
+    Math.max(lo, Math.min(hi, v));
 
   // 1. Radial anchors with heat-based inward shift
   const anchors: Point[] = themes.map((theme, i) => {
@@ -77,12 +74,6 @@ const computeThemeCenters = (input: ThemeLayoutInput): Point[] => {
   });
 
   // 2. Cross-theme relationship pull
-  // Build sector→theme lookup (theme centers ARE themes)
-  const sectorToTheme = new Map<string, string>();
-  for (const t of themes) {
-    sectorToTheme.set(t.id, t.id);
-  }
-
   const adjusted = [...anchors];
   const pullStrength = 0.3;
 
@@ -92,17 +83,17 @@ const computeThemeCenters = (input: ThemeLayoutInput): Point[] => {
     let totalW = 0;
 
     for (const edge of relationshipEdges) {
-      const srcTheme = sectorToTheme.get(edge.sourceSectorId);
-      const tgtTheme = sectorToTheme.get(edge.targetSectorId);
+      const srcTheme = edge.sourceSectorId;
+      const tgtTheme = edge.targetSectorId;
 
-      if (srcTheme === themes[ti].id && tgtTheme && tgtTheme !== themes[ti].id) {
+      if (srcTheme === themes[ti].id && tgtTheme !== themes[ti].id) {
         const oi = themes.findIndex((t) => t.id === tgtTheme);
         if (oi >= 0) {
           pullX += adjusted[oi].x * edge.weight;
           pullZ += adjusted[oi].z * edge.weight;
           totalW += edge.weight;
         }
-      } else if (tgtTheme === themes[ti].id && srcTheme && srcTheme !== themes[ti].id) {
+      } else if (tgtTheme === themes[ti].id && srcTheme !== themes[ti].id) {
         const oi = themes.findIndex((t) => t.id === srcTheme);
         if (oi >= 0) {
           pullX += adjusted[oi].x * edge.weight;
@@ -124,18 +115,17 @@ const computeThemeCenters = (input: ThemeLayoutInput): Point[] => {
 };
 
 // ---------------------------------------------------------------------------
-// Voronoi computation
+// Voronoi computation with circular clip
 // ---------------------------------------------------------------------------
 
 const computeThemeVoronoi = (
   centers: Point[],
   options: ThemeLayoutOptions
 ): ThemeCell[] => {
-  const halfW = options.mapWidth / 2;
-  const halfH = options.mapHeight / 2;
-
+  const r = options.mapRadius;
+  // d3-delaunay needs rectangular bounds — use inscribed square
   const delaunay = Delaunay.from(centers, (p) => p.x, (p) => p.z);
-  const voronoi = delaunay.voronoi([-halfW, -halfH, halfW, halfH]);
+  const voronoi = delaunay.voronoi([-r, -r, r, r]);
 
   return centers.map((center, i) => {
     const cellPoly = voronoi.cellPolygon(i);
@@ -143,15 +133,18 @@ const computeThemeVoronoi = (
       return { themeId: `theme-${i}`, center, polygon: [] as ThemeCell["polygon"] };
     }
 
-    // Convert d3 polygon → our format, apply border inset
-    const poly: Array<{ x: number; z: number }> = [];
+    // Convert d3 polygon → apply inset → clip to circle
+    const rawPoly: Array<{ x: number; z: number }> = [];
     for (let j = 0; j < cellPoly.length - 1; j++) {
-      const vx = cellPoly[j][0];
-      const vz = cellPoly[j][1];
-      poly.push(insetPoint(vx, vz, center, options.borderGap));
+      rawPoly.push(insetPoint(cellPoly[j][0], cellPoly[j][1], center, options.borderGap));
     }
 
-    return { themeId: `theme-${i}`, center, polygon: poly };
+    const clipped = clipPolygonToCircle(rawPoly, r);
+    if (clipped.length < 3) {
+      return { themeId: `theme-${i}`, center, polygon: [] };
+    }
+
+    return { themeId: `theme-${i}`, center, polygon: clipped };
   });
 };
 
@@ -165,6 +158,6 @@ export function createThemeVoronoiLayout(input: ThemeLayoutInput): ThemeVoronoiL
 
   return {
     cells: Object.freeze(cells),
-    boundary: { width: input.options.mapWidth, height: input.options.mapHeight },
+    boundary: { radius: input.options.mapRadius },
   };
 }

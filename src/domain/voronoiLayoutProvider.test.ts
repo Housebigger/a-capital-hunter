@@ -8,8 +8,7 @@ describe("voronoiLayoutProvider", () => {
   it("returns a VoronoiLayout with correct cell count", () => {
     const layout = provider.getLayout();
     expect(layout.cells.length).toBe(subThemes.length);
-    expect(layout.boundary.width).toBe(30);
-    expect(layout.boundary.height).toBe(22);
+    expect(layout.boundary.radius).toBe(11);
   });
 
   it("is deterministic across calls", () => {

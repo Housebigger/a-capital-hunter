@@ -86,7 +86,7 @@ export interface VoronoiCell {
 
 export interface VoronoiLayout {
   readonly cells: ReadonlyArray<VoronoiCell>;
-  readonly boundary: { readonly width: number; readonly height: number };
+  readonly boundary: { readonly radius: number };
   readonly version: string;
   readonly stageId?: LayoutStageId;
 }

@@ -8,14 +8,14 @@ import type {
   VoronoiLayout,
   SectorId,
 } from "./types";
+import { clipPolygonToCircle } from "./circleClip";
 
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
 
 export interface VoronoiLayoutOptions {
-  readonly mapWidth: number;
-  readonly mapHeight: number;
+  readonly mapRadius: number;
   readonly relaxationIterations: number;
   readonly areaConvergenceThreshold: number;
   readonly provinceBorderGap: number;
@@ -92,12 +92,11 @@ const computeSubThemeCenters = (
   input: VoronoiLayoutInput
 ): { centers: Map<string, Point>; themeAnchors: Map<string, Point> } => {
   const { themes: themeList, subThemes, relationshipEdges, stage, options } = input;
-  const halfW = options.mapWidth / 2;
-  const halfH = options.mapHeight / 2;
+  const mapR = options.mapRadius;
 
   // --- 1a. Theme anchors (radial, tighter radius) ---
   const themeCount = themeList.length;
-  const baseRadius = Math.min(halfW, halfH) * 0.55;
+  const baseRadius = mapR * 0.55;
   const maxInward = baseRadius * 0.35;
 
   const themeAnchors: Map<string, Point> = new Map();
@@ -186,15 +185,14 @@ const computeWeightedVoronoi = (
   options: VoronoiLayoutOptions,
   themeAnchors: Map<string, Point>
 ): VoronoiCell[] => {
-  const halfW = options.mapWidth / 2;
-  const halfH = options.mapHeight / 2;
+  const r = options.mapRadius;
 
   // Build ordered array of points matching subThemes order
   const stArray = [...subThemes];
   let points: Point[] = stArray.map((st) => centersMap.get(st.id)!);
 
   const totalWeight = stArray.reduce((s, st) => s + st.areaWeight, 0);
-  const totalMapArea = options.mapWidth * options.mapHeight;
+  const totalMapArea = Math.PI * r * r;
 
   // Target area for each cell
   const targetAreas = stArray.map((st) => (st.areaWeight / totalWeight) * totalMapArea);
@@ -203,7 +201,7 @@ const computeWeightedVoronoi = (
   // Uses log-proportional step for fast convergence (standard weighted Voronoi technique).
   for (let iter = 0; iter < options.relaxationIterations; iter++) {
     const delaunay = Delaunay.from(points, (p) => p.x, (p) => p.z);
-    const voronoi = delaunay.voronoi([-halfW, -halfH, halfW, halfH]);
+    const voronoi = delaunay.voronoi([-r, -r, r, r]);
 
     let maxError = 0;
     const newPoints: Point[] = [];
@@ -254,7 +252,7 @@ const computeWeightedVoronoi = (
 
   // --- Final Voronoi generation (no insets for area measurement) ---
   const delaunay = Delaunay.from(points, (p) => p.x, (p) => p.z);
-  const voronoi = delaunay.voronoi([-halfW, -halfH, halfW, halfH]);
+  const voronoi = delaunay.voronoi([-r, -r, r, r]);
 
   // Build neighbor map from Delaunay triangulation for province border detection
   const neighborSet = new Set<string>();
@@ -325,10 +323,13 @@ const computeWeightedVoronoi = (
       openPoly.push(insetPoint(vx, vz, cellCenter, maxGap));
     }
 
+    // Clip polygon to circular boundary
+    const clipped = clipPolygonToCircle(openPoly, r);
+
     return {
       subThemeId: st.id,
       center: cellCenter,
-      polygon: openPoly,
+      polygon: clipped.length >= 3 ? clipped : [],
       themeId: st.themeId,
     };
   });
@@ -344,7 +345,7 @@ export function createVoronoiLayout(input: VoronoiLayoutInput): VoronoiLayout {
 
   return {
     cells: Object.freeze(cells),
-    boundary: { width: input.options.mapWidth, height: input.options.mapHeight },
+    boundary: { radius: input.options.mapRadius },
     version: `voronoi-${input.stage.id}`,
     stageId: input.stage.id,
   };

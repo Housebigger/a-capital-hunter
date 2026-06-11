@@ -223,13 +223,12 @@ describe("Voronoi data structures", () => {
   it("VoronoiLayout has required fields", () => {
     const layout: VoronoiLayout = {
       cells: [buildVoronoiCell("a", "t1"), buildVoronoiCell("b", "t2")],
-      boundary: { width: 30, height: 22 },
+      boundary: { radius: 11 },
       version: "voronoi-v1",
       stageId: "stage-1"
     };
     expect(layout.cells.length).toBe(2);
-    expect(layout.boundary.width).toBe(30);
-    expect(layout.boundary.height).toBe(22);
+    expect(layout.boundary.radius).toBe(11);
     expect(layout.version).toBe("voronoi-v1");
   });
 });

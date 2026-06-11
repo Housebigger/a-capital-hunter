@@ -11,8 +11,7 @@ const defaultInput = {
   relationshipEdges,
   stage: layoutStages[0],
   options: {
-    mapWidth: 30,
-    mapHeight: 22,
+    mapRadius: 11,
     relaxationIterations: 20,
     areaConvergenceThreshold: 0.05,
     provinceBorderGap: 0.15,
@@ -62,13 +61,12 @@ describe("voronoiLayoutEngine", () => {
     }
   });
 
-  it("all cells stay within boundary", () => {
-    const hw = result.boundary.width / 2;
-    const hh = result.boundary.height / 2;
+  it("all cells stay within circular boundary", () => {
+    const r = result.boundary.radius;
     for (const cell of result.cells) {
       for (const pt of cell.polygon) {
-        expect(Math.abs(pt.x)).toBeLessThanOrEqual(hw + 0.5);
-        expect(Math.abs(pt.z)).toBeLessThanOrEqual(hh + 0.5);
+        const dist = Math.sqrt(pt.x * pt.x + pt.z * pt.z);
+        expect(dist).toBeLessThanOrEqual(r + 0.5);
       }
     }
   });
