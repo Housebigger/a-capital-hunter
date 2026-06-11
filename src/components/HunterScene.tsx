@@ -14,6 +14,7 @@ import { CapitalMapScene } from "./CapitalMapScene";
 import type { ThemeCell } from "../domain/themeVoronoiLayoutEngine";
 import type { ThemeRenderNode } from "../domain/themeRenderNodes";
 import type { SubThemeRenderNode } from "../domain/subThemeRenderNodes";
+import type { StockRenderNode3 } from "../domain/stockRenderNodes";
 
 export interface HunterSceneProps {
   nodes?: RenderNode[];
@@ -23,6 +24,7 @@ export interface HunterSceneProps {
   themeNodes?: ThemeRenderNode[];
   subThemeCells?: ReadonlyArray<VoronoiCell>;
   subThemeNodes?: SubThemeRenderNode[];
+  stockNodes3?: StockRenderNode3[];
   cameraPreset: CameraPreset;
   selectedSectorId?: SectorId;
   focusSubThemeId?: string;
@@ -35,6 +37,17 @@ export function HunterScene(props: HunterSceneProps) {
 
   // Build scene props based on available data
   const sceneProps = (() => {
+    if (props.subThemeCells && props.stockNodes3) {
+      return {
+        mode: "stock" as const,
+        themeCells: props.themeCells ?? [],
+        voronoiCells: props.subThemeCells,
+        stockNodes: props.stockNodes3,
+        cameraPreset: props.cameraPreset,
+        onSelectSector: props.onSelectSector,
+        orbitControlsRef,
+      };
+    }
     if (props.subThemeCells) {
       return {
         mode: "subtheme" as const,

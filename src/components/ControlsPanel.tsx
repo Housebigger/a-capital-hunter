@@ -16,8 +16,8 @@ interface ControlsPanelProps {
   cameraPreset: CameraPreset;
   showCentersOnly: boolean;
   capitalThreshold?: number;
-  viewMode?: "P1" | "P2";
-  onViewModeChange?: (mode: "P1" | "P2") => void;
+  viewMode?: "P1" | "P2" | "P3";
+  onViewModeChange?: (mode: "P1" | "P2" | "P3") => void;
   onScenarioChange: (scenarioId: string) => void;
   onThemeFilterChange: (themeFilter: ThemeFilter) => void;
   onCapitalStateFilterChange: (filter: CapitalStateFilter) => void;
@@ -77,6 +77,14 @@ export function ControlsPanel(props: ControlsPanelProps) {
               onClick={() => props.onViewModeChange!("P2")}
             >
               P2 子题材
+            </button>
+            <button
+              type="button"
+              className={props.viewMode === "P3" ? "active" : ""}
+              aria-pressed={props.viewMode === "P3"}
+              onClick={() => props.onViewModeChange!("P3")}
+            >
+              P3 个股
             </button>
           </div>
         </section>

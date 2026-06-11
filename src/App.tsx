@@ -10,6 +10,7 @@ import { createThemeLayoutProvider } from "./domain/themeVoronoiLayoutProvider";
 import { buildThemeRenderNodes } from "./domain/themeRenderNodes";
 import { createSubThemeLayoutProvider } from "./domain/voronoiLayoutProvider";
 import { buildSubThemeRenderNodes } from "./domain/subThemeRenderNodes";
+import { buildP3StockRenderNodes } from "./domain/stockRenderNodes";
 import { getScenarioIds, useHunterState } from "./state/useHunterState";
 
 const themeLayoutProvider = createThemeLayoutProvider();
@@ -18,7 +19,7 @@ const dataProvider = createScenarioDataProvider();
 const scenarios = dataProvider.getScenarios();
 const scenarioIds = getScenarioIds(scenarios);
 
-export type ViewMode = "P1" | "P2";
+export type ViewMode = "P1" | "P2" | "P3";
 
 export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>("P1");
@@ -60,6 +61,20 @@ export default function App() {
         capitalStateFilter: hunterState.capitalStateFilter,
       }),
     [subThemeLayout, activeScenario, hunterState.themeFilter, hunterState.capitalStateFilter]
+  );
+
+  // P3: Individual stock level (3-8 stocks per SubTheme)
+  const stockNodes3 = useMemo(
+    () =>
+      viewMode === "P3"
+        ? buildP3StockRenderNodes({
+            voronoiCells: subThemeLayout.cells,
+            scenario: activeScenario,
+            themeFilter: hunterState.themeFilter,
+            capitalStateFilter: hunterState.capitalStateFilter,
+          })
+        : [],
+    [viewMode, subThemeLayout, activeScenario, hunterState.themeFilter, hunterState.capitalStateFilter]
   );
 
   return (
@@ -114,6 +129,7 @@ export default function App() {
               themeCells={themeLayout.cells}
               subThemeCells={subThemeLayout.cells}
               subThemeNodes={subThemeNodes}
+              stockNodes3={viewMode === "P3" ? stockNodes3 : undefined}
               cameraPreset={hunterState.cameraPreset}
               selectedSectorId={hunterState.selectedSectorId}
               onSelectSector={hunterState.setSelectedSectorId}
