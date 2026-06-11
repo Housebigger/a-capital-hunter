@@ -19,7 +19,7 @@ export function createThemeLayoutProvider(): ThemeLayoutProvider {
         relationshipEdges,
         stage,
         options: {
-          mapRadius: 11,
+          mapRadius: 15,
           borderGap: 0.20,
           lloydIterations: 3,
           smoothIterations: 2,

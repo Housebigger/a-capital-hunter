@@ -17,7 +17,7 @@ describe("voronoiLayoutProvider", () => {
     const themeLayout = themeProvider.getLayout(layoutStages[0].id);
     const layout = subThemeProvider.getLayout(layoutStages[0].id, themeLayout.cells);
     expect(layout.cells.length).toBe(subThemes.length);
-    expect(layout.boundary.radius).toBe(11);
+    expect(layout.boundary.radius).toBe(15);
   });
 
   it("is deterministic across calls", () => {

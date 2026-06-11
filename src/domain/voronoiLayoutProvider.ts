@@ -30,7 +30,7 @@ export function createSubThemeLayoutProvider(): VoronoiLayoutProvider {
         themeCells,
         stage,
         options: {
-          mapRadius: 11,
+          mapRadius: 15,
           cityBorderGap: 0.02,
           smoothIterations: 1,
         },
