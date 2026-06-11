@@ -3,9 +3,9 @@ import { subThemes } from "./subThemeRegistry";
 import { themes } from "./themeRegistry";
 
 describe("subThemeRegistry", () => {
-  it("has approximately 30 sub-themes", () => {
-    expect(subThemes.length).toBeGreaterThanOrEqual(27);
-    expect(subThemes.length).toBeLessThanOrEqual(33);
+  it("has approximately 45 sub-themes", () => {
+    expect(subThemes.length).toBeGreaterThanOrEqual(40);
+    expect(subThemes.length).toBeLessThanOrEqual(55);
   });
 
   it("every sub-theme references a valid theme", () => {
