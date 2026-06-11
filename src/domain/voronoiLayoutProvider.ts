@@ -31,8 +31,8 @@ export function createSubThemeLayoutProvider(): VoronoiLayoutProvider {
         stage,
         options: {
           mapRadius: 11,
-          cityBorderGap: 0.12,
-          smoothIterations: 2,
+          cityBorderGap: 0.02,
+          smoothIterations: 1,
         },
       });
     },

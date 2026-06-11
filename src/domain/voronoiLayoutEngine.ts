@@ -116,9 +116,51 @@ const smoothPolygon = (
 // ---------------------------------------------------------------------------
 
 /**
+ * Check if a point is inside a convex polygon using cross-product test.
+ */
+const pointInConvexPoly = (
+  px: number,
+  pz: number,
+  poly: ReadonlyArray<Point2D>
+): boolean => {
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    const cross = (b.x - a.x) * (pz - a.z) - (b.z - a.z) * (px - a.x);
+    if (cross < 0) return false;
+  }
+  return true;
+};
+
+/**
+ * Ensure a point is inside the convex polygon.
+ * If outside, progressively pull toward the polygon centroid until inside.
+ */
+const clampInside = (pt: Point, poly: ReadonlyArray<Point2D>, polyCenter: Point): Point => {
+  if (pointInConvexPoly(pt.x, pt.z, poly)) return pt;
+  // Binary-search toward center
+  let lo = 0;
+  let hi = 1;
+  let best = polyCenter;
+  for (let step = 0; step < 10; step++) {
+    const mid = (lo + hi) / 2;
+    const cx = polyCenter.x + (pt.x - polyCenter.x) * mid;
+    const cz = polyCenter.z + (pt.z - polyCenter.z) * mid;
+    if (pointInConvexPoly(cx, cz, poly)) {
+      best = { x: cx, z: cz };
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return best;
+};
+
+/**
  * Place SubTheme centers within a theme polygon.
- * Arranges points radially around the theme center at ~35% of polygon extent.
- * Higher areaWeight → closer to center (like a "capital city").
+ * All SubThemes placed at equal distance from theme center, evenly spaced
+ * angularly — produces roughly equal-area Voronoi cells within the theme.
+ * Centers are clamped to stay inside the theme polygon.
  */
 const placeSubThemeCenters = (
   themeCell: ThemeCell,
@@ -129,17 +171,17 @@ const placeSubThemeCenters = (
 
   if (count === 1) return [center];
 
+  // Equal spread for all — balanced cell areas
   const spread = avgDistFromCenter(themeCell.polygon, center) * 0.25;
 
-  return themeSubThemes.map((st, i) => {
+  return themeSubThemes.map((_st, i) => {
     const angle = (Math.PI * 2 * i) / count - Math.PI / 2;
-    // Higher areaWeight → closer to center
-    const distFactor = 1 - (st.areaWeight - 0.3) * 0.3;
-    const dist = spread * Math.max(0.3, distFactor);
-    return {
-      x: center.x + Math.cos(angle) * dist,
-      z: center.z + Math.sin(angle) * dist,
+    const raw: Point = {
+      x: center.x + Math.cos(angle) * spread,
+      z: center.z + Math.sin(angle) * spread,
     };
+    // Clamp to stay inside theme polygon
+    return clampInside(raw, themeCell.polygon as ReadonlyArray<Point2D>, center);
   });
 };
 
@@ -224,9 +266,10 @@ const computePerThemeVoronoi = (
       };
     }
 
-    // Apply city border gap inset
+    // Apply city border gap inset (use cell centroid, not generating point)
+    const cellCentroid = clipped.length >= 3 ? centroid(clipped) : centers[i];
     const insetPoly = clipped.map((p) =>
-      insetPoint(p.x, p.z, centers[i], options.cityBorderGap)
+      insetPoint(p.x, p.z, cellCentroid, options.cityBorderGap)
     );
 
     // Smooth the polygon for rounder shapes
