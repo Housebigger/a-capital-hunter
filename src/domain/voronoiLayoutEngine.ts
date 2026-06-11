@@ -1,11 +1,13 @@
 import { Delaunay } from "d3-delaunay";
 import type {
+  SectorId,
   SubTheme,
   LayoutStage,
   VoronoiCell,
   VoronoiLayout,
 } from "./types";
 import type { ThemeCell } from "./themeVoronoiLayoutEngine";
+import { sectors } from "./themeRegistry";
 import { clipPolygonToConvexPolygon, type Point2D } from "./polygonClip";
 
 // ---------------------------------------------------------------------------
@@ -112,6 +114,42 @@ const smoothPolygon = (
 };
 
 // ---------------------------------------------------------------------------
+// SubTheme heat computation
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute average heat per SubTheme from stage sector heat data.
+ * Uses the arithmetic mean of all member sectors' heat values.
+ */
+const computeSubThemeHeatMap = (
+  stage: LayoutStage
+): ReadonlyMap<string, number> => {
+  // Build sector → subThemeId lookup
+  const sectorSubThemeMap = new Map<SectorId, string>();
+  for (const sector of sectors) {
+    sectorSubThemeMap.set(sector.id, sector.subThemeId);
+  }
+
+  // Accumulate heat per SubTheme
+  const heatSum = new Map<string, number>();
+  const heatCount = new Map<string, number>();
+  for (const sector of sectors) {
+    const stId = sectorSubThemeMap.get(sector.id);
+    if (!stId) continue;
+    const h = stage.sectorHeat[sector.id] ?? 0.2;
+    heatSum.set(stId, (heatSum.get(stId) ?? 0) + h);
+    heatCount.set(stId, (heatCount.get(stId) ?? 0) + 1);
+  }
+
+  const result = new Map<string, number>();
+  for (const [stId, sum] of heatSum) {
+    const count = heatCount.get(stId) ?? 1;
+    result.set(stId, sum / count);
+  }
+  return result;
+};
+
+// ---------------------------------------------------------------------------
 // Per-theme center placement
 // ---------------------------------------------------------------------------
 
@@ -157,28 +195,51 @@ const clampInside = (pt: Point, poly: ReadonlyArray<Point2D>, polyCenter: Point)
 };
 
 /**
- * Place SubTheme centers within a theme polygon.
- * All SubThemes placed at equal distance from theme center, evenly spaced
- * angularly — produces roughly equal-area Voronoi cells within the theme.
- * Centers are clamped to stay inside the theme polygon.
+ * Place SubTheme centers within a theme polygon using heat-weighted radial layout.
+ * Hotter SubThemes are placed closer to the theme center, giving them larger
+ * Voronoi cells (more area for future P3 stock view). Colder SubThemes are
+ * pushed outward, receiving smaller cells.
+ *
+ * Heat is normalized per-theme so the hottest SubTheme in each theme gets the
+ * largest area. A ratio of 0.5 means hottest SubTheme at 50% of max spread,
+ * coldest at 100% — giving ~2:1 area ratio between hottest and coldest.
  */
 const placeSubThemeCenters = (
   themeCell: ThemeCell,
-  themeSubThemes: readonly SubTheme[]
+  themeSubThemes: readonly SubTheme[],
+  heatMap: ReadonlyMap<string, number>
 ): Point[] => {
   const { center } = themeCell;
   const count = themeSubThemes.length;
 
   if (count === 1) return [center];
 
-  // Equal spread for all — balanced cell areas
-  const spread = avgDistFromCenter(themeCell.polygon, center) * 0.25;
+  // Max spread from theme center
+  const maxSpread = avgDistFromCenter(themeCell.polygon, center) * 0.25;
 
-  return themeSubThemes.map((_st, i) => {
+  // Normalize heat within this theme's SubThemes (0 = coldest, 1 = hottest)
+  const heats = themeSubThemes.map(
+    (st) => heatMap.get(st.id) ?? 0.2
+  );
+  const minHeat = Math.min(...heats);
+  const maxHeat = Math.max(...heats);
+  const heatRange = maxHeat - minHeat;
+
+  return themeSubThemes.map((st, i) => {
     const angle = (Math.PI * 2 * i) / count - Math.PI / 2;
+
+    // Normalize heat to [0, 1] within this theme
+    const normalizedHeat = heatRange > 0.001
+      ? (heats[i] - minHeat) / heatRange
+      : 0.5; // all equal → use midpoint
+
+    // Hot → small radius (close to center) = larger Voronoi cell
+    // Cold → large radius (far from center) = smaller Voronoi cell
+    const radius = maxSpread * (1.0 - normalizedHeat * 0.5);
+
     const raw: Point = {
-      x: center.x + Math.cos(angle) * spread,
-      z: center.z + Math.sin(angle) * spread,
+      x: center.x + Math.cos(angle) * radius,
+      z: center.z + Math.sin(angle) * radius,
     };
     // Clamp to stay inside theme polygon
     return clampInside(raw, themeCell.polygon as ReadonlyArray<Point2D>, center);
@@ -196,7 +257,8 @@ const placeSubThemeCenters = (
 const computePerThemeVoronoi = (
   themeCell: ThemeCell,
   themeSubThemes: readonly SubTheme[],
-  options: VoronoiLayoutOptions
+  options: VoronoiLayoutOptions,
+  heatMap: ReadonlyMap<string, number>
 ): VoronoiCell[] => {
   if (themeSubThemes.length === 0) return [];
 
@@ -225,7 +287,7 @@ const computePerThemeVoronoi = (
   }
 
   // Multiple SubThemes: mini Voronoi within theme polygon
-  const centers = placeSubThemeCenters(themeCell, themeSubThemes);
+  const centers = placeSubThemeCenters(themeCell, themeSubThemes, heatMap);
   const bbox = polygonBounds(themePoly);
 
   // Small padding to bounding box so Voronoi edges extend past polygon
@@ -304,6 +366,9 @@ const computePerThemeVoronoi = (
 export function createVoronoiLayout(input: VoronoiLayoutInput): VoronoiLayout {
   const { subThemes, themeCells, stage, options } = input;
 
+  // Compute per-SubTheme heat from stage sector heat data
+  const heatMap = computeSubThemeHeatMap(stage);
+
   const cells: VoronoiCell[] = [];
 
   for (const themeCell of themeCells) {
@@ -313,7 +378,8 @@ export function createVoronoiLayout(input: VoronoiLayoutInput): VoronoiLayout {
     const themeVoronoiCells = computePerThemeVoronoi(
       themeCell,
       themeSubThemes,
-      options
+      options,
+      heatMap
     );
     cells.push(...themeVoronoiCells);
   }
