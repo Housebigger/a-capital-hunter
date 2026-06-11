@@ -5,11 +5,11 @@ const freezeStock = (stock: Stock): Readonly<Stock> => Object.freeze(stock);
 const stockConfig = [
   // ── AI算力 ───────────────────────────────────────────────────────────
   // ai-computing-infra (areaWeight 0.90) — 8 stocks
-  { id: "aci-zjxc", name: "中际旭创", shortName: "中际旭创", subThemeId: "ai-computing-infra", code: "300308" },
-  { id: "aci-xys", name: "新易盛", shortName: "新易盛", subThemeId: "ai-computing-infra", code: "300502" },
-  { id: "aci-tftx", name: "天孚通信", shortName: "天孚通信", subThemeId: "ai-computing-infra", code: "300394" },
-  { id: "aci-hgkj", name: "华工科技", shortName: "华工科技", subThemeId: "ai-computing-infra", code: "000988" },
-  { id: "aci-gxkj", name: "光迅科技", shortName: "光迅科技", subThemeId: "ai-computing-infra", code: "002281" },
+  { id: "aci-zjxc", name: "中际旭创", shortName: "中际旭创", subThemeId: "optical-interconnect", code: "300308" },
+  { id: "aci-xys", name: "新易盛", shortName: "新易盛", subThemeId: "optical-interconnect", code: "300502" },
+  { id: "aci-tftx", name: "天孚通信", shortName: "天孚通信", subThemeId: "optical-interconnect", code: "300394" },
+  { id: "aci-hgkj", name: "华工科技", shortName: "华工科技", subThemeId: "optical-interconnect", code: "000988" },
+  { id: "aci-gxkj", name: "光迅科技", shortName: "光迅科技", subThemeId: "optical-interconnect", code: "002281" },
   { id: "aci-rjwl", name: "锐捷网络", shortName: "锐捷网络", subThemeId: "ai-computing-infra", code: "301165" },
   { id: "aci-lcxx", name: "浪潮信息", shortName: "浪潮信息", subThemeId: "ai-computing-infra", code: "000977" },
   { id: "aci-zgfr", name: "紫光股份", shortName: "紫光股份", subThemeId: "ai-computing-infra", code: "000938" },
@@ -35,8 +35,8 @@ const stockConfig = [
   { id: "cc-ldxb", name: "绿的谐波", shortName: "绿的谐波", subThemeId: "core-components", code: "688017" },
   { id: "cc-lfxb", name: "来福谐波", shortName: "来福谐波", subThemeId: "core-components", code: "688169" },
   { id: "cc-hcjs", name: "汇川技术", shortName: "汇川技术", subThemeId: "core-components", code: "300124" },
-  { id: "cc-hckj", name: "禾川科技", shortName: "禾川科技", subThemeId: "core-components", code: "688320" },
-  { id: "cc-mzdq", name: "鸣志电器", shortName: "鸣志电器", subThemeId: "core-components", code: "603085" },
+  { id: "cc-hckj", name: "禾川科技", shortName: "禾川科技", subThemeId: "motion-control", code: "688320" },
+  { id: "cc-mzdq", name: "鸣志电器", shortName: "鸣志电器", subThemeId: "motion-control", code: "603085" },
   { id: "cc-dzkj", name: "鼎智科技", shortName: "鼎智科技", subThemeId: "core-components", code: "873593" },
 
   // perception-layer (areaWeight 0.60) — 5 stocks
@@ -56,10 +56,10 @@ const stockConfig = [
   // ── 低空经济 ───────────────────────────────────────────────────────────
   // aircraft-control (areaWeight 0.70) — 5 stocks
   { id: "ac-yhzl", name: "亿航智能", shortName: "亿航智能", subThemeId: "aircraft-control", code: "900001" },
-  { id: "ac-zhgf", name: "纵横股份", shortName: "纵横股份", subThemeId: "aircraft-control", code: "688070" },
+  { id: "ac-zhgf", name: "纵横股份", shortName: "纵横股份", subThemeId: "drone-systems", code: "688070" },
   { id: "ac-zxhz", name: "中信海直", shortName: "中信海直", subThemeId: "aircraft-control", code: "000099" },
   { id: "ac-wfaw", name: "万丰奥威", shortName: "万丰奥威", subThemeId: "aircraft-control", code: "002085" },
-  { id: "ac-jxgf", name: "建新股份", shortName: "建新股份", subThemeId: "aircraft-control", code: "300107" },
+  { id: "ac-jxgf", name: "建新股份", shortName: "建新股份", subThemeId: "drone-systems", code: "300107" },
 
   // operations-infra (areaWeight 0.45) — 3 stocks
   { id: "oi-whgt", name: "威海广泰", shortName: "威海广泰", subThemeId: "operations-infra", code: "002111" },
@@ -101,10 +101,10 @@ const stockConfig = [
   // storage-battery (areaWeight 0.75) — 6 stocks
   { id: "sb-ndsd", name: "宁德时代", shortName: "宁德时代", subThemeId: "storage-battery", code: "300750" },
   { id: "sb-byd", name: "比亚迪", shortName: "比亚迪", subThemeId: "storage-battery", code: "002594" },
-  { id: "sb-ywln", name: "亿纬锂能", shortName: "亿纬锂能", subThemeId: "storage-battery", code: "300014" },
+  { id: "sb-ywln", name: "亿纬锂能", shortName: "亿纬锂能", subThemeId: "battery-tech", code: "300014" },
   { id: "sb-ygdy", name: "阳光电源", shortName: "阳光电源", subThemeId: "storage-battery", code: "300274" },
-  { id: "sb-pnkj", name: "派能科技", shortName: "派能科技", subThemeId: "storage-battery", code: "688063" },
-  { id: "sb-gxgk", name: "国轩高科", shortName: "国轩高科", subThemeId: "storage-battery", code: "002074" },
+  { id: "sb-pnkj", name: "派能科技", shortName: "派能科技", subThemeId: "battery-tech", code: "688063" },
+  { id: "sb-gxgk", name: "国轩高科", shortName: "国轩高科", subThemeId: "battery-tech", code: "002074" },
 
   // charging-infra (areaWeight 0.40) — 3 stocks
   { id: "ci-trd", name: "特锐德", shortName: "特锐德", subThemeId: "charging-infra", code: "300001" },
@@ -193,8 +193,8 @@ const stockConfig = [
   { id: "de-yhl", name: "易华录", shortName: "易华录", subThemeId: "data-elements-st", code: "300212" },
   { id: "de-rmw", name: "人民网", shortName: "人民网", subThemeId: "data-elements-st", code: "603000" },
   { id: "de-zswh", name: "浙数文化", shortName: "浙数文化", subThemeId: "data-elements-st", code: "600633" },
-  { id: "de-ahxx", name: "安恒信息", shortName: "安恒信息", subThemeId: "data-elements-st", code: "688023" },
-  { id: "de-qax", name: "奇安信", shortName: "奇安信", subThemeId: "data-elements-st", code: "688561" },
+  { id: "de-ahxx", name: "安恒信息", shortName: "安恒信息", subThemeId: "security-software", code: "688023" },
+  { id: "de-qax", name: "奇安信", shortName: "奇安信", subThemeId: "security-software", code: "688561" },
   { id: "de-tls2", name: "拓尔思", shortName: "拓尔思", subThemeId: "data-elements-st", code: "300229" },
 
   // cloud-software (areaWeight 0.60) — 5 stocks
@@ -222,7 +222,68 @@ const stockConfig = [
   { id: "fa-dfcf", name: "东方财富", shortName: "东方财富", subThemeId: "fin-applications", code: "300059" },
   { id: "fa-lkl", name: "拉卡拉", shortName: "拉卡拉", subThemeId: "fin-applications", code: "300773" },
   { id: "fa-hljh", name: "海联金汇", shortName: "海联金汇", subThemeId: "fin-applications", code: "002537" },
-  { id: "fa-szxx", name: "神州信息", shortName: "神州信息", subThemeId: "fin-applications", code: "000555" }
+  { id: "fa-szxx", name: "神州信息", shortName: "神州信息", subThemeId: "fin-applications", code: "000555" },
+
+  // ── 新增 SubTheme 股票 ──────────────────────────────────────────────────
+  // liquid-cooling-infra — 3 stocks
+  { id: "lci-yskj", name: "英维克", shortName: "英维克", subThemeId: "liquid-cooling-infra", code: "002837" },
+  { id: "lci-schk", name: "申菱环境", shortName: "申菱环境", subThemeId: "liquid-cooling-infra", code: "301018" },
+  { id: "lci-glcm", name: "高澜股份", shortName: "高澜股份", subThemeId: "liquid-cooling-infra", code: "300499" },
+
+  // motion-control — 1 stock (2 reassigned above = 3 total)
+  { id: "mc-xhdl", name: "信捷电气", shortName: "信捷电气", subThemeId: "motion-control", code: "603416" },
+
+  // drone-systems — 1 stock (2 reassigned above = 3 total)
+  { id: "ds-djwr", name: "大疆无人机", shortName: "大疆", subThemeId: "drone-systems", code: "988900" },
+
+  // low-alt-comm — 3 stocks
+  { id: "lac-scdz2", name: "四创电子B", shortName: "四创电子", subThemeId: "low-alt-comm", code: "600991" },
+  { id: "lac-zgdm", name: "中航电子", shortName: "中航电子", subThemeId: "low-alt-comm", code: "600372" },
+  { id: "lac-gxth", name: "国睿科技", shortName: "国睿科技", subThemeId: "low-alt-comm", code: "600562" },
+
+  // materials-process — 3 stocks
+  { id: "mp-xfhx", name: "兴福电子", shortName: "兴福电子", subThemeId: "materials-process", code: "688545" },
+  { id: "mp-sngf", name: "上海新阳", shortName: "上海新阳", subThemeId: "materials-process", code: "300236" },
+  { id: "mp-tkgf", name: "彤程新材", shortName: "彤程新材", subThemeId: "materials-process", code: "603650" },
+
+  // chip-arch — 3 stocks
+  { id: "ca-rjsd", name: "瑞芯微", shortName: "瑞芯微", subThemeId: "chip-arch", code: "603893" },
+  { id: "ca-qhkf", name: "全志科技", shortName: "全志科技", subThemeId: "chip-arch", code: "300458" },
+  { id: "ca-jwkk", name: "景嘉微", shortName: "景嘉微", subThemeId: "chip-arch", code: "300474" },
+
+  // defense-informatics-st — 3 stocks
+  { id: "di-hldz", name: "海兰信", shortName: "海兰信", subThemeId: "defense-informatics-st", code: "300065" },
+  { id: "di-chkj", name: "晨曦航空", shortName: "晨曦航空", subThemeId: "defense-informatics-st", code: "300581" },
+  { id: "di-ajkj", name: "安络科技", shortName: "安络科技", subThemeId: "defense-informatics-st", code: "300682" },
+
+  // electric-drive — 3 stocks
+  { id: "ed-jhgf", name: "精进电动", shortName: "精进电动", subThemeId: "electric-drive", code: "688280" },
+  { id: "ed-fdkj", name: "方正电机", shortName: "方正电机", subThemeId: "electric-drive", code: "002196" },
+  { id: "ed-dstg", name: "大洋电机", shortName: "大洋电机", subThemeId: "electric-drive", code: "002249" },
+
+  // smart-cockpit-st — 3 stocks
+  { id: "sc-dsxw3", name: "德赛西威座舱", shortName: "德赛西威", subThemeId: "smart-cockpit-st", code: "002921" },
+  { id: "sc-zcsd2", name: "中科创达座舱", shortName: "中科创达", subThemeId: "smart-cockpit-st", code: "300497" },
+  { id: "sc-lxjm2", name: "立讯精密车端", shortName: "立讯精密", subThemeId: "smart-cockpit-st", code: "002476" },
+
+  // vr-ar — 3 stocks
+  { id: "vr-pckj", name: "PICO", shortName: "PICO", subThemeId: "vr-ar", code: "988810" },
+  { id: "vr-sjgt2", name: "水晶光电VR", shortName: "水晶光电", subThemeId: "vr-ar", code: "002274" },
+  { id: "vr-gfgf", name: "歌尔VR", shortName: "歌尔VR", subThemeId: "vr-ar", code: "002242" },
+
+  // optical-acoustic — 3 stocks
+  { id: "oa-gldz", name: "歌尔声学", shortName: "歌尔声学", subThemeId: "optical-acoustic", code: "002243" },
+  { id: "oa-sngd", name: "三安光电光学", shortName: "三安光电", subThemeId: "optical-acoustic", code: "600704" },
+  { id: "oa-lxdz", name: "蓝特光学", shortName: "蓝特光学", subThemeId: "optical-acoustic", code: "688127" },
+
+  // security-software — 2 stocks (2 reassigned above = 4 total)
+  { id: "ss-snda", name: "深信服", shortName: "深信服", subThemeId: "security-software", code: "300454" },
+  { id: "ss-gldz2", name: "绿盟科技", shortName: "绿盟科技", subThemeId: "security-software", code: "300369" },
+
+  // digital-finance — 3 stocks
+  { id: "df-csjr", name: "长亮科技", shortName: "长亮科技", subThemeId: "digital-finance", code: "300348" },
+  { id: "df-rxkj", name: "润和软件", shortName: "润和软件", subThemeId: "digital-finance", code: "300339" },
+  { id: "df-gxdz", name: "广电运通", shortName: "广电运通", subThemeId: "digital-finance", code: "002152" }
 ] satisfies readonly Stock[];
 
 export const stocks: readonly Readonly<Stock>[] = Object.freeze(stockConfig.map(freezeStock));
