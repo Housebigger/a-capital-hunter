@@ -17,6 +17,7 @@ import type {
 import type { ThemeCell } from "../domain/themeVoronoiLayoutEngine";
 import type { ThemeRenderNode } from "../domain/themeRenderNodes";
 import type { SubThemeRenderNode } from "../domain/subThemeRenderNodes";
+import type { StockRenderNode3 } from "../domain/stockRenderNodes";
 
 /* ================================================================== */
 /*  Constants                                                          */
@@ -34,6 +35,8 @@ export const THEME_COLUMN_SEGMENTS = 12;
 const THEME_COLUMN_RADIUS = 0.5;
 const SUBTHEME_COLUMN_RADIUS = 0.25;
 const SUBTHEME_COLUMN_SEGMENTS = 10;
+const P3_STOCK_COLUMN_RADIUS = 0.10;
+const P3_STOCK_COLUMN_SEGMENTS = 8;
 
 /* ================================================================== */
 /*  Camera & types                                                     */
@@ -689,6 +692,19 @@ export interface SubThemeCapitalMapSceneProps {
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
 }
 
+/* ================================================================== */
+/*  P3 Stock-level scene props                                         */
+/* ================================================================== */
+
+export interface P3CapitalMapSceneProps {
+  themeCells: ReadonlyArray<ThemeCell>;
+  voronoiCells: ReadonlyArray<VoronoiCell>;
+  stockNodes: StockRenderNode3[];
+  cameraPreset: CameraPreset;
+  onSelectSector: (sectorId: SectorId) => void;
+  orbitControlsRef?: RefObject<SceneOrbitControls | null>;
+}
+
 /** Golden SubTheme boundary lines with 5-second breathing/pulsing opacity. */
 function SubThemeBoundaryLines({
   voronoiCells,
@@ -796,6 +812,7 @@ function SubThemeCylinderColumn({
 
   const baseY = isInflow ? THEME_PLATE_THICKNESS : isOutflow ? 0 : THEME_PLATE_THICKNESS / 2;
   const positionY = isInflow ? baseY + rawHeight / 2 : isOutflow ? baseY - rawHeight / 2 : baseY;
+  const columnOpacity = isOutflow ? 0.9 : 0.7;
 
   return (
     <mesh
@@ -805,10 +822,36 @@ function SubThemeCylinderColumn({
       <cylinderGeometry args={[SUBTHEME_COLUMN_RADIUS, SUBTHEME_COLUMN_RADIUS, rawHeight, SUBTHEME_COLUMN_SEGMENTS]} />
       <meshStandardMaterial
         color={metric.color}
-        opacity={0.9}
+        opacity={columnOpacity}
         transparent
         emissive={metric.color}
         emissiveIntensity={0.08}
+        roughness={0.4}
+      />
+    </mesh>
+  );
+}
+
+/** Cylindrical column for individual stock (P3), smaller than SubTheme column. */
+function P3StockColumn({ node }: { node: StockRenderNode3 }) {
+  const { metric, position } = node;
+  const rawHeight = Math.max(Math.abs(metric.height), MIN_COLUMN_HEIGHT);
+  const isInflow = metric.direction === "inflow";
+  const isOutflow = metric.direction === "outflow";
+
+  const baseY = isInflow ? THEME_PLATE_THICKNESS : isOutflow ? 0 : THEME_PLATE_THICKNESS / 2;
+  const positionY = isInflow ? baseY + rawHeight / 2 : isOutflow ? baseY - rawHeight / 2 : baseY;
+  const columnOpacity = isOutflow ? 0.9 : 0.75;
+
+  return (
+    <mesh position={[position.x, positionY, position.z]} castShadow>
+      <cylinderGeometry args={[P3_STOCK_COLUMN_RADIUS, P3_STOCK_COLUMN_RADIUS, rawHeight, P3_STOCK_COLUMN_SEGMENTS]} />
+      <meshStandardMaterial
+        color={metric.color}
+        opacity={columnOpacity}
+        transparent
+        emissive={metric.color}
+        emissiveIntensity={0.06}
         roughness={0.4}
       />
     </mesh>
@@ -884,6 +927,118 @@ function SubThemeCapitalMapScene(props: SubThemeCapitalMapSceneProps) {
 }
 
 /* ================================================================== */
+/*  P3 Stock-level scene (individual stock cylinders within SubTheme   */
+/*  Voronoi cells)                                                     */
+/* ================================================================== */
+
+function P3CapitalMapScene(props: P3CapitalMapSceneProps) {
+  const { camera } = useThree();
+  const { themeCells, voronoiCells, stockNodes } = props;
+
+  useEffect(() => {
+    applyCameraPreset(camera, props.cameraPreset, props.orbitControlsRef?.current);
+  }, [camera, props.cameraPreset, props.orbitControlsRef]);
+
+  // Build SubTheme name lookup for labels
+  const subThemeNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const st of subThemeList) {
+      map.set(st.id, st.shortName);
+    }
+    return map;
+  }, []);
+
+  return (
+    <group>
+      {/* Layer 1: Theme base plates */}
+      {themeCells.map((cell, i) => {
+        const theme = themeList[i];
+        if (!theme) return null;
+        return (
+          <ThemePlate key={`p3-plate-${theme.id}`} cell={cell} themeColor={theme.color} />
+        );
+      })}
+
+      {/* Layer 2: Theme border outlines */}
+      {themeCells.map((cell, i) => {
+        const poly = cell.polygon;
+        if (poly.length < 3) return null;
+        const y = THEME_PLATE_THICKNESS + 0.01;
+        const positions: number[] = [];
+        for (let j = 0; j < poly.length; j++) {
+          const a = poly[j];
+          const b = poly[(j + 1) % poly.length];
+          positions.push(a.x, y, a.z, b.x, y, b.z);
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        return (
+          <lineSegments key={`p3-outline-${i}`} geometry={geo}>
+            <lineBasicMaterial color={themeList[i].color} transparent opacity={0.6} />
+          </lineSegments>
+        );
+      })}
+
+      {/* Layer 3: SubTheme boundary lines (golden) */}
+      <SubThemeBoundaryLines voronoiCells={voronoiCells} themeCells={themeCells} />
+
+      {/* Layer 4: Individual stock columns */}
+      {stockNodes.filter(n => n.visible).map((node) => (
+        <P3StockColumn key={`p3-col-${node.stock.id}`} node={node} />
+      ))}
+
+      {/* Layer 5: Stock labels (show shortName for top stocks per SubTheme) */}
+      {(() => {
+        // Group by SubTheme, show label for top 3 by absolute metric height
+        const bySubTheme = new Map<string, StockRenderNode3[]>();
+        for (const n of stockNodes.filter(n => n.visible)) {
+          const arr = bySubTheme.get(n.subTheme.id) ?? [];
+          arr.push(n);
+          bySubTheme.set(n.subTheme.id, arr);
+        }
+        const labeled: StockRenderNode3[] = [];
+        for (const [, nodes] of bySubTheme) {
+          nodes.sort((a, b) => Math.abs(b.metric.height) - Math.abs(a.metric.height));
+          labeled.push(...nodes.slice(0, 3));
+        }
+        return labeled.map((node) => (
+          <Text
+            key={`p3-label-${node.stock.id}`}
+            position={[node.position.x, THEME_PLATE_THICKNESS + Math.abs(node.metric.height) + 0.08, node.position.z]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={0.09}
+            color="#e8eef5"
+            anchorX="center"
+            anchorY="middle"
+            maxWidth={0.7}
+          >
+            {node.stock.shortName}
+          </Text>
+        ));
+      })()}
+
+      {/* Layer 6: SubTheme name labels at cell centers */}
+      {voronoiCells.map((cell) => (
+        <Text
+          key={`p3-sublabel-${cell.subThemeId}`}
+          position={[cell.center.x, THEME_PLATE_THICKNESS + 0.02, cell.center.z]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          fontSize={0.13}
+          color="#b0bec5"
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={1.2}
+          outlineWidth={0.01}
+          outlineColor="#000000"
+        >
+          {subThemeNameMap.get(cell.subThemeId) ?? cell.subThemeId}
+        </Text>
+      ))}
+    </group>
+  );
+}
+
+/* ================================================================== */
 /*  Theme-level scene (P1: 11 big plates + 11 thick columns)           */
 /* ================================================================== */
 
@@ -926,7 +1081,7 @@ function ThemePlate({
       <extrudeGeometry args={[shape, { depth: THEME_PLATE_THICKNESS, bevelEnabled: false }]} />
       <meshStandardMaterial
         color={themeColor}
-        opacity={0.75}
+        opacity={0.5}
         transparent
         roughness={0.7}
       />
@@ -991,6 +1146,7 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
         const isOutflow = node.metric.direction === "outflow";
         const baseY = isInflow ? THEME_PLATE_THICKNESS : isOutflow ? 0 : THEME_PLATE_THICKNESS / 2;
         const positionY = isInflow ? baseY + height / 2 : isOutflow ? baseY - height / 2 : baseY;
+        const columnOpacity = isOutflow ? 0.9 : 0.7;
 
         return (
           <group key={`col-${node.theme.id}`}>
@@ -1003,7 +1159,7 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
               />
               <meshStandardMaterial
                 color={node.metric.color}
-                opacity={0.7}
+                opacity={columnOpacity}
                 transparent
                 emissive={node.metric.color}
                 emissiveIntensity={0.08}
@@ -1039,9 +1195,23 @@ export type CapitalMapSceneProps =
   | ({ mode?: "legacy" } & LegacyCapitalMapSceneProps)
   | ({ mode: "voronoi" } & VoronoiCapitalMapSceneProps)
   | ({ mode: "theme" } & ThemeCapitalMapSceneProps)
-  | ({ mode: "subtheme" } & SubThemeCapitalMapSceneProps);
+  | ({ mode: "subtheme" } & SubThemeCapitalMapSceneProps)
+  | ({ mode: "stock" } & P3CapitalMapSceneProps);
 
 export function CapitalMapScene(props: CapitalMapSceneProps) {
+  if (props.mode === "stock") {
+    return (
+      <P3CapitalMapScene
+        themeCells={(props as P3CapitalMapSceneProps).themeCells}
+        voronoiCells={(props as P3CapitalMapSceneProps).voronoiCells}
+        stockNodes={(props as P3CapitalMapSceneProps).stockNodes}
+        cameraPreset={props.cameraPreset}
+        onSelectSector={props.onSelectSector}
+        orbitControlsRef={props.orbitControlsRef}
+      />
+    );
+  }
+
   if (props.mode === "subtheme") {
     return (
       <SubThemeCapitalMapScene
