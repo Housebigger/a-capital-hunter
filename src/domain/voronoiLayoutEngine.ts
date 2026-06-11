@@ -209,44 +209,71 @@ const clampInside = (pt: Point, poly: ReadonlyArray<Point2D>, polyCenter: Point)
 };
 
 /**
- * Place SubTheme centers within a theme polygon using heat-weighted radial layout.
- * Uses absolute heat (cross-theme) so hot SubThemes like AI应用, 光互连, 芯片架构
- * get much larger cells than cold SubThemes on the map periphery.
- *
- * Radius formula: maxSpread * (1.0 - heat * 0.65)
- *   heat=1.0 → radius=0.35×max (close to center → large cell)
- *   heat=0.28 → radius=0.82×max (far from center → small cell)
+ * Place SubTheme centers at equal angular intervals around the theme center.
+ * All centers at the same radial distance for balanced initial placement.
+ * Lloyd relaxation will then equalize cell areas.
  */
 const placeSubThemeCenters = (
   themeCell: ThemeCell,
-  themeSubThemes: readonly SubTheme[],
-  heatMap: ReadonlyMap<string, number>
+  themeSubThemes: readonly SubTheme[]
 ): Point[] => {
   const { center } = themeCell;
   const count = themeSubThemes.length;
 
   if (count === 1) return [center];
 
-  // Max spread from theme center
-  const maxSpread = avgDistFromCenter(themeCell.polygon, center) * 0.25;
+  const spread = avgDistFromCenter(themeCell.polygon, center) * 0.25;
 
-  return themeSubThemes.map((st, i) => {
+  return themeSubThemes.map((_st, i) => {
     const angle = (Math.PI * 2 * i) / count - Math.PI / 2;
-
-    // Absolute heat from stage (0–1 scale, cross-theme)
-    const heat = heatMap.get(st.id) ?? 0.2;
-
-    // Hot → small radius (close to center) = larger Voronoi cell
-    // Cold → large radius (far from center) = smaller Voronoi cell
-    const radius = maxSpread * (1.0 - heat * 0.65);
-
     const raw: Point = {
-      x: center.x + Math.cos(angle) * radius,
-      z: center.z + Math.sin(angle) * radius,
+      x: center.x + Math.cos(angle) * spread,
+      z: center.z + Math.sin(angle) * spread,
     };
-    // Clamp to stay inside theme polygon
     return clampInside(raw, themeCell.polygon as ReadonlyArray<Point2D>, center);
   });
+};
+
+/**
+ * Lloyd relaxation: iteratively move each generating point to its Voronoi
+ * cell centroid. Converges toward equal-area cells within the theme polygon.
+ */
+const runLloydRelaxation = (
+  initialCenters: Point[],
+  themeCell: ThemeCell,
+  iterations: number
+): Point[] => {
+  const themePoly = themeCell.polygon as ReadonlyArray<Point2D>;
+  const bbox = polygonBounds(themePoly);
+  const pad = 0.5;
+  let centers = [...initialCenters];
+
+  for (let iter = 0; iter < iterations; iter++) {
+    const delaunay = Delaunay.from(centers, (p) => p.x, (p) => p.z);
+    const voronoi = delaunay.voronoi([
+      bbox.minX - pad, bbox.minZ - pad,
+      bbox.maxX + pad, bbox.maxZ + pad,
+    ]);
+
+    centers = centers.map((_c, i) => {
+      const cellPoly = voronoi.cellPolygon(i);
+      if (!cellPoly || cellPoly.length < 4) return centers[i];
+
+      // Convert and clip
+      const rawPoly: Point2D[] = [];
+      for (let j = 0; j < cellPoly.length - 1; j++) {
+        rawPoly.push({ x: cellPoly[j][0], z: cellPoly[j][1] });
+      }
+      const clipped = clipPolygonToConvexPolygon(rawPoly, themePoly);
+      if (clipped.length < 3) return centers[i];
+
+      // Move to cell centroid
+      const newCenter = centroid(clipped);
+      return clampInside(newCenter, themePoly, themeCell.center);
+    });
+  }
+
+  return centers;
 };
 
 // ---------------------------------------------------------------------------
@@ -378,13 +405,12 @@ const enforceAreaFloor = (
 
 /**
  * Compute Voronoi cells for a single theme's SubThemes, strictly contained
- * within the theme's polygon boundary. Enforces minimum area threshold.
+ * within the theme's polygon boundary. Uses Lloyd relaxation for equal areas.
  */
 const computePerThemeVoronoi = (
   themeCell: ThemeCell,
   themeSubThemes: readonly SubTheme[],
-  options: VoronoiLayoutOptions,
-  heatMap: ReadonlyMap<string, number>
+  options: VoronoiLayoutOptions
 ): VoronoiCell[] => {
   if (themeSubThemes.length === 0) return [];
 
@@ -411,12 +437,13 @@ const computePerThemeVoronoi = (
     ];
   }
 
-  // Multiple SubThemes: mini Voronoi within theme polygon
-  const centers = placeSubThemeCenters(themeCell, themeSubThemes, heatMap);
-  let cells = buildFinalCells(centers, themeCell, themeSubThemes, options);
+  // Multiple SubThemes: equal placement → Lloyd relaxation → final cells
+  const initialCenters = placeSubThemeCenters(themeCell, themeSubThemes);
+  const relaxedCenters = runLloydRelaxation(initialCenters, themeCell, 3);
+  let cells = buildFinalCells(relaxedCenters, themeCell, themeSubThemes, options);
 
   // Enforce minimum area: every cell ≥ 35% of average within theme
-  cells = enforceAreaFloor(cells, centers, themeCell, themeSubThemes, options);
+  cells = enforceAreaFloor(cells, relaxedCenters, themeCell, themeSubThemes, options);
 
   return cells;
 };
@@ -432,9 +459,6 @@ const computePerThemeVoronoi = (
 export function createVoronoiLayout(input: VoronoiLayoutInput): VoronoiLayout {
   const { subThemes, themeCells, stage, options } = input;
 
-  // Compute per-SubTheme heat from stage sector heat data
-  const heatMap = computeSubThemeHeatMap(stage);
-
   const cells: VoronoiCell[] = [];
 
   for (const themeCell of themeCells) {
@@ -444,8 +468,7 @@ export function createVoronoiLayout(input: VoronoiLayoutInput): VoronoiLayout {
     const themeVoronoiCells = computePerThemeVoronoi(
       themeCell,
       themeSubThemes,
-      options,
-      heatMap
+      options
     );
     cells.push(...themeVoronoiCells);
   }
