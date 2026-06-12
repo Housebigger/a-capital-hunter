@@ -1,0 +1,5 @@
+flask>=3.0
+flask-cors>=4.0
+akshare>=1.16
+flask-caching>=2.1
+gunicorn>=22.0
