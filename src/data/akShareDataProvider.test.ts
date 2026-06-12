@@ -6,7 +6,7 @@ const mockFetch = vi.fn();
 describe("createAkShareDataProvider", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    global.fetch = mockFetch;
+    (globalThis as Record<string, unknown>).fetch = mockFetch;
   });
 
   const flushMicrotasks = () => new Promise<void>((r) => setTimeout(r, 0));
