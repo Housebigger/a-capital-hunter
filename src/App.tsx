@@ -4,7 +4,7 @@ import { HunterScene } from "./components/HunterScene";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { SceneLegend } from "./components/SceneLegend";
 import { layoutStages } from "./domain/layoutStages";
-import { createScenarioDataProvider } from "./domain/scenarioDataProvider";
+import { createAkShareDataProvider } from "./data/akShareDataProvider";
 import { themes } from "./domain/themeRegistry";
 import { createThemeLayoutProvider } from "./domain/themeVoronoiLayoutProvider";
 import { buildThemeRenderNodes } from "./domain/themeRenderNodes";
@@ -15,7 +15,7 @@ import { getScenarioIds, useHunterState } from "./state/useHunterState";
 
 const themeLayoutProvider = createThemeLayoutProvider();
 const subThemeLayoutProvider = createSubThemeLayoutProvider();
-const dataProvider = createScenarioDataProvider();
+const dataProvider = createAkShareDataProvider();
 const scenarios = dataProvider.getScenarios();
 const scenarioIds = getScenarioIds(scenarios);
 
