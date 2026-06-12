@@ -9,8 +9,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "dev:full": "concurrently \"npm run dev\" \"cd server && python app.py\"",
-    "dev:backend": "cd server && python app.py"
+    "dev:full": "concurrently \"npm run dev\" \"env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u http_proxy -u HTTPS_PROXY -u https_proxy -u NO_PROXY -u no_proxy cd server && python3 app.py\"",
+    "dev:backend": "env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u http_proxy -u HTTPS_PROXY -u https_proxy -u NO_PROXY -u no_proxy cd server && python3 app.py"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",

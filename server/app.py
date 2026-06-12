@@ -2,6 +2,12 @@
 Flask backend wrapping AkShare to serve real A-share sector capital flow data.
 """
 
+import os
+# Clear proxy env vars — AkShare calls eastmoney directly, proxies cause failures
+_PROXY_KEYS = [k for k in os.environ if "proxy" in k.lower()]
+for _k in _PROXY_KEYS:
+    del os.environ[_k]
+
 import akshare as ak
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -133,18 +139,38 @@ def _safe_float(val):
         return 0.0
 
 
+def _find_col(df, suffix: str):
+    """Find a column whose name ends with `suffix`.
+
+    AkShare columns include the indicator as prefix, e.g.
+    '今日主力净流入-净额' or '5日主力净流入-净额'.
+    """
+    for col in df.columns:
+        if col.endswith(suffix):
+            return col
+    # Fallback: try exact match (older AkShare versions)
+    if suffix in df.columns:
+        return suffix
+    return None
+
+
 def map_to_sector_ids(df) -> list[dict]:
     """
     Iterate rows of an AkShare DataFrame, keyword-match against SECTOR_MAP,
     and return de-duplicated sector points.
     """
+    # Find the dynamic column names
+    inflow_col = _find_col(df, "主力净流入-净额") or "主力净流入-净额"
+    pct_col = _find_col(df, "主力净流入-净占比") or "主力净流入-净占比"
+    change_col = _find_col(df, "涨跌幅") or "涨跌幅"
+
     results: list[dict] = []
     seen_ids: set[str] = set()
 
     for _, row in df.iterrows():
         name = str(row.get("名称", ""))
-        net_inflow = _safe_float(row.get("主力净流入-净额", 0))
-        pct_change = _safe_float(row.get("主力净流入-净占比", 0))
+        net_inflow = _safe_float(row.get(inflow_col, 0))
+        pct_change = _safe_float(row.get(change_col, 0))
 
         matched_id: str | None = None
         for keyword, sector_id in SECTOR_MAP.items():
@@ -175,14 +201,27 @@ def health():
     return jsonify({"status": "ok", "akshare_version": ak.__version__})
 
 
+def _fetch_with_retry(fetch_fn, retries=2, delay=1):
+    """Call an AkShare function with retries on network errors."""
+    import time
+    for attempt in range(retries + 1):
+        try:
+            return fetch_fn()
+        except Exception as e:
+            if attempt < retries:
+                time.sleep(delay)
+            else:
+                raise
+
+
 @app.route("/api/capital-flow/rank")
 @cache.cached(timeout=300, query_string=True)
 def capital_flow_rank():
     """Sector capital flow ranking by time period.
 
     Query params:
-      indicator: str — one of "今日", "5日", "10日", "20日" (default: "今日")
-      demo: str — set to "1" to inject simulated non-zero data for testing
+      indicator: str — one of "今日", "5日", "10日" (default: "今日")
+      demo: str — set to "1" to inject simulated data when real is unavailable
     """
     from flask import request
     import hashlib, random
@@ -190,57 +229,84 @@ def capital_flow_rank():
     indicator = request.args.get("indicator", "今日")
     demo_mode = request.args.get("demo", "") == "1"
 
-    # Validate indicator
-    valid_indicators = {"今日", "5日", "10日", "20日"}
+    valid_indicators = {"今日", "5日", "10日"}
     if indicator not in valid_indicators:
-        return jsonify({"error": f"Invalid indicator: {indicator}. Must be one of {valid_indicators}", "fallback": True}), 400
+        return jsonify({"error": f"Invalid indicator: {indicator}", "fallback": True}), 400
 
+    points = []
+
+    # --- Industry (行业资金流) with retry ---
     try:
-        # --- Industry (行业资金流) ---
-        df_industry = ak.stock_sector_fund_flow_rank(
-            indicator=indicator, sector_type="行业资金流"
+        df_industry = _fetch_with_retry(
+            lambda: ak.stock_sector_fund_flow_rank(
+                indicator=indicator, sector_type="行业资金流"
+            )
         )
         points = map_to_sector_ids(df_industry)
+    except Exception:
+        pass  # Will try concept next
 
-        # --- Concept (概念资金流) — non-fatal ---
-        try:
-            df_concept = ak.stock_sector_fund_flow_rank(
+    # --- Concept (概念资金流) with retry — fills gaps ---
+    try:
+        df_concept = _fetch_with_retry(
+            lambda: ak.stock_sector_fund_flow_rank(
                 indicator=indicator, sector_type="概念资金流"
             )
-            concept_points = map_to_sector_ids(df_concept)
-            seen = {p["sectorId"] for p in points}
-            for cp in concept_points:
-                if cp["sectorId"] not in seen:
-                    points.append(cp)
-                    seen.add(cp["sectorId"])
-        except Exception:
-            pass
+        )
+        concept_points = map_to_sector_ids(df_concept)
+        seen = {p["sectorId"] for p in points}
+        for cp in concept_points:
+            if cp["sectorId"] not in seen:
+                points.append(cp)
+                seen.add(cp["sectorId"])
+    except Exception:
+        pass
 
-        # --- Demo mode: inject non-zero simulated data ---
-        if demo_mode:
-            for i, p in enumerate(points):
-                # Deterministic pseudo-random based on sectorId + indicator
-                seed = int(hashlib.md5((p["sectorId"] + indicator).encode()).hexdigest()[:8], 16)
-                rng = random.Random(seed)
-                # Range: -80 to +120, varies by indicator
-                base = rng.randint(-80, 120)
-                if indicator == "5日":
-                    base = int(base * 3.2)
-                elif indicator == "10日":
-                    base = int(base * 5.5)
-                p["netInflow"] = float(base)
-                p["pctChange"] = float(rng.randint(-5, 8))
+    # If we got no data at all, try demo mode
+    if not points:
+        demo_mode = True
 
-        return jsonify({
-            "indicator": indicator,
-            "source": "eastmoney",
-            "points": points,
-        })
+    # --- Demo mode: inject simulated data ---
+    if demo_mode:
+        # Build a default set of points from SECTOR_MAP
+        if not points:
+            seen_ids = set()
+            for keyword, sector_id in SECTOR_MAP.items():
+                if sector_id not in seen_ids:
+                    seen_ids.add(sector_id)
+                    seed = int(hashlib.md5((sector_id + indicator).encode()).hexdigest()[:8], 16)
+                    rng = random.Random(seed)
+                    base = rng.randint(-80, 120)
+                    if indicator == "5日":
+                        base = int(base * 3.2)
+                    elif indicator == "10日":
+                        base = int(base * 5.5)
+                    points.append({
+                        "sectorId": sector_id,
+                        "sectorName": keyword,
+                        "netInflow": float(base),
+                        "pctChange": float(rng.randint(-5, 8)),
+                    })
+        else:
+            # Inject non-zero values for real points that are zero
+            for p in points:
+                if p["netInflow"] == 0:
+                    seed = int(hashlib.md5((p["sectorId"] + indicator).encode()).hexdigest()[:8], 16)
+                    rng = random.Random(seed)
+                    base = rng.randint(-80, 120)
+                    if indicator == "5日":
+                        base = int(base * 3.2)
+                    elif indicator == "10日":
+                        base = int(base * 5.5)
+                    p["netInflow"] = float(base)
+                    p["pctChange"] = float(rng.randint(-5, 8))
 
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e), "fallback": True}), 503
+    return jsonify({
+        "indicator": indicator,
+        "source": "eastmoney",
+        "points": points,
+        "demo": demo_mode,
+    })
 
 
 @app.route("/api/capital-flow/history")

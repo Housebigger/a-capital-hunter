@@ -55,25 +55,11 @@ export function createAkShareDataProvider(): DataProvider & {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      // First try real data
       const url = `${RANK_URL}?indicator=${encodeURIComponent(indicator)}`;
       const res = await fetch(url, { signal: controller.signal });
       const data: RankResponse = await res.json();
-      if (data.fallback || !data.points) {
+      if (data.fallback || !data.points || data.points.length === 0) {
         return FALLBACK_PROVIDER.getScenarios()[0];
-      }
-
-      // Check if all values are zero (non-trading hours) → use demo mode
-      const allZero = data.points.every(p => p.netInflow === 0);
-      if (allZero && data.points.length > 0) {
-        const demoUrl = `${RANK_URL}?indicator=${encodeURIComponent(indicator)}&demo=1`;
-        const demoRes = await fetch(demoUrl, { signal: controller.signal });
-        const demoData: RankResponse = await demoRes.json();
-        if (demoData.points && !demoData.fallback) {
-          const scenario = toScenario(indicator, demoData);
-          cache.set(indicator, scenario);
-          return scenario;
-        }
       }
 
       const scenario = toScenario(indicator, data);
