@@ -182,10 +182,14 @@ def capital_flow_rank():
 
     Query params:
       indicator: str — one of "今日", "5日", "10日", "20日" (default: "今日")
+      demo: str — set to "1" to inject simulated non-zero data for testing
     """
     from flask import request
+    import hashlib, random
 
     indicator = request.args.get("indicator", "今日")
+    demo_mode = request.args.get("demo", "") == "1"
+
     # Validate indicator
     valid_indicators = {"今日", "5日", "10日", "20日"}
     if indicator not in valid_indicators:
@@ -211,6 +215,21 @@ def capital_flow_rank():
                     seen.add(cp["sectorId"])
         except Exception:
             pass
+
+        # --- Demo mode: inject non-zero simulated data ---
+        if demo_mode:
+            for i, p in enumerate(points):
+                # Deterministic pseudo-random based on sectorId + indicator
+                seed = int(hashlib.md5((p["sectorId"] + indicator).encode()).hexdigest()[:8], 16)
+                rng = random.Random(seed)
+                # Range: -80 to +120, varies by indicator
+                base = rng.randint(-80, 120)
+                if indicator == "5日":
+                    base = int(base * 3.2)
+                elif indicator == "10日":
+                    base = int(base * 5.5)
+                p["netInflow"] = float(base)
+                p["pctChange"] = float(rng.randint(-5, 8))
 
         return jsonify({
             "indicator": indicator,
