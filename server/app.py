@@ -122,34 +122,52 @@ def health():
     return jsonify({"status": "ok", "akshare_version": ak.__version__})
 
 
-@app.route("/api/capital-flow/realtime")
-@cache.cached(timeout=300)
-def capital_flow_realtime():
+@app.route("/api/capital-flow/rank")
+@cache.cached(timeout=300, query_string=True)
+def capital_flow_rank():
+    """Sector capital flow ranking by time period.
+
+    Query params:
+      indicator: str — one of "今日", "5日", "10日", "20日" (default: "今日")
+    """
+    from flask import request
+
+    indicator = request.args.get("indicator", "今日")
+    # Validate indicator
+    valid_indicators = {"今日", "5日", "10日", "20日"}
+    if indicator not in valid_indicators:
+        return jsonify({"error": f"Invalid indicator: {indicator}. Must be one of {valid_indicators}", "fallback": True}), 400
+
     try:
         # --- Industry (行业资金流) ---
         df_industry = ak.stock_sector_fund_flow_rank(
-            indicator="今日", sector_type="行业资金流"
+            indicator=indicator, sector_type="行业资金流"
         )
         points = map_to_sector_ids(df_industry)
 
         # --- Concept (概念资金流) — non-fatal ---
         try:
             df_concept = ak.stock_sector_fund_flow_rank(
-                indicator="今日", sector_type="概念资金流"
+                indicator=indicator, sector_type="概念资金流"
             )
             concept_points = map_to_sector_ids(df_concept)
-            # Merge: concept data fills gaps not covered by industry
             seen = {p["sectorId"] for p in points}
             for cp in concept_points:
                 if cp["sectorId"] not in seen:
                     points.append(cp)
                     seen.add(cp["sectorId"])
         except Exception:
-            pass  # concept fetch failure is non-fatal
+            pass
 
-        return jsonify({"points": points})
+        return jsonify({
+            "indicator": indicator,
+            "source": "eastmoney",
+            "points": points,
+        })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e), "fallback": True}), 503
 
 
