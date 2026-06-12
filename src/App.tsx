@@ -1,36 +1,46 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { ControlsPanel } from "./components/ControlsPanel";
 import { HunterScene } from "./components/HunterScene";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { SceneLegend } from "./components/SceneLegend";
 import { layoutStages } from "./domain/layoutStages";
-import { createAkShareDataProvider } from "./data/akShareDataProvider";
+import { createAkShareDataProvider, PERIOD_OPTIONS, type PeriodIndicator } from "./data/akShareDataProvider";
 import { themes } from "./domain/themeRegistry";
 import { createThemeLayoutProvider } from "./domain/themeVoronoiLayoutProvider";
 import { buildThemeRenderNodes } from "./domain/themeRenderNodes";
 import { createSubThemeLayoutProvider } from "./domain/voronoiLayoutProvider";
 import { buildSubThemeRenderNodes } from "./domain/subThemeRenderNodes";
 import { buildP3StockRenderNodes } from "./domain/stockRenderNodes";
-import { getScenarioIds, useHunterState } from "./state/useHunterState";
+import { useHunterState } from "./state/useHunterState";
+import type { MarketScenario } from "./domain/types";
 
 const themeLayoutProvider = createThemeLayoutProvider();
 const subThemeLayoutProvider = createSubThemeLayoutProvider();
 const dataProvider = createAkShareDataProvider();
-const scenarios = dataProvider.getScenarios();
-const scenarioIds = getScenarioIds(scenarios);
 
 export type ViewMode = "P1" | "P2" | "P3";
 
 export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>("P1");
-  const hunterState = useHunterState(scenarioIds);
-  const activeScenario =
-    scenarios.find((scenario) => scenario.id === hunterState.activeScenarioId) || scenarios[0];
-  const activeScenarioIndex = Math.max(
-    0,
-    scenarios.findIndex((scenario) => scenario.id === activeScenario.id)
+  const [activePeriod, setActivePeriod] = useState<PeriodIndicator>("今日");
+  const [activeScenario, setActiveScenario] = useState<MarketScenario>(
+    () => dataProvider.getCachedPeriod("今日") ?? dataProvider.getScenarios()[0]
   );
-  const activeLayoutStage = layoutStages[activeScenarioIndex] || layoutStages[0];
+  const hunterState = useHunterState();
+
+  // Always use first layout stage — layout doesn't change per period
+  const activeLayoutStage = layoutStages[0];
+
+  // Fetch data when period changes
+  const handlePeriodChange = useCallback(
+    async (indicator: string) => {
+      const period = indicator as PeriodIndicator;
+      setActivePeriod(period);
+      const scenario = await dataProvider.fetchPeriod(period);
+      setActiveScenario(scenario);
+    },
+    []
+  );
 
   // P1: Theme-level layout (11 cells)
   const themeLayout = useMemo(
@@ -92,22 +102,17 @@ export default function App() {
 
       <section className="workspace">
         <ControlsPanel
-          scenarios={scenarios}
           themes={themes}
-          activeScenarioId={hunterState.activeScenarioId}
+          activePeriod={activePeriod}
+          onPeriodChange={handlePeriodChange}
           themeFilter={hunterState.themeFilter}
           capitalStateFilter={hunterState.capitalStateFilter}
           cameraPreset={hunterState.cameraPreset}
-          showCentersOnly={hunterState.showCentersOnly}
-          capitalThreshold={hunterState.capitalThreshold}
-          onScenarioChange={hunterState.setActiveScenarioId}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           onThemeFilterChange={hunterState.setThemeFilter}
           onCapitalStateFilterChange={hunterState.setCapitalStateFilter}
           onCameraPresetChange={hunterState.setCameraPreset}
-          onShowCentersOnlyChange={hunterState.setShowCentersOnly}
-          onCapitalThresholdChange={hunterState.setCapitalThreshold}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
         />
 
         <section className="scene-panel" aria-label="A Capital Hunter 3D资金峰面">

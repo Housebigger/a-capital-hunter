@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createAkShareDataProvider } from "./akShareDataProvider";
+import { createAkShareDataProvider, PERIOD_OPTIONS } from "./akShareDataProvider";
 
 const mockFetch = vi.fn();
 
@@ -16,7 +16,7 @@ describe("createAkShareDataProvider", () => {
       ok: true,
       json: () =>
         Promise.resolve({
-          date: "2026-06-12",
+          indicator: "今日",
           source: "eastmoney",
           points: [
             { sectorId: "optical-modules", sectorName: "光模块", netInflow: 45.2, pctChange: 3.1 },
@@ -30,10 +30,7 @@ describe("createAkShareDataProvider", () => {
     const scenarios = provider.getScenarios();
     expect(scenarios.length).toBeGreaterThanOrEqual(1);
     const first = scenarios[0];
-    expect(first.id).toBe("realtime-2026-06-12");
-    expect(first.label).toBe("实时 2026-06-12");
-    expect(first.story).toBe("东方财富行业板块主力资金实时净流入");
-    expect(first.points.length).toBe(1);
+    expect(first.id).toBe("rank-今日");
     expect(first.points[0].sectorId).toBe("optical-modules");
     expect(first.points[0].netInflow).toBe(45.2);
   });
@@ -45,59 +42,53 @@ describe("createAkShareDataProvider", () => {
     await flushMicrotasks();
 
     const scenarios = provider.getScenarios();
-    // Mock provider returns multiple scenarios (layout stages)
-    expect(scenarios.length).toBeGreaterThanOrEqual(1);
-    // Realtime scenario IDs start with "realtime-", mock IDs start with "S"
     expect(scenarios[0].id.startsWith("S")).toBe(true);
   });
 
-  it("falls back when response has fallback flag", async () => {
+  it("fetchPeriod fetches and caches a specific indicator", async () => {
+    // First call is auto-fetch for 今日
     mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 503,
-      json: () => Promise.resolve({ fallback: true }),
+      ok: true,
+      json: () => Promise.resolve({ indicator: "今日", points: [] }),
     });
-
-    const provider = createAkShareDataProvider();
-    await flushMicrotasks();
-
-    const scenarios = provider.getScenarios();
-    expect(scenarios[0].id.startsWith("S")).toBe(true);
-  });
-
-  it("maps API points to ScenarioPoint format", async () => {
-    const apiPoints = [
-      { sectorId: "semiconductors", sectorName: "半导体", netInflow: 120.5, pctChange: 2.8 },
-      { sectorId: "banks", sectorName: "银行", netInflow: -30.1, pctChange: -0.5 },
-    ];
+    // Second call is for 5日
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () =>
         Promise.resolve({
-          date: "2026-06-12",
+          indicator: "5日",
           source: "eastmoney",
-          points: apiPoints,
+          points: [
+            { sectorId: "semiconductors", sectorName: "半导体", netInflow: 120, pctChange: 2.8 },
+          ],
         }),
     });
 
     const provider = createAkShareDataProvider();
-    await flushMicrotasks();
+    const scenario = await provider.fetchPeriod("5日");
 
-    const scenarios = provider.getScenarios();
-    const points = scenarios[0].points;
-    expect(points).toEqual([
-      { sectorId: "semiconductors", netInflow: 120.5 },
-      { sectorId: "banks", netInflow: -30.1 },
-    ]);
+    expect(scenario.id).toBe("rank-5日");
+    expect(scenario.points[0].sectorId).toBe("semiconductors");
+
+    // Should be cached now
+    const cached = provider.getCachedPeriod("5日");
+    expect(cached).not.toBeNull();
+    expect(cached!.id).toBe("rank-5日");
+  });
+
+  it("PERIOD_OPTIONS has 3 entries", () => {
+    expect(PERIOD_OPTIONS.length).toBe(3);
+    expect(PERIOD_OPTIONS[0].indicator).toBe("今日");
+    expect(PERIOD_OPTIONS[2].indicator).toBe("10日");
   });
 
   it("isAvailable returns true for healthy backend", async () => {
-    // data fetch (first call)
+    // Auto-fetch for 今日
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ fallback: true }),
     });
-    // health check (second call)
+    // Health check
     mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
 
     const provider = createAkShareDataProvider();

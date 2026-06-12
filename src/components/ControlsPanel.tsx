@@ -2,28 +2,23 @@ import { Activity, Eye, Filter, Layers3, Rotate3D } from "lucide-react";
 import type {
   CameraPreset,
   CapitalStateFilter,
-  MarketScenario,
   Theme,
   ThemeFilter
 } from "../domain/types";
+import { PERIOD_OPTIONS } from "../data/akShareDataProvider";
 
 interface ControlsPanelProps {
-  scenarios: readonly MarketScenario[];
   themes: readonly Theme[];
-  activeScenarioId: string;
+  activePeriod: string;
+  onPeriodChange: (period: string) => void;
   themeFilter: ThemeFilter;
   capitalStateFilter: CapitalStateFilter;
   cameraPreset: CameraPreset;
-  showCentersOnly: boolean;
-  capitalThreshold?: number;
   viewMode?: "P1" | "P2" | "P3";
   onViewModeChange?: (mode: "P1" | "P2" | "P3") => void;
-  onScenarioChange: (scenarioId: string) => void;
   onThemeFilterChange: (themeFilter: ThemeFilter) => void;
   onCapitalStateFilterChange: (filter: CapitalStateFilter) => void;
   onCameraPresetChange: (preset: CameraPreset) => void;
-  onShowCentersOnlyChange: (show: boolean) => void;
-  onCapitalThresholdChange?: (threshold: number) => void;
 }
 
 const CAMERA_PRESET_OPTIONS: readonly { value: CameraPreset; label: string }[] = [
@@ -38,18 +33,18 @@ export function ControlsPanel(props: ControlsPanelProps) {
       <section className="control-section">
         <div className="section-title">
           <Activity size={16} aria-hidden="true" />
-          <span>资金轮动时间片</span>
+          <span>资金流向周期</span>
         </div>
-        <div className="timeline-buttons" role="group" aria-label="时间片">
-          {props.scenarios.map((scenario) => (
+        <div className="timeline-buttons" role="group" aria-label="资金流向周期">
+          {PERIOD_OPTIONS.map(({ indicator, label }) => (
             <button
-              key={scenario.id}
-              className={scenario.id === props.activeScenarioId ? "active" : ""}
+              key={indicator}
+              className={props.activePeriod === indicator ? "active" : ""}
               type="button"
-              aria-pressed={scenario.id === props.activeScenarioId}
-              onClick={() => props.onScenarioChange(scenario.id)}
+              aria-pressed={props.activePeriod === indicator}
+              onClick={() => props.onPeriodChange(indicator)}
             >
-              {scenario.label}
+              {label}
             </button>
           ))}
         </div>
@@ -125,33 +120,7 @@ export function ControlsPanel(props: ControlsPanelProps) {
             <option value="flat">只看平盘</option>
           </select>
         </label>
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={props.showCentersOnly}
-            onChange={(event) => props.onShowCentersOnlyChange(event.target.checked)}
-          />
-          <span>只看主线中心</span>
-        </label>
       </section>
-
-      {props.onCapitalThresholdChange != null && (
-        <section className="control-section">
-          <div className="section-title">
-            <span>资金门槛</span>
-          </div>
-          <label>
-            <input
-              type="range"
-              min="5"
-              max="50"
-              value={props.capitalThreshold ?? 20}
-              onChange={(e) => props.onCapitalThresholdChange!(Number(e.target.value))}
-            />
-            <span>{props.capitalThreshold ?? 20}亿</span>
-          </label>
-        </section>
-      )}
 
       <section className="control-section">
         <div className="section-title">
