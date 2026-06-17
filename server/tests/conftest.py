@@ -8,6 +8,11 @@ def project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+@pytest.fixture
+def tmp_db_path(tmp_path) -> Path:
+    return tmp_path / "capital_flow.sqlite3"
+
+
 class FakeJqSdk:
     """In-memory stand-in for jqdatasdk used by source tests.
 
