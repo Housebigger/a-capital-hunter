@@ -5,17 +5,19 @@ import type {
   Theme,
   ThemeFilter
 } from "../domain/types";
-import { PERIOD_OPTIONS } from "../data/akShareDataProvider";
 
 interface ControlsPanelProps {
   themes: readonly Theme[];
-  activePeriod: string;
-  onPeriodChange: (period: string) => void;
+  /** Active snapshot trade date (YYYY-MM-DD). */
+  activeTradeDate: string;
+  /** Trade dates the backend has snapshots for (descending). */
+  availableTradeDates: readonly string[];
+  onTradeDateChange: (tradeDate: string) => void;
   themeFilter: ThemeFilter;
   capitalStateFilter: CapitalStateFilter;
   cameraPreset: CameraPreset;
-  viewMode?: "P1" | "P2" | "P3";
-  onViewModeChange?: (mode: "P1" | "P2" | "P3") => void;
+  viewMode: "P1" | "P2" | "P3";
+  onViewModeChange: (mode: "P1" | "P2" | "P3") => void;
   onThemeFilterChange: (themeFilter: ThemeFilter) => void;
   onCapitalStateFilterChange: (filter: CapitalStateFilter) => void;
   onCameraPresetChange: (preset: CameraPreset) => void;
@@ -33,57 +35,60 @@ export function ControlsPanel(props: ControlsPanelProps) {
       <section className="control-section">
         <div className="section-title">
           <Activity size={16} aria-hidden="true" />
-          <span>资金流向周期</span>
+          <span>资金流快照</span>
         </div>
-        <div className="timeline-buttons" role="group" aria-label="资金流向周期">
-          {PERIOD_OPTIONS.map(({ indicator, label }) => (
-            <button
-              key={indicator}
-              className={props.activePeriod === indicator ? "active" : ""}
-              type="button"
-              aria-pressed={props.activePeriod === indicator}
-              onClick={() => props.onPeriodChange(indicator)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <label>
+          <span>资金流快照日期</span>
+          <select
+            aria-label="资金流快照日期"
+            value={props.activeTradeDate}
+            onChange={(event) => props.onTradeDateChange(event.target.value)}
+          >
+            {props.availableTradeDates.length === 0 ? (
+              <option value={props.activeTradeDate}>{props.activeTradeDate || "暂无快照"}</option>
+            ) : (
+              props.availableTradeDates.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))
+            )}
+          </select>
+        </label>
       </section>
 
-      {props.onViewModeChange && (
-        <section className="control-section">
-          <div className="section-title">
-            <Layers3 size={16} aria-hidden="true" />
-            <span>视图层级</span>
-          </div>
-          <div className="segmented" role="group" aria-label="视图层级">
-            <button
-              type="button"
-              className={props.viewMode === "P1" ? "active" : ""}
-              aria-pressed={props.viewMode === "P1"}
-              onClick={() => props.onViewModeChange!("P1")}
-            >
-              P1 主线
-            </button>
-            <button
-              type="button"
-              className={props.viewMode === "P2" ? "active" : ""}
-              aria-pressed={props.viewMode === "P2"}
-              onClick={() => props.onViewModeChange!("P2")}
-            >
-              P2 子题材
-            </button>
-            <button
-              type="button"
-              className={props.viewMode === "P3" ? "active" : ""}
-              aria-pressed={props.viewMode === "P3"}
-              onClick={() => props.onViewModeChange!("P3")}
-            >
-              P3 个股
-            </button>
-          </div>
-        </section>
-      )}
+      <section className="control-section">
+        <div className="section-title">
+          <Layers3 size={16} aria-hidden="true" />
+          <span>视图层级</span>
+        </div>
+        <div className="segmented" role="group" aria-label="视图层级">
+          <button
+            type="button"
+            className={props.viewMode === "P1" ? "active" : ""}
+            aria-pressed={props.viewMode === "P1"}
+            onClick={() => props.onViewModeChange("P1")}
+          >
+            P1 主线
+          </button>
+          <button
+            type="button"
+            className={props.viewMode === "P2" ? "active" : ""}
+            aria-pressed={props.viewMode === "P2"}
+            onClick={() => props.onViewModeChange("P2")}
+          >
+            P2 子题材
+          </button>
+          <button
+            type="button"
+            className={props.viewMode === "P3" ? "active" : ""}
+            aria-pressed={props.viewMode === "P3"}
+            onClick={() => props.onViewModeChange("P3")}
+          >
+            P3 个股
+          </button>
+        </div>
+      </section>
 
       <section className="control-section">
         <div className="section-title">

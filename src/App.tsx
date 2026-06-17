@@ -1,91 +1,209 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { ControlsPanel } from "./components/ControlsPanel";
 import { HunterScene } from "./components/HunterScene";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { SceneLegend } from "./components/SceneLegend";
+import { DataStatus } from "./components/DataStatus";
 import { layoutStages } from "./domain/layoutStages";
-import { createAkShareDataProvider, PERIOD_OPTIONS, type PeriodIndicator } from "./data/akShareDataProvider";
+import { createCapitalFlowDataProvider, type CapitalFlowDataProvider } from "./data/capitalFlowDataProvider";
+import type { CapitalFlowSnapshot, CapitalFlowStatus } from "./data/capitalFlowSnapshot";
+import { createScenarioDataProvider } from "./domain/scenarioDataProvider";
 import { themes } from "./domain/themeRegistry";
 import { createThemeLayoutProvider } from "./domain/themeVoronoiLayoutProvider";
 import { buildThemeRenderNodes } from "./domain/themeRenderNodes";
 import { createSubThemeLayoutProvider } from "./domain/voronoiLayoutProvider";
 import { buildSubThemeRenderNodes } from "./domain/subThemeRenderNodes";
 import { buildP3StockRenderNodes } from "./domain/stockRenderNodes";
+import { buildCapitalFlowAggregates } from "./domain/capitalFlowAggregation";
 import { useHunterState } from "./state/useHunterState";
 import type { MarketScenario } from "./domain/types";
 
 const themeLayoutProvider = createThemeLayoutProvider();
 const subThemeLayoutProvider = createSubThemeLayoutProvider();
-const dataProvider = createAkShareDataProvider();
+const FALLBACK_PROVIDER = createScenarioDataProvider();
 
 export type ViewMode = "P1" | "P2" | "P3";
 
-export default function App() {
+type SnapshotViewState =
+  | { status: "loading"; previous?: CapitalFlowSnapshot }
+  | { status: "ready"; snapshot: CapitalFlowSnapshot }
+  | { status: "partial"; snapshot: CapitalFlowSnapshot }
+  | { status: "error"; message: string }
+  | { status: "demo"; scenario: MarketScenario };
+
+export interface AppProps {
+  /** Inject a provider (tests). Defaults to the real JQData snapshot provider. */
+  readonly provider?: CapitalFlowDataProvider;
+}
+
+export default function App({ provider }: AppProps = {}) {
+  const dataProvider = provider ?? createCapitalFlowDataProvider();
+
+  const [viewState, setViewState] = useState<SnapshotViewState>({ status: "loading" });
+  const [status, setStatus] = useState<CapitalFlowStatus | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("P1");
-  const [activePeriod, setActivePeriod] = useState<PeriodIndicator>("今日");
-  const [activeScenario, setActiveScenario] = useState<MarketScenario>(
-    () => dataProvider.getCachedPeriod("今日") ?? dataProvider.getScenarios()[0]
-  );
+  const [activeTradeDate, setActiveTradeDate] = useState<string>("");
   const hunterState = useHunterState();
 
-  // Always use first layout stage — layout doesn't change per period
+  // Always use first layout stage — layout is static relative to data.
   const activeLayoutStage = layoutStages[0];
 
-  // Fetch data when period changes
-  const handlePeriodChange = useCallback(
-    async (indicator: string) => {
-      const period = indicator as PeriodIndicator;
-      setActivePeriod(period);
-      const scenario = await dataProvider.fetchPeriod(period);
-      setActiveScenario(scenario);
+  // ---- Initial load: status + latest snapshot ----
+  const loadInitial = useCallback(async () => {
+    setViewState({ status: "loading" });
+    let resolvedStatus: CapitalFlowStatus | null = null;
+    try {
+      resolvedStatus = await dataProvider.fetchStatus();
+      setStatus(resolvedStatus);
+      if (resolvedStatus.latestTradeDate) {
+        setActiveTradeDate(resolvedStatus.latestTradeDate);
+      }
+    } catch {
+      // Status is best-effort; continue to try the snapshot directly.
+    }
+    try {
+      const snapshot = await dataProvider.fetchLatest();
+      setViewState(
+        snapshot.status === "partial"
+          ? { status: "partial", snapshot }
+          : { status: "ready", snapshot }
+      );
+    } catch (err) {
+      setViewState({
+        status: "error",
+        message: err instanceof Error ? err.message : "unknown_error",
+      });
+    }
+  }, [dataProvider]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadInitial().then(() => {
+      if (cancelled) return;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadInitial]);
+
+  // ---- Date change: keep old scene until the new snapshot resolves ----
+  const handleTradeDateChange = useCallback(
+    async (tradeDate: string) => {
+      setActiveTradeDate(tradeDate);
+      // Retain the previous snapshot for display while loading the new date.
+      setViewState((prev) =>
+        prev.status === "ready" || prev.status === "partial"
+          ? { status: "loading", previous: prev.snapshot }
+          : { status: "loading" }
+      );
+      try {
+        const snapshot = await dataProvider.fetchDate(tradeDate);
+        setViewState(
+          snapshot.status === "partial"
+            ? { status: "partial", snapshot }
+            : { status: "ready", snapshot }
+        );
+      } catch (err) {
+        setViewState({
+          status: "error",
+          message: err instanceof Error ? err.message : "unknown_error",
+        });
+      }
     },
-    []
+    [dataProvider]
   );
 
-  // P1: Theme-level layout (11 cells)
+  const handleLoadDemo = useCallback(() => {
+    setViewState({ status: "demo", scenario: FALLBACK_PROVIDER.getScenarios()[0] });
+  }, []);
+
+  // ---- Derive the active snapshot / scenario for rendering ----
+  const activeSnapshot: CapitalFlowSnapshot | null =
+    viewState.status === "ready" || viewState.status === "partial"
+      ? viewState.snapshot
+      : viewState.status === "loading"
+      ? viewState.previous ?? null
+      : null;
+
+  const isDemo = viewState.status === "demo";
+  const aggregates = useMemo(
+    () => (activeSnapshot ? buildCapitalFlowAggregates(activeSnapshot.points) : null),
+    [activeSnapshot]
+  );
+
+  // Layout is independent of data — compute once.
   const themeLayout = useMemo(
     () => themeLayoutProvider.getLayout(activeLayoutStage.id),
     [activeLayoutStage.id]
   );
-  const themeNodes = useMemo(
-    () =>
-      buildThemeRenderNodes({
-        cells: themeLayout.cells,
-        scenario: activeScenario,
-        themeFilter: hunterState.themeFilter,
-      }),
-    [themeLayout, activeScenario, hunterState.themeFilter]
-  );
-
-  // P2: SubTheme-level layout (~30 cells, constrained to theme polygons)
   const subThemeLayout = useMemo(
     () => subThemeLayoutProvider.getLayout(activeLayoutStage.id, themeLayout.cells),
     [activeLayoutStage.id, themeLayout]
   );
-  const subThemeNodes = useMemo(
-    () =>
-      buildSubThemeRenderNodes({
+
+  // P1: theme totals from real aggregation (or demo scenario).
+  const themeNodes = useMemo(() => {
+    if (aggregates) {
+      return buildThemeRenderNodes({
+        cells: themeLayout.cells,
+        capitalByTheme: aggregates.byTheme,
+        themeFilter: hunterState.themeFilter,
+      });
+    }
+    if (isDemo && viewState.status === "demo") {
+      return buildThemeRenderNodes({
+        cells: themeLayout.cells,
+        scenario: viewState.scenario,
+        themeFilter: hunterState.themeFilter,
+      });
+    }
+    return [];
+  }, [aggregates, isDemo, viewState, themeLayout, hunterState.themeFilter]);
+
+  const subThemeNodes = useMemo(() => {
+    if (aggregates) {
+      return buildSubThemeRenderNodes({
         voronoiCells: subThemeLayout.cells,
-        scenario: activeScenario,
+        capitalBySubTheme: aggregates.bySubTheme,
         themeFilter: hunterState.themeFilter,
         capitalStateFilter: hunterState.capitalStateFilter,
-      }),
-    [subThemeLayout, activeScenario, hunterState.themeFilter, hunterState.capitalStateFilter]
-  );
+      });
+    }
+    if (isDemo && viewState.status === "demo") {
+      return buildSubThemeRenderNodes({
+        voronoiCells: subThemeLayout.cells,
+        scenario: viewState.scenario,
+        themeFilter: hunterState.themeFilter,
+        capitalStateFilter: hunterState.capitalStateFilter,
+      });
+    }
+    return [];
+  }, [aggregates, isDemo, viewState, subThemeLayout, hunterState.themeFilter, hunterState.capitalStateFilter]);
 
-  // P3: Individual stock level (3-8 stocks per SubTheme)
-  const stockNodes3 = useMemo(
-    () =>
-      viewMode === "P3"
-        ? buildP3StockRenderNodes({
-            voronoiCells: subThemeLayout.cells,
-            scenario: activeScenario,
-            themeFilter: hunterState.themeFilter,
-            capitalStateFilter: hunterState.capitalStateFilter,
-          })
-        : [],
-    [viewMode, subThemeLayout, activeScenario, hunterState.themeFilter, hunterState.capitalStateFilter]
-  );
+  const stockNodes3 = useMemo(() => {
+    if (viewMode !== "P3") return [];
+    if (aggregates) {
+      return buildP3StockRenderNodes({
+        voronoiCells: subThemeLayout.cells,
+        points: activeSnapshot?.points ?? [],
+        themeFilter: hunterState.themeFilter,
+        capitalStateFilter: hunterState.capitalStateFilter,
+      });
+    }
+    if (isDemo && viewState.status === "demo") {
+      return buildP3StockRenderNodes({
+        voronoiCells: subThemeLayout.cells,
+        scenario: viewState.scenario,
+        themeFilter: hunterState.themeFilter,
+        capitalStateFilter: hunterState.capitalStateFilter,
+      });
+    }
+    return [];
+  }, [viewMode, aggregates, activeSnapshot, isDemo, viewState, subThemeLayout, hunterState.themeFilter, hunterState.capitalStateFilter]);
+
+  // ---- Loading / error gates: no scene during initial load or hard error ----
+  const showScene = activeSnapshot !== null || isDemo;
+  const isLoading = viewState.status === "loading" && activeSnapshot === null && !isDemo;
 
   return (
     <main className="app-shell">
@@ -95,16 +213,31 @@ export default function App() {
           <h1>A Capital Hunter</h1>
         </div>
         <div className="scenario-story" aria-live="polite">
-          <span>{activeScenario.label}</span>
-          <p>{activeScenario.story}</p>
+          {activeSnapshot ? (
+            <>
+              <span>真实资金流快照</span>
+              <p>JQData 主力净流入 · {activeSnapshot.tradeDate}</p>
+            </>
+          ) : isDemo ? (
+            <>
+              <span>演示模式</span>
+              <p>非真实数据，仅用于展示交互。</p>
+            </>
+          ) : (
+            <>
+              <span>资金动向</span>
+              <p>等待真实资金流快照。</p>
+            </>
+          )}
         </div>
       </header>
 
       <section className="workspace">
         <ControlsPanel
           themes={themes}
-          activePeriod={activePeriod}
-          onPeriodChange={handlePeriodChange}
+          activeTradeDate={activeTradeDate || activeSnapshot?.tradeDate || ""}
+          availableTradeDates={status?.availableTradeDates ?? (activeSnapshot ? [activeSnapshot.tradeDate] : [])}
+          onTradeDateChange={handleTradeDateChange}
           themeFilter={hunterState.themeFilter}
           capitalStateFilter={hunterState.capitalStateFilter}
           cameraPreset={hunterState.cameraPreset}
@@ -121,24 +254,40 @@ export default function App() {
             <span>柱高 = 强度</span>
             <span>时间片 = 轮动</span>
           </div>
-          {viewMode === "P1" ? (
-            <HunterScene
-              themeCells={themeLayout.cells}
-              themeNodes={themeNodes}
-              cameraPreset={hunterState.cameraPreset}
-              selectedSectorId={hunterState.selectedSectorId}
-              onSelectSector={hunterState.setSelectedSectorId}
-            />
-          ) : (
-            <HunterScene
-              themeCells={themeLayout.cells}
-              subThemeCells={subThemeLayout.cells}
-              subThemeNodes={subThemeNodes}
-              stockNodes3={viewMode === "P3" ? stockNodes3 : undefined}
-              cameraPreset={hunterState.cameraPreset}
-              selectedSectorId={hunterState.selectedSectorId}
-              onSelectSector={hunterState.setSelectedSectorId}
-            />
+
+          <DataStatus
+            snapshot={activeSnapshot}
+            isDemo={isDemo}
+            onRetry={loadInitial}
+            onLoadDemo={handleLoadDemo}
+          />
+
+          {isLoading && (
+            <div className="loading-state" role="status">
+              正在读取本地资金流快照…
+            </div>
+          )}
+
+          {showScene && (
+            viewMode === "P1" ? (
+              <HunterScene
+                themeCells={themeLayout.cells}
+                themeNodes={themeNodes}
+                cameraPreset={hunterState.cameraPreset}
+                selectedSectorId={hunterState.selectedSectorId}
+                onSelectSector={hunterState.setSelectedSectorId}
+              />
+            ) : (
+              <HunterScene
+                themeCells={themeLayout.cells}
+                subThemeCells={subThemeLayout.cells}
+                subThemeNodes={subThemeNodes}
+                stockNodes3={viewMode === "P3" ? stockNodes3 : undefined}
+                cameraPreset={hunterState.cameraPreset}
+                selectedSectorId={hunterState.selectedSectorId}
+                onSelectSector={hunterState.setSelectedSectorId}
+              />
+            )
           )}
           <SceneLegend />
         </section>

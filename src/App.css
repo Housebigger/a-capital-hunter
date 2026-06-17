@@ -396,3 +396,84 @@ select {
     justify-content: flex-end;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Data status / loading / error (JQData snapshot path)
+   --------------------------------------------------------------------------- */
+.data-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  padding: 8px 14px;
+  margin: 8px 0;
+  background: rgba(26, 32, 44, 0.72);
+  border: 1px solid rgba(120, 144, 200, 0.25);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #c5cee0;
+}
+
+.data-status span {
+  white-space: nowrap;
+}
+
+.data-status.partial {
+  border-color: rgba(230, 180, 60, 0.5);
+  background: rgba(48, 38, 18, 0.72);
+}
+
+.data-status .partial-warning {
+  color: #f0c060;
+  font-weight: 600;
+}
+
+.data-status.demo {
+  border-color: rgba(160, 160, 160, 0.4);
+  background: rgba(40, 40, 44, 0.72);
+  color: #b0b0b0;
+}
+
+.data-error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  margin: 8px 0;
+  background: rgba(60, 24, 28, 0.82);
+  border: 1px solid rgba(230, 70, 70, 0.5);
+  border-radius: 6px;
+  color: #ffd0d0;
+  font-size: 13px;
+}
+
+.data-error-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.data-error-actions button {
+  padding: 4px 12px;
+  background: rgba(230, 70, 70, 0.25);
+  border: 1px solid rgba(230, 70, 70, 0.6);
+  border-radius: 4px;
+  color: #ffe0e0;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.data-error-actions button:hover {
+  background: rgba(230, 70, 70, 0.45);
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #8a96ad;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
