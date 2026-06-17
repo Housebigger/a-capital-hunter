@@ -1,0 +1,1290 @@
+[
+  {
+    "id": "aci-zjxc",
+    "name": "中际旭创",
+    "shortName": "中际旭创",
+    "subThemeId": "optical-interconnect",
+    "code": "300308"
+  },
+  {
+    "id": "aci-xys",
+    "name": "新易盛",
+    "shortName": "新易盛",
+    "subThemeId": "optical-interconnect",
+    "code": "300502"
+  },
+  {
+    "id": "aci-tftx",
+    "name": "天孚通信",
+    "shortName": "天孚通信",
+    "subThemeId": "optical-interconnect",
+    "code": "300394"
+  },
+  {
+    "id": "aci-hgkj",
+    "name": "华工科技",
+    "shortName": "华工科技",
+    "subThemeId": "optical-interconnect",
+    "code": "000988"
+  },
+  {
+    "id": "aci-gxkj",
+    "name": "光迅科技",
+    "shortName": "光迅科技",
+    "subThemeId": "optical-interconnect",
+    "code": "002281"
+  },
+  {
+    "id": "aci-rjwl",
+    "name": "锐捷网络",
+    "shortName": "锐捷网络",
+    "subThemeId": "ai-computing-infra",
+    "code": "301165"
+  },
+  {
+    "id": "aci-lcxx",
+    "name": "浪潮信息",
+    "shortName": "浪潮信息",
+    "subThemeId": "ai-computing-infra",
+    "code": "000977"
+  },
+  {
+    "id": "aci-zgfr",
+    "name": "紫光股份",
+    "shortName": "紫光股份",
+    "subThemeId": "ai-computing-infra",
+    "code": "000938"
+  },
+  {
+    "id": "ds-hgxx",
+    "name": "海光信息",
+    "shortName": "海光信息",
+    "subThemeId": "domestic-substitution",
+    "code": "688041"
+  },
+  {
+    "id": "ds-lxzk",
+    "name": "龙芯中科",
+    "shortName": "龙芯中科",
+    "subThemeId": "domestic-substitution",
+    "code": "688047"
+  },
+  {
+    "id": "ds-zgcc",
+    "name": "中国长城",
+    "shortName": "中国长城",
+    "subThemeId": "domestic-substitution",
+    "code": "000066"
+  },
+  {
+    "id": "ds-hwj",
+    "name": "寒武纪",
+    "shortName": "寒武纪",
+    "subThemeId": "domestic-substitution",
+    "code": "688256"
+  },
+  {
+    "id": "ds-zksg",
+    "name": "中科曙光",
+    "shortName": "中科曙光",
+    "subThemeId": "domestic-substitution",
+    "code": "603019"
+  },
+  {
+    "id": "aa-kdxf",
+    "name": "科大讯飞",
+    "shortName": "科大讯飞",
+    "subThemeId": "ai-applications",
+    "code": "002230"
+  },
+  {
+    "id": "aa-jsbg",
+    "name": "金山办公",
+    "shortName": "金山办公",
+    "subThemeId": "ai-applications",
+    "code": "688111"
+  },
+  {
+    "id": "aa-wxkj",
+    "name": "万兴科技",
+    "shortName": "万兴科技",
+    "subThemeId": "ai-applications",
+    "code": "300624"
+  },
+  {
+    "id": "aa-klww",
+    "name": "昆仑万维",
+    "shortName": "昆仑万维",
+    "subThemeId": "ai-applications",
+    "code": "300418"
+  },
+  {
+    "id": "aa-slh",
+    "name": "三六零",
+    "shortName": "三六零",
+    "subThemeId": "ai-applications",
+    "code": "601360"
+  },
+  {
+    "id": "aa-tls",
+    "name": "拓尔思",
+    "shortName": "拓尔思",
+    "subThemeId": "ai-applications",
+    "code": "300229"
+  },
+  {
+    "id": "aa-hwkj",
+    "name": "汉王科技",
+    "shortName": "汉王科技",
+    "subThemeId": "ai-applications",
+    "code": "002362"
+  },
+  {
+    "id": "cc-ldxb",
+    "name": "绿的谐波",
+    "shortName": "绿的谐波",
+    "subThemeId": "core-components",
+    "code": "688017"
+  },
+  {
+    "id": "cc-lfxb",
+    "name": "来福谐波",
+    "shortName": "来福谐波",
+    "subThemeId": "core-components",
+    "code": "688169"
+  },
+  {
+    "id": "cc-hcjs",
+    "name": "汇川技术",
+    "shortName": "汇川技术",
+    "subThemeId": "core-components",
+    "code": "300124"
+  },
+  {
+    "id": "cc-hckj",
+    "name": "禾川科技",
+    "shortName": "禾川科技",
+    "subThemeId": "motion-control",
+    "code": "688320"
+  },
+  {
+    "id": "cc-mzdq",
+    "name": "鸣志电器",
+    "shortName": "鸣志电器",
+    "subThemeId": "motion-control",
+    "code": "603085"
+  },
+  {
+    "id": "cc-dzkj",
+    "name": "鼎智科技",
+    "shortName": "鼎智科技",
+    "subThemeId": "core-components",
+    "code": "873593"
+  },
+  {
+    "id": "pl-apt",
+    "name": "奥普特",
+    "shortName": "奥普特",
+    "subThemeId": "perception-layer",
+    "code": "688686"
+  },
+  {
+    "id": "pl-hkws",
+    "name": "海康威视",
+    "shortName": "海康威视",
+    "subThemeId": "perception-layer",
+    "code": "002415"
+  },
+  {
+    "id": "pl-wegf",
+    "name": "韦尔股份",
+    "shortName": "韦尔股份",
+    "subThemeId": "perception-layer",
+    "code": "603501"
+  },
+  {
+    "id": "pl-sygx",
+    "name": "舜宇光学",
+    "shortName": "舜宇光学",
+    "subThemeId": "perception-layer",
+    "code": "002906"
+  },
+  {
+    "id": "pl-lcdz",
+    "name": "联创电子",
+    "shortName": "联创电子",
+    "subThemeId": "perception-layer",
+    "code": "002036"
+  },
+  {
+    "id": "as-asd",
+    "name": "埃斯顿",
+    "shortName": "埃斯顿",
+    "subThemeId": "application-scenarios",
+    "code": "002747"
+  },
+  {
+    "id": "as-tsd",
+    "name": "拓斯达",
+    "shortName": "拓斯达",
+    "subThemeId": "application-scenarios",
+    "code": "300607"
+  },
+  {
+    "id": "as-jqr",
+    "name": "机器人",
+    "shortName": "机器人",
+    "subThemeId": "application-scenarios",
+    "code": "300024"
+  },
+  {
+    "id": "as-ubx",
+    "name": "优必选",
+    "shortName": "优必选",
+    "subThemeId": "application-scenarios",
+    "code": "988000"
+  },
+  {
+    "id": "as-xsjqr",
+    "name": "新松机器人",
+    "shortName": "新松机器人",
+    "subThemeId": "application-scenarios",
+    "code": "300025"
+  },
+  {
+    "id": "ac-yhzl",
+    "name": "亿航智能",
+    "shortName": "亿航智能",
+    "subThemeId": "aircraft-control",
+    "code": "900001"
+  },
+  {
+    "id": "ac-zhgf",
+    "name": "纵横股份",
+    "shortName": "纵横股份",
+    "subThemeId": "drone-systems",
+    "code": "688070"
+  },
+  {
+    "id": "ac-zxhz",
+    "name": "中信海直",
+    "shortName": "中信海直",
+    "subThemeId": "aircraft-control",
+    "code": "000099"
+  },
+  {
+    "id": "ac-wfaw",
+    "name": "万丰奥威",
+    "shortName": "万丰奥威",
+    "subThemeId": "aircraft-control",
+    "code": "002085"
+  },
+  {
+    "id": "ac-jxgf",
+    "name": "建新股份",
+    "shortName": "建新股份",
+    "subThemeId": "drone-systems",
+    "code": "300107"
+  },
+  {
+    "id": "oi-whgt",
+    "name": "威海广泰",
+    "shortName": "威海广泰",
+    "subThemeId": "operations-infra",
+    "code": "002111"
+  },
+  {
+    "id": "oi-zxhz2",
+    "name": "中信海直",
+    "shortName": "中信海直",
+    "subThemeId": "operations-infra",
+    "code": "000099"
+  },
+  {
+    "id": "oi-scdz",
+    "name": "四创电子",
+    "shortName": "四创电子",
+    "subThemeId": "operations-infra",
+    "code": "600990"
+  },
+  {
+    "id": "dm-zzgj",
+    "name": "中芯国际",
+    "shortName": "中芯国际",
+    "subThemeId": "design-manufacturing",
+    "code": "688981"
+  },
+  {
+    "id": "dm-hdjt",
+    "name": "华大九天",
+    "shortName": "华大九天",
+    "subThemeId": "design-manufacturing",
+    "code": "301269"
+  },
+  {
+    "id": "dm-gldz",
+    "name": "概伦电子",
+    "shortName": "概伦电子",
+    "subThemeId": "design-manufacturing",
+    "code": "688206"
+  },
+  {
+    "id": "dm-gmjs",
+    "name": "国民技术",
+    "shortName": "国民技术",
+    "subThemeId": "design-manufacturing",
+    "code": "300077"
+  },
+  {
+    "id": "dm-zycx",
+    "name": "兆易创新",
+    "shortName": "兆易创新",
+    "subThemeId": "design-manufacturing",
+    "code": "603986"
+  },
+  {
+    "id": "dm-zggm",
+    "name": "紫光国微",
+    "shortName": "紫光国微",
+    "subThemeId": "design-manufacturing",
+    "code": "002049"
+  },
+  {
+    "id": "dm-lxxx",
+    "name": "乐鑫信息",
+    "shortName": "乐鑫信息",
+    "subThemeId": "design-manufacturing",
+    "code": "688018"
+  },
+  {
+    "id": "em-bfhc",
+    "name": "北方华创",
+    "shortName": "北方华创",
+    "subThemeId": "equipment-materials",
+    "code": "002371"
+  },
+  {
+    "id": "em-zwgs",
+    "name": "中微公司",
+    "shortName": "中微公司",
+    "subThemeId": "equipment-materials",
+    "code": "688012"
+  },
+  {
+    "id": "em-hgcy",
+    "name": "沪硅产业",
+    "shortName": "沪硅产业",
+    "subThemeId": "equipment-materials",
+    "code": "688126"
+  },
+  {
+    "id": "em-ykkj",
+    "name": "雅克科技",
+    "shortName": "雅克科技",
+    "subThemeId": "equipment-materials",
+    "code": "002409"
+  },
+  {
+    "id": "em-ndgd",
+    "name": "南大光电",
+    "shortName": "南大光电",
+    "subThemeId": "equipment-materials",
+    "code": "300346"
+  },
+  {
+    "id": "ap-cdkj",
+    "name": "长电科技",
+    "shortName": "长电科技",
+    "subThemeId": "advanced-packaging-st",
+    "code": "600584"
+  },
+  {
+    "id": "ap-tfmd",
+    "name": "通富微电",
+    "shortName": "通富微电",
+    "subThemeId": "advanced-packaging-st",
+    "code": "002156"
+  },
+  {
+    "id": "ap-htkj",
+    "name": "华天科技",
+    "shortName": "华天科技",
+    "subThemeId": "advanced-packaging-st",
+    "code": "002185"
+  },
+  {
+    "id": "ap-yxdz",
+    "name": "甬矽电子",
+    "shortName": "甬矽电子",
+    "subThemeId": "advanced-packaging-st",
+    "code": "688362"
+  },
+  {
+    "id": "ap-skj",
+    "name": "深科技",
+    "shortName": "深科技",
+    "subThemeId": "advanced-packaging-st",
+    "code": "000021"
+  },
+  {
+    "id": "pg-ljln",
+    "name": "隆基绿能",
+    "shortName": "隆基绿能",
+    "subThemeId": "power-generation",
+    "code": "601012"
+  },
+  {
+    "id": "pg-twgf",
+    "name": "通威股份",
+    "shortName": "通威股份",
+    "subThemeId": "power-generation",
+    "code": "600438"
+  },
+  {
+    "id": "pg-yakj",
+    "name": "晶澳科技",
+    "shortName": "晶澳科技",
+    "subThemeId": "power-generation",
+    "code": "002459"
+  },
+  {
+    "id": "pg-thgn",
+    "name": "天合光能",
+    "shortName": "天合光能",
+    "subThemeId": "power-generation",
+    "code": "688599"
+  },
+  {
+    "id": "pg-myzn",
+    "name": "明阳智能",
+    "shortName": "明阳智能",
+    "subThemeId": "power-generation",
+    "code": "601615"
+  },
+  {
+    "id": "sb-ndsd",
+    "name": "宁德时代",
+    "shortName": "宁德时代",
+    "subThemeId": "storage-battery",
+    "code": "300750"
+  },
+  {
+    "id": "sb-byd",
+    "name": "比亚迪",
+    "shortName": "比亚迪",
+    "subThemeId": "storage-battery",
+    "code": "002594"
+  },
+  {
+    "id": "sb-ywln",
+    "name": "亿纬锂能",
+    "shortName": "亿纬锂能",
+    "subThemeId": "battery-tech",
+    "code": "300014"
+  },
+  {
+    "id": "sb-ygdy",
+    "name": "阳光电源",
+    "shortName": "阳光电源",
+    "subThemeId": "storage-battery",
+    "code": "300274"
+  },
+  {
+    "id": "sb-pnkj",
+    "name": "派能科技",
+    "shortName": "派能科技",
+    "subThemeId": "battery-tech",
+    "code": "688063"
+  },
+  {
+    "id": "sb-gxgk",
+    "name": "国轩高科",
+    "shortName": "国轩高科",
+    "subThemeId": "battery-tech",
+    "code": "002074"
+  },
+  {
+    "id": "ci-trd",
+    "name": "特锐德",
+    "shortName": "特锐德",
+    "subThemeId": "charging-infra",
+    "code": "300001"
+  },
+  {
+    "id": "ci-wmgf",
+    "name": "万马股份",
+    "shortName": "万马股份",
+    "subThemeId": "charging-infra",
+    "code": "002276"
+  },
+  {
+    "id": "ci-ksd",
+    "name": "科士达",
+    "shortName": "科士达",
+    "subThemeId": "charging-infra",
+    "code": "002518"
+  },
+  {
+    "id": "lc-zgwx",
+    "name": "中国卫星",
+    "shortName": "中国卫星",
+    "subThemeId": "launch-communication",
+    "code": "600118"
+  },
+  {
+    "id": "lc-htjt",
+    "name": "航天宏图",
+    "shortName": "航天宏图",
+    "subThemeId": "launch-communication",
+    "code": "688066"
+  },
+  {
+    "id": "lc-ckkj",
+    "name": "铖昌科技",
+    "shortName": "铖昌科技",
+    "subThemeId": "launch-communication",
+    "code": "001270"
+  },
+  {
+    "id": "lc-htdq",
+    "name": "航天电器",
+    "shortName": "航天电器",
+    "subThemeId": "launch-communication",
+    "code": "002025"
+  },
+  {
+    "id": "lc-zkxt",
+    "name": "中科星图",
+    "shortName": "中科星图",
+    "subThemeId": "launch-communication",
+    "code": "688568"
+  },
+  {
+    "id": "ne-zxkj",
+    "name": "振芯科技",
+    "shortName": "振芯科技",
+    "subThemeId": "navigation-electronics",
+    "code": "300101"
+  },
+  {
+    "id": "ne-bdxt",
+    "name": "北斗星通",
+    "shortName": "北斗星通",
+    "subThemeId": "navigation-electronics",
+    "code": "002151"
+  },
+  {
+    "id": "ne-hgtx",
+    "name": "海格通信",
+    "shortName": "海格通信",
+    "subThemeId": "navigation-electronics",
+    "code": "002465"
+  },
+  {
+    "id": "ne-hcdh",
+    "name": "华测导航",
+    "shortName": "华测导航",
+    "subThemeId": "navigation-electronics",
+    "code": "300627"
+  },
+  {
+    "id": "me-fstg",
+    "name": "抚顺特钢",
+    "shortName": "抚顺特钢",
+    "subThemeId": "materials-equipment",
+    "code": "600399"
+  },
+  {
+    "id": "me-btgf",
+    "name": "宝钛股份",
+    "shortName": "宝钛股份",
+    "subThemeId": "materials-equipment",
+    "code": "600456"
+  },
+  {
+    "id": "me-tngf",
+    "name": "图南股份",
+    "shortName": "图南股份",
+    "subThemeId": "materials-equipment",
+    "code": "300855"
+  },
+  {
+    "id": "dr-hryy",
+    "name": "恒瑞医药",
+    "shortName": "恒瑞医药",
+    "subThemeId": "drug-rd",
+    "code": "600276"
+  },
+  {
+    "id": "dr-jjsz",
+    "name": "百济神州",
+    "shortName": "百济神州",
+    "subThemeId": "drug-rd",
+    "code": "688235"
+  },
+  {
+    "id": "dr-rcsw",
+    "name": "荣昌生物",
+    "shortName": "荣昌生物",
+    "subThemeId": "drug-rd",
+    "code": "688331"
+  },
+  {
+    "id": "dr-kfsw",
+    "name": "康方生物",
+    "shortName": "康方生物",
+    "subThemeId": "drug-rd",
+    "code": "688332"
+  },
+  {
+    "id": "dr-xdsw",
+    "name": "信达生物",
+    "shortName": "信达生物",
+    "subThemeId": "drug-rd",
+    "code": "688333"
+  },
+  {
+    "id": "db-mryl",
+    "name": "迈瑞医疗",
+    "shortName": "迈瑞医疗",
+    "subThemeId": "device-biology",
+    "code": "300760"
+  },
+  {
+    "id": "db-lyyl",
+    "name": "联影医疗",
+    "shortName": "联影医疗",
+    "subThemeId": "device-biology",
+    "code": "688271"
+  },
+  {
+    "id": "db-kly",
+    "name": "凯莱英",
+    "shortName": "凯莱英",
+    "subThemeId": "device-biology",
+    "code": "002821"
+  },
+  {
+    "id": "db-ymkd",
+    "name": "药明康德",
+    "shortName": "药明康德",
+    "subThemeId": "device-biology",
+    "code": "603259"
+  },
+  {
+    "id": "tm-pzh",
+    "name": "片仔癀",
+    "shortName": "片仔癀",
+    "subThemeId": "traditional-medicine",
+    "code": "600436"
+  },
+  {
+    "id": "tm-ynby",
+    "name": "云南白药",
+    "shortName": "云南白药",
+    "subThemeId": "traditional-medicine",
+    "code": "000538"
+  },
+  {
+    "id": "tm-trt",
+    "name": "同仁堂",
+    "shortName": "同仁堂",
+    "subThemeId": "traditional-medicine",
+    "code": "600085"
+  },
+  {
+    "id": "vp-byd",
+    "name": "比亚迪",
+    "shortName": "比亚迪",
+    "subThemeId": "vehicle-powertrain",
+    "code": "002594"
+  },
+  {
+    "id": "vp-ndsd",
+    "name": "宁德时代",
+    "shortName": "宁德时代",
+    "subThemeId": "vehicle-powertrain",
+    "code": "300750"
+  },
+  {
+    "id": "vp-tpjt",
+    "name": "拓普集团",
+    "shortName": "拓普集团",
+    "subThemeId": "vehicle-powertrain",
+    "code": "601689"
+  },
+  {
+    "id": "vp-shzk",
+    "name": "三花智控",
+    "shortName": "三花智控",
+    "subThemeId": "vehicle-powertrain",
+    "code": "002050"
+  },
+  {
+    "id": "vp-hcjs2",
+    "name": "汇川技术",
+    "shortName": "汇川技术",
+    "subThemeId": "vehicle-powertrain",
+    "code": "300124"
+  },
+  {
+    "id": "vp-dsxw",
+    "name": "德赛西威",
+    "shortName": "德赛西威",
+    "subThemeId": "vehicle-powertrain",
+    "code": "002920"
+  },
+  {
+    "id": "vp-jwhr",
+    "name": "经纬恒润",
+    "shortName": "经纬恒润",
+    "subThemeId": "vehicle-powertrain",
+    "code": "688326"
+  },
+  {
+    "id": "ad-dsxw2",
+    "name": "德赛西威",
+    "shortName": "德赛西威",
+    "subThemeId": "autonomous-driving-st",
+    "code": "002920"
+  },
+  {
+    "id": "ad-zcsd",
+    "name": "中科创达",
+    "shortName": "中科创达",
+    "subThemeId": "autonomous-driving-st",
+    "code": "300496"
+  },
+  {
+    "id": "ad-swtx",
+    "name": "四维图新",
+    "shortName": "四维图新",
+    "subThemeId": "autonomous-driving-st",
+    "code": "002405"
+  },
+  {
+    "id": "ad-hskj",
+    "name": "禾赛科技",
+    "shortName": "禾赛科技",
+    "subThemeId": "autonomous-driving-st",
+    "code": "920242"
+  },
+  {
+    "id": "ad-yxgs",
+    "name": "永新光学",
+    "shortName": "永新光学",
+    "subThemeId": "autonomous-driving-st",
+    "code": "603297"
+  },
+  {
+    "id": "ad-lcdz2",
+    "name": "联创电子",
+    "shortName": "联创电子",
+    "subThemeId": "autonomous-driving-st",
+    "code": "002036"
+  },
+  {
+    "id": "ad-jwhr2",
+    "name": "经纬恒润",
+    "shortName": "经纬恒润",
+    "subThemeId": "autonomous-driving-st",
+    "code": "688326"
+  },
+  {
+    "id": "v2-qfkj",
+    "name": "千方科技",
+    "shortName": "千方科技",
+    "subThemeId": "v2x",
+    "code": "002373"
+  },
+  {
+    "id": "v2-jykj",
+    "name": "金溢科技",
+    "shortName": "金溢科技",
+    "subThemeId": "v2x",
+    "code": "002869"
+  },
+  {
+    "id": "v2-wjkj",
+    "name": "万集科技",
+    "shortName": "万集科技",
+    "subThemeId": "v2x",
+    "code": "300552"
+  },
+  {
+    "id": "v2-gxx",
+    "name": "高新兴",
+    "shortName": "高新兴",
+    "subThemeId": "v2x",
+    "code": "300098"
+  },
+  {
+    "id": "td-lxjm",
+    "name": "立讯精密",
+    "shortName": "立讯精密",
+    "subThemeId": "terminal-devices",
+    "code": "002475"
+  },
+  {
+    "id": "td-gegf",
+    "name": "歌尔股份",
+    "shortName": "歌尔股份",
+    "subThemeId": "terminal-devices",
+    "code": "002241"
+  },
+  {
+    "id": "td-cykg",
+    "name": "传音控股",
+    "shortName": "传音控股",
+    "subThemeId": "terminal-devices",
+    "code": "688036"
+  },
+  {
+    "id": "td-xmjt",
+    "name": "小米集团",
+    "shortName": "小米集团",
+    "subThemeId": "terminal-devices",
+    "code": "988800"
+  },
+  {
+    "id": "td-fhkj",
+    "name": "富士康",
+    "shortName": "富士康",
+    "subThemeId": "terminal-devices",
+    "code": "601138"
+  },
+  {
+    "id": "ccce-jdfa",
+    "name": "京东方A",
+    "shortName": "京东方A",
+    "subThemeId": "core-components-ce",
+    "code": "000725"
+  },
+  {
+    "id": "ccce-tckj",
+    "name": "TCL科技",
+    "shortName": "TCL科技",
+    "subThemeId": "core-components-ce",
+    "code": "000100"
+  },
+  {
+    "id": "ccce-sagd",
+    "name": "三安光电",
+    "shortName": "三安光电",
+    "subThemeId": "core-components-ce",
+    "code": "600703"
+  },
+  {
+    "id": "ccce-sjgt",
+    "name": "水晶光电",
+    "shortName": "水晶光电",
+    "subThemeId": "core-components-ce",
+    "code": "002273"
+  },
+  {
+    "id": "de-yhl",
+    "name": "易华录",
+    "shortName": "易华录",
+    "subThemeId": "data-elements-st",
+    "code": "300212"
+  },
+  {
+    "id": "de-rmw",
+    "name": "人民网",
+    "shortName": "人民网",
+    "subThemeId": "data-elements-st",
+    "code": "603000"
+  },
+  {
+    "id": "de-zswh",
+    "name": "浙数文化",
+    "shortName": "浙数文化",
+    "subThemeId": "data-elements-st",
+    "code": "600633"
+  },
+  {
+    "id": "de-ahxx",
+    "name": "安恒信息",
+    "shortName": "安恒信息",
+    "subThemeId": "security-software",
+    "code": "688023"
+  },
+  {
+    "id": "de-qax",
+    "name": "奇安信",
+    "shortName": "奇安信",
+    "subThemeId": "security-software",
+    "code": "688561"
+  },
+  {
+    "id": "de-tls2",
+    "name": "拓尔思",
+    "shortName": "拓尔思",
+    "subThemeId": "data-elements-st",
+    "code": "300229"
+  },
+  {
+    "id": "cs-yywl",
+    "name": "用友网络",
+    "shortName": "用友网络",
+    "subThemeId": "cloud-software",
+    "code": "600588"
+  },
+  {
+    "id": "cs-jsbg2",
+    "name": "金山办公",
+    "shortName": "金山办公",
+    "subThemeId": "cloud-software",
+    "code": "688111"
+  },
+  {
+    "id": "cs-gldd",
+    "name": "广联达",
+    "shortName": "广联达",
+    "subThemeId": "cloud-software",
+    "code": "002410"
+  },
+  {
+    "id": "cs-zwrj",
+    "name": "中望软件",
+    "shortName": "中望软件",
+    "subThemeId": "cloud-software",
+    "code": "688083"
+  },
+  {
+    "id": "cs-sjxx",
+    "name": "石基信息",
+    "shortName": "石基信息",
+    "subThemeId": "cloud-software",
+    "code": "002153"
+  },
+  {
+    "id": "xc-zgrj",
+    "name": "中国软件",
+    "shortName": "中国软件",
+    "subThemeId": "xinchuang",
+    "code": "600536"
+  },
+  {
+    "id": "xc-tjgf",
+    "name": "太极股份",
+    "shortName": "太极股份",
+    "subThemeId": "xinchuang",
+    "code": "002368"
+  },
+  {
+    "id": "xc-cmkj",
+    "name": "诚迈科技",
+    "shortName": "诚迈科技",
+    "subThemeId": "xinchuang",
+    "code": "300598"
+  },
+  {
+    "id": "xc-txrj",
+    "name": "统信软件",
+    "shortName": "统信软件",
+    "subThemeId": "xinchuang",
+    "code": "300599"
+  },
+  {
+    "id": "xc-dmsj",
+    "name": "达梦数据",
+    "shortName": "达梦数据",
+    "subThemeId": "xinchuang",
+    "code": "688521"
+  },
+  {
+    "id": "fi-hsdz",
+    "name": "恒生电子",
+    "shortName": "恒生电子",
+    "subThemeId": "fin-infra",
+    "code": "600570"
+  },
+  {
+    "id": "fi-ths",
+    "name": "同花顺",
+    "shortName": "同花顺",
+    "subThemeId": "fin-infra",
+    "code": "300033"
+  },
+  {
+    "id": "fi-jzgf",
+    "name": "金证股份",
+    "shortName": "金证股份",
+    "subThemeId": "fin-infra",
+    "code": "600446"
+  },
+  {
+    "id": "fi-ddrj",
+    "name": "顶点软件",
+    "shortName": "顶点软件",
+    "subThemeId": "fin-infra",
+    "code": "603383"
+  },
+  {
+    "id": "fa-dfcf",
+    "name": "东方财富",
+    "shortName": "东方财富",
+    "subThemeId": "fin-applications",
+    "code": "300059"
+  },
+  {
+    "id": "fa-lkl",
+    "name": "拉卡拉",
+    "shortName": "拉卡拉",
+    "subThemeId": "fin-applications",
+    "code": "300773"
+  },
+  {
+    "id": "fa-hljh",
+    "name": "海联金汇",
+    "shortName": "海联金汇",
+    "subThemeId": "fin-applications",
+    "code": "002537"
+  },
+  {
+    "id": "fa-szxx",
+    "name": "神州信息",
+    "shortName": "神州信息",
+    "subThemeId": "fin-applications",
+    "code": "000555"
+  },
+  {
+    "id": "lci-yskj",
+    "name": "英维克",
+    "shortName": "英维克",
+    "subThemeId": "liquid-cooling-infra",
+    "code": "002837"
+  },
+  {
+    "id": "lci-schk",
+    "name": "申菱环境",
+    "shortName": "申菱环境",
+    "subThemeId": "liquid-cooling-infra",
+    "code": "301018"
+  },
+  {
+    "id": "lci-glcm",
+    "name": "高澜股份",
+    "shortName": "高澜股份",
+    "subThemeId": "liquid-cooling-infra",
+    "code": "300499"
+  },
+  {
+    "id": "mc-xhdl",
+    "name": "信捷电气",
+    "shortName": "信捷电气",
+    "subThemeId": "motion-control",
+    "code": "603416"
+  },
+  {
+    "id": "ds-djwr",
+    "name": "大疆无人机",
+    "shortName": "大疆",
+    "subThemeId": "drone-systems",
+    "code": "988900"
+  },
+  {
+    "id": "lac-scdz2",
+    "name": "四创电子B",
+    "shortName": "四创电子",
+    "subThemeId": "low-alt-comm",
+    "code": "600991"
+  },
+  {
+    "id": "lac-zgdm",
+    "name": "中航电子",
+    "shortName": "中航电子",
+    "subThemeId": "low-alt-comm",
+    "code": "600372"
+  },
+  {
+    "id": "lac-gxth",
+    "name": "国睿科技",
+    "shortName": "国睿科技",
+    "subThemeId": "low-alt-comm",
+    "code": "600562"
+  },
+  {
+    "id": "mp-xfhx",
+    "name": "兴福电子",
+    "shortName": "兴福电子",
+    "subThemeId": "materials-process",
+    "code": "688545"
+  },
+  {
+    "id": "mp-sngf",
+    "name": "上海新阳",
+    "shortName": "上海新阳",
+    "subThemeId": "materials-process",
+    "code": "300236"
+  },
+  {
+    "id": "mp-tkgf",
+    "name": "彤程新材",
+    "shortName": "彤程新材",
+    "subThemeId": "materials-process",
+    "code": "603650"
+  },
+  {
+    "id": "ca-rjsd",
+    "name": "瑞芯微",
+    "shortName": "瑞芯微",
+    "subThemeId": "chip-arch",
+    "code": "603893"
+  },
+  {
+    "id": "ca-qhkf",
+    "name": "全志科技",
+    "shortName": "全志科技",
+    "subThemeId": "chip-arch",
+    "code": "300458"
+  },
+  {
+    "id": "ca-jwkk",
+    "name": "景嘉微",
+    "shortName": "景嘉微",
+    "subThemeId": "chip-arch",
+    "code": "300474"
+  },
+  {
+    "id": "di-hldz",
+    "name": "海兰信",
+    "shortName": "海兰信",
+    "subThemeId": "defense-informatics-st",
+    "code": "300065"
+  },
+  {
+    "id": "di-chkj",
+    "name": "晨曦航空",
+    "shortName": "晨曦航空",
+    "subThemeId": "defense-informatics-st",
+    "code": "300581"
+  },
+  {
+    "id": "di-ajkj",
+    "name": "安络科技",
+    "shortName": "安络科技",
+    "subThemeId": "defense-informatics-st",
+    "code": "300682"
+  },
+  {
+    "id": "ed-jhgf",
+    "name": "精进电动",
+    "shortName": "精进电动",
+    "subThemeId": "electric-drive",
+    "code": "688280"
+  },
+  {
+    "id": "ed-fdkj",
+    "name": "方正电机",
+    "shortName": "方正电机",
+    "subThemeId": "electric-drive",
+    "code": "002196"
+  },
+  {
+    "id": "ed-dstg",
+    "name": "大洋电机",
+    "shortName": "大洋电机",
+    "subThemeId": "electric-drive",
+    "code": "002249"
+  },
+  {
+    "id": "sc-dsxw3",
+    "name": "德赛西威座舱",
+    "shortName": "德赛西威",
+    "subThemeId": "smart-cockpit-st",
+    "code": "002921"
+  },
+  {
+    "id": "sc-zcsd2",
+    "name": "中科创达座舱",
+    "shortName": "中科创达",
+    "subThemeId": "smart-cockpit-st",
+    "code": "300497"
+  },
+  {
+    "id": "sc-lxjm2",
+    "name": "立讯精密车端",
+    "shortName": "立讯精密",
+    "subThemeId": "smart-cockpit-st",
+    "code": "002476"
+  },
+  {
+    "id": "vr-pckj",
+    "name": "PICO",
+    "shortName": "PICO",
+    "subThemeId": "vr-ar",
+    "code": "988810"
+  },
+  {
+    "id": "vr-sjgt2",
+    "name": "水晶光电VR",
+    "shortName": "水晶光电",
+    "subThemeId": "vr-ar",
+    "code": "002274"
+  },
+  {
+    "id": "vr-gfgf",
+    "name": "歌尔VR",
+    "shortName": "歌尔VR",
+    "subThemeId": "vr-ar",
+    "code": "002242"
+  },
+  {
+    "id": "oa-gldz",
+    "name": "歌尔声学",
+    "shortName": "歌尔声学",
+    "subThemeId": "optical-acoustic",
+    "code": "002243"
+  },
+  {
+    "id": "oa-sngd",
+    "name": "三安光电光学",
+    "shortName": "三安光电",
+    "subThemeId": "optical-acoustic",
+    "code": "600704"
+  },
+  {
+    "id": "oa-lxdz",
+    "name": "蓝特光学",
+    "shortName": "蓝特光学",
+    "subThemeId": "optical-acoustic",
+    "code": "688127"
+  },
+  {
+    "id": "ss-snda",
+    "name": "深信服",
+    "shortName": "深信服",
+    "subThemeId": "security-software",
+    "code": "300454"
+  },
+  {
+    "id": "ss-gldz2",
+    "name": "绿盟科技",
+    "shortName": "绿盟科技",
+    "subThemeId": "security-software",
+    "code": "300369"
+  },
+  {
+    "id": "df-csjr",
+    "name": "长亮科技",
+    "shortName": "长亮科技",
+    "subThemeId": "digital-finance",
+    "code": "300348"
+  },
+  {
+    "id": "df-rxkj",
+    "name": "润和软件",
+    "shortName": "润和软件",
+    "subThemeId": "digital-finance",
+    "code": "300339"
+  },
+  {
+    "id": "df-gxdz",
+    "name": "广电运通",
+    "shortName": "广电运通",
+    "subThemeId": "digital-finance",
+    "code": "002152"
+  }
+]

@@ -1,8 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { stocks } from "./stockRegistry";
 import { subThemes } from "./subThemeRegistry";
+import stockConfig from "../data/stockRegistry.json";
 
 describe("stockRegistry", () => {
+  it("matches the shared stock JSON exactly", () => {
+    expect(stocks).toEqual(stockConfig);
+    expect(stockConfig).toHaveLength(184);
+  });
+
   it("has 150-300 stocks", () => {
     expect(stocks.length).toBeGreaterThanOrEqual(150);
     expect(stocks.length).toBeLessThanOrEqual(300);

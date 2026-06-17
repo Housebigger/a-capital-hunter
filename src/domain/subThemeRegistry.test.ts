@@ -1,8 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { subThemes } from "./subThemeRegistry";
 import { themes } from "./themeRegistry";
+import subThemeConfig from "../data/subThemeRegistry.json";
 
 describe("subThemeRegistry", () => {
+  it("matches the shared sub-theme JSON exactly", () => {
+    expect(subThemes).toEqual(subThemeConfig);
+  });
+
   it("has approximately 45 sub-themes", () => {
     expect(subThemes.length).toBeGreaterThanOrEqual(40);
     expect(subThemes.length).toBeLessThanOrEqual(55);
