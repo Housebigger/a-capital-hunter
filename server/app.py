@@ -3,15 +3,20 @@ Flask backend wrapping AkShare to serve real A-share sector capital flow data.
 """
 
 import os
-# Clear proxy env vars — AkShare calls eastmoney directly, proxies cause failures
-_PROXY_KEYS = [k for k in os.environ if "proxy" in k.lower()]
-for _k in _PROXY_KEYS:
-    del os.environ[_k]
+import logging
+
+# Only clear proxy env vars when explicitly requested (default: keep system proxy)
+if os.environ.get("CLEAR_PROXY_ON_STARTUP", "").lower() == "true":
+    _PROXY_KEYS = [k for k in os.environ if "proxy" in k.lower()]
+    for _k in _PROXY_KEYS:
+        del os.environ[_k]
 
 import akshare as ak
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_caching import Cache
+
+logger = logging.getLogger("capital_hunter")
 
 app = Flask(__name__)
 CORS(app)
@@ -214,6 +219,45 @@ def _fetch_with_retry(fetch_fn, retries=2, delay=1):
                 raise
 
 
+def _check_proxy() -> dict:
+    """Quick connectivity probe: proxy reachable → domain reachable → API reachable."""
+    import urllib.request, urllib.error
+
+    diag = {"proxy_ok": None, "domain_ok": None, "api_ok": None}
+
+    # 1) Proxy — check if HTTP_PROXY / HTTPS_PROXY is set and reachable
+    proxy_url = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY") or os.environ.get("https_proxy") or os.environ.get("http_proxy")
+    if proxy_url:
+        try:
+            req = urllib.request.Request(proxy_url, method="HEAD")
+            urllib.request.urlopen(req, timeout=5)
+            diag["proxy_ok"] = True
+        except Exception:
+            diag["proxy_ok"] = False
+    else:
+        diag["proxy_ok"] = None  # no proxy configured
+
+    # 2) Domain — push2.eastmoney.com root
+    try:
+        req = urllib.request.Request("https://push2.eastmoney.com/", headers={"User-Agent": "probe"})
+        urllib.request.urlopen(req, timeout=8)
+        diag["domain_ok"] = True
+    except Exception:
+        diag["domain_ok"] = False
+
+    # 3) API — clist/get with minimal params
+    try:
+        url = "https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=1&np=1&fltt=2&invt=2&fid=f62&fs=m:90+t:2+f:!50&fields=f12,f14"
+        req = urllib.request.Request(url, headers={"User-Agent": "probe"})
+        resp = urllib.request.urlopen(req, timeout=10)
+        resp.read()
+        diag["api_ok"] = True
+    except Exception:
+        diag["api_ok"] = False
+
+    return diag
+
+
 @app.route("/api/capital-flow/rank")
 @cache.cached(timeout=300, query_string=True)
 def capital_flow_rank():
@@ -224,7 +268,7 @@ def capital_flow_rank():
       demo: str — set to "1" to inject simulated data when real is unavailable
     """
     from flask import request
-    import hashlib, random
+    import hashlib, random, traceback as tb
 
     indicator = request.args.get("indicator", "今日")
     demo_mode = request.args.get("demo", "") == "1"
@@ -234,6 +278,7 @@ def capital_flow_rank():
         return jsonify({"error": f"Invalid indicator: {indicator}", "fallback": True}), 400
 
     points = []
+    diag = {"akshare_exception": []}
 
     # --- Industry (行业资金流) with retry ---
     try:
@@ -243,8 +288,12 @@ def capital_flow_rank():
             )
         )
         points = map_to_sector_ids(df_industry)
-    except Exception:
-        pass  # Will try concept next
+    except Exception as exc:
+        diag["akshare_exception"].append({
+            "source": "行业资金流",
+            "error": f"{type(exc).__name__}: {exc}",
+        })
+        logger.warning("行业资金流 fetch failed [%s]: %s", indicator, exc)
 
     # --- Concept (概念资金流) with retry — fills gaps ---
     try:
@@ -259,12 +308,32 @@ def capital_flow_rank():
             if cp["sectorId"] not in seen:
                 points.append(cp)
                 seen.add(cp["sectorId"])
-    except Exception:
-        pass
+    except Exception as exc:
+        diag["akshare_exception"].append({
+            "source": "概念资金流",
+            "error": f"{type(exc).__name__}: {exc}",
+        })
+        logger.warning("概念资金流 fetch failed [%s]: %s", indicator, exc)
 
     # If we got no data at all, try demo mode
     if not points:
         demo_mode = True
+
+    # --- Determine fallback_reason ---
+    fallback_reason = None
+    if demo_mode:
+        if diag["akshare_exception"]:
+            fallback_reason = "akshare_exception"
+        elif not points:
+            fallback_reason = "no_matched_points"
+        logger.info(
+            "fallback triggered: indicator=%s reason=%s exceptions=%s",
+            indicator, fallback_reason, diag["akshare_exception"],
+        )
+
+    # If real data was fetched, log connectivity summary
+    if not demo_mode:
+        logger.info("real data OK: indicator=%s points=%d", indicator, len(points))
 
     # --- Demo mode: inject simulated data ---
     if demo_mode:
@@ -301,12 +370,24 @@ def capital_flow_rank():
                     p["netInflow"] = float(base)
                     p["pctChange"] = float(rng.randint(-5, 8))
 
-    return jsonify({
+    # --- Build response with optional diagnostics ---
+    resp = {
         "indicator": indicator,
         "source": "eastmoney",
         "points": points,
         "demo": demo_mode,
-    })
+    }
+    if demo_mode or diag["akshare_exception"]:
+        conn = _check_proxy()
+        resp["diagnostics"] = {
+            "proxy_ok": conn["proxy_ok"],
+            "domain_ok": conn["domain_ok"],
+            "api_ok": conn["api_ok"],
+            "akshare_exception": diag["akshare_exception"],
+            "fallback_reason": fallback_reason,
+        }
+
+    return jsonify(resp)
 
 
 @app.route("/api/capital-flow/history")
@@ -327,6 +408,41 @@ def capital_flow_history():
 
     except Exception as e:
         return jsonify({"error": str(e), "fallback": True}), 503
+
+
+# ---------------------------------------------------------------------------
+# JQData capital flow snapshot API (product path)
+# ---------------------------------------------------------------------------
+# NOTE: The AkShare routes above (`/api/capital-flow/rank`, `/api/capital-flow/
+# history`, `/api/health`) are experimental diagnostics kept for local probing
+# of the Eastmoney link. The product path is the read-only JQData snapshot
+# Blueprint below; the frontend should consume these endpoints, not AkShare.
+#
+# Registration is wrapped so that running this file directly from inside the
+# ``server/`` directory (``cd server && python3 app.py``) still serves the
+# AkShare diagnostics even though the ``server.*`` package import fails. The
+# recommended launch is ``python3 -m server.app`` from the project root, which
+# registers both.
+import os as _os
+from pathlib import Path as _Path
+
+try:
+    from server.capital_flow.api import create_capital_flow_blueprint
+    from server.capital_flow.repository import SnapshotRepository
+
+    _CAPITAL_FLOW_DB = _os.environ.get(
+        "CAPITAL_FLOW_DB",
+        str(_Path(__file__).resolve().parent / "data" / "capital_flow.sqlite3"),
+    )
+    _capital_flow_repo = SnapshotRepository(_CAPITAL_FLOW_DB)
+    app.register_blueprint(create_capital_flow_blueprint(_capital_flow_repo))
+    logger.info("registered JQData snapshot blueprint (db=%s)", _CAPITAL_FLOW_DB)
+except ImportError as _e:
+    logger.warning(
+        "JQData snapshot blueprint not registered (run via 'python3 -m server.app' "
+        "from the project root to enable it): %s",
+        _e,
+    )
 
 
 if __name__ == "__main__":
