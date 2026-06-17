@@ -8,6 +8,8 @@
     "build": "tsc && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:backend": "python3 -m pytest server/tests -q",
+    "sync:capital-flow": "python3 -m server.capital_flow.sync --trade-date latest",
     "e2e": "playwright test",
     "dev:full": "concurrently \"npm run dev\" \"env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u http_proxy -u HTTPS_PROXY -u https_proxy -u NO_PROXY -u no_proxy cd server && python3 app.py\"",
     "dev:backend": "env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u http_proxy -u HTTPS_PROXY -u https_proxy -u NO_PROXY -u no_proxy cd server && python3 app.py"

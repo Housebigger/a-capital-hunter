@@ -7,3 +7,9 @@ coverage/
 test-results/
 playwright-report/
 *.tsbuildinfo
+
+# Capital flow pipeline local state
+.env
+.env.*
+server/data/*.sqlite3
+server/data/*.sqlite3-*

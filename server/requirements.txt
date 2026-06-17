@@ -3,3 +3,5 @@ flask-cors>=4.0
 akshare>=1.16
 flask-caching>=2.1
 gunicorn>=22.0
+jqdatasdk==1.9.8
+pytest==8.4.2
