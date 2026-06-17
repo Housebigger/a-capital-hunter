@@ -2,6 +2,7 @@ from datetime import date
 
 import pytest
 
+from server.capital_flow.source import CapitalFlowSourceError
 from server.capital_flow.sync import build_summary, run_sync
 
 
@@ -37,7 +38,8 @@ def test_build_summary_includes_error_without_credentials():
 
 
 def test_run_sync_returns_nonzero_when_credentials_missing(monkeypatch, tmp_path, capsys):
-    # Empty environment → from_environment raises → exit 1
+    # Empty environment → source factory raises → exit 1
+    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
     monkeypatch.delenv("JQDATA_USERNAME", raising=False)
     monkeypatch.delenv("JQDATA_PASSWORD", raising=False)
     monkeypatch.setenv("CAPITAL_FLOW_DB", str(tmp_path / "cf.sqlite3"))
@@ -46,3 +48,25 @@ def test_run_sync_returns_nonzero_when_credentials_missing(monkeypatch, tmp_path
         env={},
     )
     assert code == 1
+
+
+def test_build_source_defaults_to_tushare():
+    """Without CAPITAL_FLOW_SOURCE, Tushare is selected (JQData blocks CN-outside)."""
+    from server.capital_flow.sync import build_source_from_environment
+    with pytest.raises(CapitalFlowSourceError, match="TUSHARE_TOKEN"):
+        build_source_from_environment({})
+
+
+def test_build_source_selects_jqdata_when_configured():
+    from server.capital_flow.sync import build_source_from_environment
+    with pytest.raises(CapitalFlowSourceError, match="JQDATA_USERNAME"):
+        build_source_from_environment(
+            {"CAPITAL_FLOW_SOURCE": "jqdata"}
+        )
+
+
+def test_build_source_rejects_unknown_kind():
+    from server.capital_flow.sync import build_source_from_environment
+    with pytest.raises(CapitalFlowSourceError, match="Unknown CAPITAL_FLOW_SOURCE"):
+        build_source_from_environment({"CAPITAL_FLOW_SOURCE": "bloomberg"})
+

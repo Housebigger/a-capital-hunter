@@ -7,15 +7,15 @@ capital inflow intensity. The UI is Chinese; code identifiers are English.
 
 ## Data pipeline
 
-The map consumes **real JQData** end-of-day snapshots — never simulated numbers
+The map consumes **real end-of-day snapshots** — never simulated numbers
 presented as real. The pipeline is **offline-collect, online-read-snapshot**:
 
 ```
-JQData get_money_flow  (源单位: 万元)
+Tushare moneyflow_dc  (源单位: 万元)
         │  日终采集器 (认证 → 代码标准化 → 去重 → ≥90% 覆盖判 ready/partial)
         ▼
 本地 SQLite 快照库  (入库单位: 人民币元 CNY)
-        │  Flask 只读 API (browser never triggers a JQData call)
+        │  Flask 只读 API (browser never triggers an upstream call)
         ▼
 React Async DataProvider
         │  buildCapitalFlowAggregates (去重 P3 个股 → P2 子题材 → P1 主线)
@@ -23,13 +23,32 @@ React Async DataProvider
 HunterScene → CapitalMapScene (R3F Canvas)
 ```
 
-- **Metric:** `net_amount_main` (主力净流入 = 超大单净额 + 大单净额).
-- **Unit:** JQData reports 万元; the adapter converts to CNY (yuan) at ingest.
-- **Cadence:** end-of-day. JQData updates money flow after market close.
+- **Metric:** main-force net inflow (主力净流入 = 超大单净额 + 大单净额).
+- **Unit:** Tushare/JQData report 万元; the adapter converts to CNY (yuan) at ingest.
+- **Cadence:** end-of-day. Both providers update money flow after market close.
 - **Honesty:** the frontend throws on any fetch failure — it never silently
   swaps in mock data. When no snapshot exists the UI shows an explicit error
   with a **Retry** button and an opt-in **Load demo data** button (graceful
   degradation; demo mode is always labeled).
+
+### Data source: Tushare Pro (default) vs JQData
+
+The `CapitalFlowSource` Protocol decouples the pipeline from any specific
+vendor. Two implementations ship:
+
+| Source | Region | Token | Main-force field | Points needed |
+|---|---|---|---|---|
+| **Tushare Pro** (default) | ✅ None | free @ tushare.pro | `moneyflow_dc.net_amount` (direct) | 5000 |
+| Tushare (fallback) | ✅ None | free @ tushare.pro | computed from `moneyflow` buy/sell | **2000** |
+| JQData | ❌ Mainland China only | joinquant.com | `net_amount_main` (direct) | account |
+
+**Tushare is the default** because JQData blocks access from outside mainland
+China. The Tushare adapter tries `moneyflow_dc` (5000 points, direct
+main-force value) first; if the account lacks that entitlement it
+**automatically degrades** to `moneyflow` (2000 points) and computes
+main-force net inflow as `(buy_elg − sell_elg) + (buy_lg − sell_lg)`.
+
+Switch sources via `CAPITAL_FLOW_SOURCE=tushare|jqdata` in `.env`.
 
 ### Coverage and status
 
@@ -44,9 +63,9 @@ point; otherwise `partial` (still shown, with a warning). A `failed` snapshot
 python3 -m pip install -r server/requirements.txt
 npm install
 
-# 2. Configure JQData credentials
+# 2. Configure data source credentials
 cp .env.example .env
-#   … fill in JQDATA_USERNAME / JQDATA_PASSWORD …
+#   … fill in TUSHARE_TOKEN (get one free at https://tushare.pro/register) …
 
 # 3. Sync the latest trading day into SQLite
 set -a; source .env; set +a
@@ -80,10 +99,12 @@ npm run dev:full           # Vite + Flask concurrently
 
 ## Entitlement caveat
 
-JQData trial accounts may restrict the accessible date window. The sync
-command reports the actual returned trade date and fails clearly when the
-account cannot access the requested latest day; meeting the daily end-of-day
-goal may require enabling the corresponding JQData permission.
+Tushare Pro's `moneyflow_dc` (direct main-force value) requires **5000 points**.
+The adapter detects a permission denial and automatically falls back to
+`moneyflow` (**2000 points**), computing main force from order-size components —
+so the pipeline works even with a fresh account that only meets the lower tier.
+New accounts start with ~120 points; reach 2000 by sharing articles or inviting
+users on tushare.pro to unlock the fallback path, or 5000 for the direct path.
 
 ## Architecture
 

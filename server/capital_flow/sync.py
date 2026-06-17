@@ -23,10 +23,19 @@ from typing import Optional
 
 from .repository import SnapshotRepository
 from .service import CapitalFlowSyncService, SnapshotSyncError
-from .source import CapitalFlowSourceError, JqDataCapitalFlowSource
+from .source import (
+    CapitalFlowSource,
+    CapitalFlowSourceError,
+    JqDataCapitalFlowSource,
+    TushareCapitalFlowSource,
+)
 
 #: Default SQLite path relative to the project root.
 DEFAULT_DB = "server/data/capital_flow.sqlite3"
+
+#: Which data source to use. ``tushare`` is the default because JQData blocks
+#: access from outside mainland China. Override with CAPITAL_FLOW_SOURCE=jqdata.
+DEFAULT_SOURCE = "tushare"
 
 
 def build_summary(
@@ -56,10 +65,30 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def build_source_from_environment(env: dict) -> CapitalFlowSource:
+    """Construct the configured data source from environment variables.
+
+    Selection rule (first match wins):
+      * ``CAPITAL_FLOW_SOURCE=tushare`` (default) → Tushare, needs TUSHARE_TOKEN
+      * ``CAPITAL_FLOW_SOURCE=jqdata``            → JQData, needs JQDATA_*
+
+    Defaulting to Tushare because JQData blocks access from outside mainland
+    China; Tushare has no such restriction.
+    """
+    kind = (env.get("CAPITAL_FLOW_SOURCE") or DEFAULT_SOURCE).strip().lower()
+    if kind == "tushare":
+        return TushareCapitalFlowSource.from_environment(env)
+    if kind == "jqdata":
+        return JqDataCapitalFlowSource.from_environment(env)
+    raise CapitalFlowSourceError(
+        f"Unknown CAPITAL_FLOW_SOURCE '{kind}' (expected 'tushare' or 'jqdata')"
+    )
+
+
 def run_sync(argv: list, env: Optional[dict] = None) -> int:
     env = env if env is not None else os.environ
     parser = argparse.ArgumentParser(
-        description="Sync JQData capital flow snapshots"
+        description="Sync capital flow snapshots (Tushare or JQData)"
     )
     parser.add_argument(
         "--trade-date",
@@ -71,12 +100,19 @@ def run_sync(argv: list, env: Optional[dict] = None) -> int:
         default=None,
         help=f"SQLite path (default: {DEFAULT_DB})",
     )
+    parser.add_argument(
+        "--source",
+        default=None,
+        help="Override CAPITAL_FLOW_SOURCE: 'tushare' or 'jqdata'",
+    )
     args = parser.parse_args(argv)
 
     db_path = Path(args.database) if args.database else _project_root() / DEFAULT_DB
+    if args.source:
+        env = {**env, "CAPITAL_FLOW_SOURCE": args.source}
 
     try:
-        source = JqDataCapitalFlowSource.from_environment(env)
+        source = build_source_from_environment(env)
     except CapitalFlowSourceError as exc:
         print(json.dumps(build_summary(
             trade_date=None, status=None, requested=0, succeeded=0, failed=0,

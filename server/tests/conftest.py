@@ -13,6 +13,60 @@ def tmp_db_path(tmp_path) -> Path:
     return tmp_path / "capital_flow.sqlite3"
 
 
+class FakeTushareApi:
+    """In-memory stand-in for tushare.pro_api used by source tests.
+
+    The real ``pro_api`` is constructed via ``tushare.pro_api(token)`` and
+    exposes one method per interface (``moneyflow_dc``, ``moneyflow``,
+    ``trade_cal``). The fake records every call so tests can assert args and
+    scripted responses / errors.
+    """
+
+    def __init__(self):
+        self.dc_rows = []          # rows returned by moneyflow_dc
+        self.mf_rows = []          # rows returned by moneyflow
+        self.dc_error = None       # if set, moneyflow_dc raises
+        self.trade_cal_dates = ["20260612"]
+        self.dc_calls = []
+        self.mf_calls = []
+
+    def moneyflow_dc(self, **kwargs):
+        self.dc_calls.append(kwargs)
+        if self.dc_error:
+            raise self.dc_error
+        import pandas as pd
+        return pd.DataFrame(self.dc_rows)
+
+    def moneyflow(self, **kwargs):
+        self.mf_calls.append(kwargs)
+        import pandas as pd
+        return pd.DataFrame(self.mf_rows)
+
+    def trade_cal(self, **kwargs):
+        import pandas as pd
+        dates = list(self.trade_cal_dates)
+        start = kwargs.get("start_date")
+        end = kwargs.get("end_date")
+        if start:
+            dates = [d for d in dates if d >= start]
+        if end:
+            dates = [d for d in dates if d <= end]
+        # When the caller asks for a specific window, only return rows that
+        # actually fall in it — otherwise is_trade_date tests can't distinguish
+        # open from closed days.
+        limit = kwargs.get("limit")
+        if limit:
+            dates = dates[-limit:]
+        return pd.DataFrame(
+            {"cal_date": dates, "is_open": [1] * len(dates)}
+        )
+
+
+@pytest.fixture
+def fake_tushare_api():
+    return FakeTushareApi()
+
+
 class FakeJqSdk:
     """In-memory stand-in for jqdatasdk used by source tests.
 

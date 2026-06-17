@@ -4,4 +4,5 @@ akshare>=1.16
 flask-caching>=2.1
 gunicorn>=22.0
 jqdatasdk==1.9.8
+tushare>=1.4.0
 pytest==8.4.2
