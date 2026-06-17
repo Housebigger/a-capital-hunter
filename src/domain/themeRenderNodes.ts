@@ -55,11 +55,16 @@ export function aggregateThemeCapital(
 
 export function buildThemeRenderNodes(input: {
   readonly cells: ReadonlyArray<ThemeCell>;
-  readonly scenario: MarketScenario;
+  readonly scenario?: MarketScenario;
+  /** Real-data path: per-theme capital from JQData aggregation. */
+  readonly capitalByTheme?: ReadonlyMap<string, number>;
   readonly themeFilter?: string;
 }): ThemeRenderNode[] {
-  const { cells, scenario, themeFilter } = input;
-  const themeCapital = aggregateThemeCapital(scenario);
+  const { cells, scenario, capitalByTheme, themeFilter } = input;
+  // Prefer the real JQData aggregation; fall back to scenario aggregation so
+  // legacy callers and tests that inject a MarketScenario still work.
+  const themeCapital =
+    capitalByTheme ?? (scenario ? aggregateThemeCapital(scenario) : new Map<string, number>());
 
   // Find max absolute value for normalization
   let maxAbs = 0;

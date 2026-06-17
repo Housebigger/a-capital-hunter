@@ -5,6 +5,7 @@ import { stocks } from "./stockRegistry";
 import { subThemes } from "./subThemeRegistry";
 import { placeStocksInCell } from "./stockLayoutEngine";
 import { buildP3StockRenderNodes } from "./stockRenderNodes";
+import type { StockCapitalFlowPoint } from "../data/capitalFlowSnapshot";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -178,3 +179,72 @@ describe("buildP3StockRenderNodes", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Real-data path (JQData snapshot points)
+// ---------------------------------------------------------------------------
+
+describe("buildP3StockRenderNodes (real points)", () => {
+  it("omits stocks that have no real point", () => {
+    const cell = makeCell("optical-interconnect", "ai-computing");
+    const opticalStocks = stocks.filter(
+      (s) => s.subThemeId === "optical-interconnect"
+    );
+    // Only one stock has a real point.
+    const points: StockCapitalFlowPoint[] = [
+      {
+        stockId: opticalStocks[0].id,
+        securityCode: "300308.XSHE",
+        stockName: opticalStocks[0].name,
+        subThemeId: "optical-interconnect",
+        themeId: "ai-computing",
+        aggregationRole: "primary",
+        netAmountMain: 12_345_600,
+        tradeDate: "2026-06-12",
+      },
+    ];
+    const nodes = buildP3StockRenderNodes({
+      voronoiCells: [cell],
+      points,
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].stock.id).toBe(opticalStocks[0].id);
+    expect(nodes[0].metric.rawValue).toBe(12_345_600);
+  });
+
+  it("never uses the synthetic value 5 when real points are provided", () => {
+    const cell = makeCell("optical-interconnect", "ai-computing");
+    const nodes = buildP3StockRenderNodes({
+      voronoiCells: [cell],
+      points: [], // empty → no nodes at all, not synthetic placeholders
+    });
+    expect(nodes.every((n) => n.metric.rawValue !== 5)).toBe(true);
+    expect(nodes).toHaveLength(0);
+  });
+
+  it("uses each point's true netAmountMain", () => {
+    const cell = makeCell("optical-interconnect", "ai-computing");
+    const opticalStocks = stocks.filter(
+      (s) => s.subThemeId === "optical-interconnect"
+    );
+    const points: StockCapitalFlowPoint[] = opticalStocks.map((s, i) => ({
+      stockId: s.id,
+      securityCode: `${s.code}.${s.code.startsWith("6") ? "XSHG" : "XSHE"}`,
+      stockName: s.name,
+      subThemeId: "optical-interconnect",
+      themeId: "ai-computing",
+      aggregationRole: i === 0 ? "primary" : "related",
+      netAmountMain: (i + 1) * 10_000_000,
+      tradeDate: "2026-06-12",
+    }));
+    const nodes = buildP3StockRenderNodes({
+      voronoiCells: [cell],
+      points,
+    });
+    const valueById = new Map(nodes.map((n) => [n.stock.id, n.metric.rawValue]));
+    for (const p of points) {
+      expect(valueById.get(p.stockId)).toBe(p.netAmountMain);
+    }
+  });
+});
+

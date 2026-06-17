@@ -57,12 +57,16 @@ export function aggregateSubThemeCapital(
 
 export function buildSubThemeRenderNodes(input: {
   readonly voronoiCells: ReadonlyArray<VoronoiCell>;
-  readonly scenario: MarketScenario;
+  readonly scenario?: MarketScenario;
+  /** Real-data path: per-sub-theme capital from JQData aggregation. */
+  readonly capitalBySubTheme?: ReadonlyMap<string, number>;
   readonly themeFilter?: string;
   readonly capitalStateFilter?: string;
 }): SubThemeRenderNode[] {
-  const { voronoiCells, scenario, themeFilter, capitalStateFilter } = input;
-  const capital = aggregateSubThemeCapital(scenario);
+  const { voronoiCells, scenario, capitalBySubTheme, themeFilter, capitalStateFilter } = input;
+  // Prefer the real JQData aggregation; fall back to scenario aggregation.
+  const capital =
+    capitalBySubTheme ?? (scenario ? aggregateSubThemeCapital(scenario) : new Map<string, number>());
 
   // Theme lookup
   const themeMap = new Map<string, Theme>();

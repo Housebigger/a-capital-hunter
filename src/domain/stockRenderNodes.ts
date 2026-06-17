@@ -1,9 +1,13 @@
 /**
  * Stock Render Nodes — builds P3 (individual stock) render nodes.
  *
- * For each VoronoiCell, places stocks within the cell polygon using
- * the stockLayoutEngine, distributes SubTheme-level capital across stocks,
- * normalizes metrics, and applies filters.
+ * Two data paths:
+ *   1. Real data: pass ``points`` from a JQData snapshot. Each registry stock
+ *      with a matching point gets its true net_amount_main; stocks without a
+ *      point are skipped (no synthetic placeholder).
+ *   2. Legacy scenario: pass ``scenario`` (deprecated). Stocks receive a
+ *      deterministic share of the sub-theme total so the prototype stayed
+ *      populated before real data existed. The product path uses (1).
  *
  * Pure function module with no React dependencies.
  */
@@ -22,6 +26,7 @@ import { themes } from "./themeRegistry";
 import { normalizeCapitalValue } from "./metricNormalizer";
 import { placeStocksInCell } from "./stockLayoutEngine";
 import { aggregateSubThemeCapital } from "./subThemeRenderNodes";
+import type { StockCapitalFlowPoint } from "../data/capitalFlowSnapshot";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -56,14 +61,24 @@ interface RawStockEntry {
 
 export function buildP3StockRenderNodes(input: {
   readonly voronoiCells: ReadonlyArray<VoronoiCell>;
-  readonly scenario: MarketScenario;
+  readonly scenario?: MarketScenario;
+  /** Real-data path: per-stock points from a JQData snapshot. */
+  readonly points?: readonly StockCapitalFlowPoint[];
   readonly themeFilter?: string;
   readonly capitalStateFilter?: string;
 }): StockRenderNode3[] {
-  const { voronoiCells, scenario, themeFilter, capitalStateFilter } = input;
+  const { voronoiCells, scenario, points, themeFilter, capitalStateFilter } = input;
 
-  // 1. Aggregate capital per SubTheme
-  const capitalMap = aggregateSubThemeCapital(scenario);
+  const useRealData = points !== undefined;
+  const pointByStockId = new Map<string, StockCapitalFlowPoint>();
+  if (useRealData) {
+    for (const p of points!) {
+      pointByStockId.set(p.stockId, p);
+    }
+  }
+
+  // 1. Aggregate capital per SubTheme (legacy path only)
+  const capitalMap = useRealData ? new Map<string, number>() : aggregateSubThemeCapital(scenario!);
 
   // 2. Build lookups
   const subThemeMap = new Map<string, SubTheme>();
@@ -108,41 +123,53 @@ export function buildP3StockRenderNodes(input: {
     // Position stocks within cell
     const positions = placeStocksInCell(cell, cellStocks);
 
-    // Get SubTheme total capital
-    const subThemeTotal = capitalMap.get(st.id) ?? 0;
-
-    // Distribute capital across stocks
-    for (let i = 0; i < positions.length; i++) {
-      const pos = positions[i];
-      const stock = cellStocks.find((s) => s.id === pos.stockId);
-      if (!stock) continue;
-
-      let distributedValue: number;
-      if (subThemeTotal === 0) {
-        // Use small mock value when SubTheme has no capital
-        distributedValue = 5;
-      } else {
-        const n = cellStocks.length;
-        if (i === 0) {
-          // First stock gets 40% of SubTheme total
-          distributedValue = subThemeTotal * 0.4;
-        } else {
-          // Rest share 60% evenly
-          distributedValue = (subThemeTotal * 0.6) / (n - 1);
-        }
+    if (useRealData) {
+      // Real-data path: only render stocks that have a real point.
+      // No synthetic distribution, no placeholder value.
+      for (const pos of positions) {
+        const stock = cellStocks.find((s) => s.id === pos.stockId);
+        if (!stock) continue;
+        const point = pointByStockId.get(stock.id);
+        if (!point) continue; // skip stocks without real data
+        rawEntries.push({
+          stock,
+          subTheme: st,
+          theme,
+          position: { x: pos.x, z: pos.z },
+          cell,
+          distributedValue: point.netAmountMain,
+        });
       }
+    } else {
+      // Legacy scenario path: distribute sub-theme total across stocks.
+      const subThemeTotal = capitalMap.get(st.id) ?? 0;
+      for (let i = 0; i < positions.length; i++) {
+        const pos = positions[i];
+        const stock = cellStocks.find((s) => s.id === pos.stockId);
+        if (!stock) continue;
 
-      // Add slight variation per stock for diversity
-      distributedValue *= 0.85 + i * 0.05;
+        let distributedValue: number;
+        if (subThemeTotal === 0) {
+          distributedValue = 5;
+        } else {
+          const n = cellStocks.length;
+          if (i === 0) {
+            distributedValue = subThemeTotal * 0.4;
+          } else {
+            distributedValue = (subThemeTotal * 0.6) / (n - 1);
+          }
+        }
+        distributedValue *= 0.85 + i * 0.05;
 
-      rawEntries.push({
-        stock,
-        subTheme: st,
-        theme,
-        position: { x: pos.x, z: pos.z },
-        cell,
-        distributedValue,
-      });
+        rawEntries.push({
+          stock,
+          subTheme: st,
+          theme,
+          position: { x: pos.x, z: pos.z },
+          cell,
+          distributedValue,
+        });
+      }
     }
   }
 
