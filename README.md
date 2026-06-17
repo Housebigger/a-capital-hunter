@@ -36,17 +36,23 @@ HunterScene → CapitalMapScene (R3F Canvas)
 The `CapitalFlowSource` Protocol decouples the pipeline from any specific
 vendor. Two implementations ship:
 
-| Source | Region | Token | Main-force field | Points needed |
+| Source | Region | Token | Main-force field | Cost |
 |---|---|---|---|---|
-| **Tushare Pro** (default) | ✅ None | free @ tushare.pro | `moneyflow_dc.net_amount` (direct) | 5000 |
-| Tushare (fallback) | ✅ None | free @ tushare.pro | computed from `moneyflow` buy/sell | **2000** |
-| JQData | ❌ Mainland China only | joinquant.com | `net_amount_main` (direct) | account |
+| **Tushare Pro** (default) | ✅ None | free @ tushare.pro | `moneyflow_dc.net_amount` (direct) | 5000 pts (free, grindable) |
+| Tushare (fallback) | ✅ None | free @ tushare.pro | computed from `moneyflow` buy/sell | **2000 pts** (free, grindable) |
+| JQData | ❌ Mainland China only | joinquant.com | `net_amount_main` (direct) | **paid** money-flow module |
 
-**Tushare is the default** because JQData blocks access from outside mainland
-China. The Tushare adapter tries `moneyflow_dc` (5000 points, direct
-main-force value) first; if the account lacks that entitlement it
-**automatically degrades** to `moneyflow` (2000 points) and computes
-main-force net inflow as `(buy_elg − sell_elg) + (buy_lg − sell_lg)`.
+**Tushare is the default.** It has no region restriction, and its `moneyflow`
+interface is reachable with a free 2000-point account (new accounts start at
+~120 and grind up via community contributions). The adapter tries
+`moneyflow_dc` (5000 points, direct main-force value) first; if the account
+lacks that entitlement it **automatically degrades** to `moneyflow` (2000
+points) and computes main-force net inflow as
+`(buy_elg − sell_elg) + (buy_lg − sell_lg)`.
+
+JQData is kept as an alternative for accounts that have **purchased** its
+money-flow module — the base/free JQData account can authenticate but cannot
+call `get_money_flow` (it's a paid module).
 
 Switch sources via `CAPITAL_FLOW_SOURCE=tushare|jqdata` in `.env`.
 
@@ -65,7 +71,8 @@ npm install
 
 # 2. Configure data source credentials
 cp .env.example .env
-#   … fill in TUSHARE_TOKEN (get one free at https://tushare.pro/register) …
+#   … fill in TUSHARE_TOKEN (register free at https://tushare.pro/register,
+#     then copy your token from https://tushare.pro/user/token) …
 
 # 3. Sync the latest trading day into SQLite
 set -a; source .env; set +a

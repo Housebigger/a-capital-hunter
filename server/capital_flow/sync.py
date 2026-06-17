@@ -33,8 +33,10 @@ from .source import (
 #: Default SQLite path relative to the project root.
 DEFAULT_DB = "server/data/capital_flow.sqlite3"
 
-#: Which data source to use. ``tushare`` is the default because JQData blocks
-#: access from outside mainland China. Override with CAPITAL_FLOW_SOURCE=jqdata.
+#: Which data source to use. ``tushare`` is the default: it has no region
+#: restriction and its moneyflow interface is reachable with a free 2000-point
+#: account. JQData's money-flow module is paid, so jqdata is kept only as an
+#: alternative for accounts that have purchased it.
 DEFAULT_SOURCE = "tushare"
 
 

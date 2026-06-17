@@ -51,7 +51,8 @@ def test_run_sync_returns_nonzero_when_credentials_missing(monkeypatch, tmp_path
 
 
 def test_build_source_defaults_to_tushare():
-    """Without CAPITAL_FLOW_SOURCE, Tushare is selected (JQData blocks CN-outside)."""
+    """Without CAPITAL_FLOW_SOURCE, Tushare is selected (no region restriction,
+    free 2000-point moneyflow path)."""
     from server.capital_flow.sync import build_source_from_environment
     with pytest.raises(CapitalFlowSourceError, match="TUSHARE_TOKEN"):
         build_source_from_environment({})
