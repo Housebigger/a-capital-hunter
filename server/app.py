@@ -446,4 +446,9 @@ except ImportError as _e:
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    # use_reloader=False: the reloader forks a child process that re-imports
+    # app.py, which would re-create the module-level SnapshotRepository (and
+    # its SQLite connection) and confuse the parent's connection. The single
+    # process with check_same_thread=False + a write lock in the repository is
+    # the safe mode for local development.
+    app.run(debug=True, use_reloader=False, port=5001)

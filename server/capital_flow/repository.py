@@ -12,6 +12,7 @@ exactly; no key-munging happens at the API layer.
 from __future__ import annotations
 
 import sqlite3
+import threading
 from datetime import date
 from pathlib import Path
 from typing import List, Optional
@@ -64,7 +65,10 @@ def _connect(db_path: Path) -> sqlite3.Connection:
     db_path = Path(db_path)
     if db_path.parent and not db_path.parent.exists():
         db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path))
+    # check_same_thread=False lets Flask's threaded WSGI server share this
+    # connection across request threads. Writes are serialized by the
+    # repository's own lock; reads are SELECT-only and safe concurrent.
+    conn = sqlite3.connect(str(db_path), check_same_thread=False)
     conn.execute("PRAGMA foreign_keys = ON")
     conn.row_factory = sqlite3.Row
     return conn
@@ -80,9 +84,11 @@ class SnapshotRepository:
 
     def __init__(self, db_path: Path):
         self._db_path = Path(db_path)
+        self._lock = threading.Lock()
         self._conn = _connect(self._db_path)
-        self._conn.executescript(_SCHEMA)
-        self._conn.commit()
+        with self._lock:
+            self._conn.executescript(_SCHEMA)
+            self._conn.commit()
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -106,10 +112,11 @@ class SnapshotRepository:
 
         Runs inside ``with connection:`` so any constraint violation rolls
         back the whole delete-and-replace, leaving the previous state intact.
+        The repository lock serializes writes across request threads.
         """
         trade_date_str = draft.trade_date.isoformat()
         conn = self._conn
-        with conn:
+        with self._lock, conn:
             # Remove any prior snapshot for this trade date (cascade handles
             # child rows because foreign keys are on).
             conn.execute(
