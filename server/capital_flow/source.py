@@ -90,8 +90,12 @@ class JqDataCapitalFlowSource:
             self._sdk.auth(username, password)
             self._authed = True
         except Exception as exc:  # noqa: BLE001 — wrap any SDK auth failure
+            # Surface the server-side message (e.g. "用户不存在或密码错误") so
+            # operators can act on it. The message is returned by JQData and
+            # never contains the supplied credentials.
+            msg = str(exc).strip() or type(exc).__name__
             raise CapitalFlowSourceError(
-                f"JQData authentication failed: {type(exc).__name__}"
+                f"JQData authentication failed: {msg}"
             ) from exc
 
     # ------------------------------------------------------------------
@@ -131,8 +135,9 @@ class JqDataCapitalFlowSource:
         try:
             days = self._sdk.get_trade_days(end_date=date.today(), count=1)
         except Exception as exc:  # noqa: BLE001
+            msg = str(exc).strip() or type(exc).__name__
             raise CapitalFlowSourceError(
-                f"Failed to resolve latest trade date: {type(exc).__name__}"
+                f"Failed to resolve latest trade date: {msg}"
             ) from exc
         if not days:
             raise CapitalFlowSourceError("JQData returned no trade days")
@@ -145,8 +150,9 @@ class JqDataCapitalFlowSource:
                 start_date=trade_date, end_date=trade_date
             )
         except Exception as exc:  # noqa: BLE001
+            msg = str(exc).strip() or type(exc).__name__
             raise CapitalFlowSourceError(
-                f"Failed to query trade calendar: {type(exc).__name__}"
+                f"Failed to query trade calendar: {msg}"
             ) from exc
         return bool(days)
 
@@ -162,9 +168,12 @@ class JqDataCapitalFlowSource:
                 fields=_MONEY_FLOW_FIELDS,
             )
         except Exception as exc:  # noqa: BLE001
-            # Never leak credentials; only the exception type/name.
+            # Surface the server-side message (e.g. "今日查询额度已用完" or
+            # "不支持该日期"). str(exc) comes from JQData, never from our
+            # credentials — auth params are not echoed in SDK error messages.
+            msg = str(exc).strip() or type(exc).__name__
             raise CapitalFlowSourceError(
-                f"JQData get_money_flow failed: {type(exc).__name__}"
+                f"JQData get_money_flow failed: {msg}"
             ) from exc
         return self._parse_frame(df, trade_date)
 
