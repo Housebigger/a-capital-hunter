@@ -11,5 +11,6 @@ playwright-report/
 # Capital flow pipeline local state
 .env
 .env.*
+!.env.example
 server/data/*.sqlite3
 server/data/*.sqlite3-*

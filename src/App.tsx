@@ -21,6 +21,9 @@ import type { MarketScenario } from "./domain/types";
 const themeLayoutProvider = createThemeLayoutProvider();
 const subThemeLayoutProvider = createSubThemeLayoutProvider();
 const FALLBACK_PROVIDER = createScenarioDataProvider();
+// Default real provider lives at module scope so it has a stable identity
+// across renders (avoids a useEffect re-run loop). Tests inject their own.
+const DEFAULT_DATA_PROVIDER = createCapitalFlowDataProvider();
 
 export type ViewMode = "P1" | "P2" | "P3";
 
@@ -37,7 +40,7 @@ export interface AppProps {
 }
 
 export default function App({ provider }: AppProps = {}) {
-  const dataProvider = provider ?? createCapitalFlowDataProvider();
+  const dataProvider = provider ?? DEFAULT_DATA_PROVIDER;
 
   const [viewState, setViewState] = useState<SnapshotViewState>({ status: "loading" });
   const [status, setStatus] = useState<CapitalFlowStatus | null>(null);
