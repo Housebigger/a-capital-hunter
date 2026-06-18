@@ -54,12 +54,13 @@ export function DataStatus({ snapshot, isDemo, onRetry, onLoadDemo }: DataStatus
   // --- Ready / partial: show provenance + coverage ---
   const isPartial = snapshot.status === "partial";
   const coverage = snapshot.coverage;
+  const sourceLabel = snapshot.source === "tushare" ? "Tushare" : "JQData";
 
   return (
     <div className={`data-status${isPartial ? " partial" : ""}`} role="status">
       <span>数据截至 {snapshot.tradeDate}</span>
       <span>
-        JQData · 主力净流入 · 单位 {snapshot.unit}
+        {sourceLabel} · 主力净流入 · 单位 {snapshot.unit}
       </span>
       <span>
         覆盖 {coverage.succeeded} / {coverage.requested}（{coveragePercent(coverage.succeeded, coverage.requested)}）

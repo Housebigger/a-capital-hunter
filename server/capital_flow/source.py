@@ -72,6 +72,9 @@ class JqDataCapitalFlowSource:
     not require the SDK to be installed.
     """
 
+    #: Identifier recorded on snapshots so the UI can honestly report origin.
+    name = "jqdata"
+
     def __init__(
         self,
         username: str,
@@ -277,6 +280,9 @@ class TushareCapitalFlowSource:
     Either way the value is converted to CNY (yuan) at the boundary, matching
     the JQData source so downstream code is source-agnostic.
     """
+
+    #: Identifier recorded on snapshots so the UI can honestly report origin.
+    name = "tushare"
 
     def __init__(
         self,

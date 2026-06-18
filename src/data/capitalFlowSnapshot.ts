@@ -27,7 +27,7 @@ export interface StockCapitalFlowPoint {
 export interface CapitalFlowSnapshot {
   readonly tradeDate: string;
   readonly fetchedAt: string;
-  readonly source: "jqdata";
+  readonly source: string;
   readonly metric: "net_amount_main";
   readonly unit: "CNY";
   readonly status: SnapshotStatus;
@@ -44,7 +44,7 @@ export interface CapitalFlowStatus {
   readonly databaseAvailable: boolean;
   readonly latestTradeDate?: string;
   readonly latestStatus?: SnapshotStatus;
-  readonly source: "jqdata";
+  readonly source: string;
   readonly metric: "net_amount_main";
   readonly availableTradeDates: readonly string[];
 }
@@ -141,8 +141,8 @@ export function parseSnapshot(raw: unknown): CapitalFlowSnapshot {
   if (!isString(tradeDate) || !isString(fetchedAt)) {
     throw new InvalidSnapshotError("Invalid capital flow snapshot: missing tradeDate/fetchedAt");
   }
-  if (source !== "jqdata") {
-    throw new InvalidSnapshotError("Invalid capital flow snapshot: source must be jqdata");
+  if (!isString(source)) {
+    throw new InvalidSnapshotError("Invalid capital flow snapshot: source must be a non-empty string");
   }
   if (metric !== "net_amount_main") {
     throw new InvalidSnapshotError("Invalid capital flow snapshot: metric must be net_amount_main");
@@ -178,7 +178,7 @@ export function parseStatus(raw: unknown): CapitalFlowStatus {
   if (typeof databaseAvailable !== "boolean") {
     throw new InvalidSnapshotError("Invalid capital flow status: databaseAvailable missing");
   }
-  if (source !== "jqdata" || metric !== "net_amount_main") {
+  if (!isString(source) || metric !== "net_amount_main") {
     throw new InvalidSnapshotError("Invalid capital flow status: source/metric mismatch");
   }
   if (!Array.isArray(availableTradeDates) || !availableTradeDates.every((d) => typeof d === "string")) {

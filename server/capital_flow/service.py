@@ -140,7 +140,7 @@ class CapitalFlowSyncService:
         return SnapshotDraft(
             trade_date=trade_date,
             fetched_at=datetime.now(timezone.utc).isoformat(),
-            source="jqdata",
+            source=self._source_name(),
             metric="net_amount_main",
             unit="CNY",
             status=status,
@@ -194,6 +194,16 @@ class CapitalFlowSyncService:
         assert (
             abs(sub_sum - unique_total) < AGGREGATION_TOLERANCE
         ), f"sub-theme total {sub_sum} != unique total {unique_total}"
+
+    def _source_name(self) -> str:
+        """Identify which adapter produced this snapshot.
+
+        Reads an optional ``name`` attribute from the source so the stored
+        snapshot honestly reports its origin (``tushare`` vs ``jqdata``).
+        Falls back to ``jqdata`` for sources that don't set a name, preserving
+        the original contract.
+        """
+        return getattr(self._source, "name", None) or "jqdata"
 
     @staticmethod
     def _to_storage_mapping(m: StockMapping) -> StockMapping:
