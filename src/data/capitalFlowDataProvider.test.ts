@@ -126,4 +126,14 @@ describe("createCapitalFlowDataProvider", () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
   });
+
+  it("fetchLatest sends the window query param", async () => {
+    mockFetch.mockResolvedValueOnce(okJson(snapshotFixture));
+    const provider = createCapitalFlowDataProvider();
+    await provider.fetchLatest("5d");
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("window=5d"),
+      expect.any(Object)
+    );
+  });
 });

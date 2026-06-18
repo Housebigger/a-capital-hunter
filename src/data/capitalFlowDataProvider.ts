@@ -15,6 +15,8 @@ import {
   type CapitalFlowStatus,
 } from "./capitalFlowSnapshot";
 
+export type CapitalFlowWindowKey = "1d" | "5d" | "10d" | "20d";
+
 const LATEST_URL = "/api/capital-flow/snapshot/latest";
 const STATUS_URL = "/api/capital-flow/status";
 const FETCH_TIMEOUT_MS = 10_000;
@@ -67,15 +69,15 @@ async function request<T>(
 }
 
 export interface CapitalFlowDataProvider {
-  fetchLatest(): Promise<CapitalFlowSnapshot>;
+  fetchLatest(window?: CapitalFlowWindowKey): Promise<CapitalFlowSnapshot>;
   fetchDate(tradeDate: string): Promise<CapitalFlowSnapshot>;
   fetchStatus(): Promise<CapitalFlowStatus>;
 }
 
 export function createCapitalFlowDataProvider(): CapitalFlowDataProvider {
   return {
-    fetchLatest(): Promise<CapitalFlowSnapshot> {
-      return request(LATEST_URL, parseSnapshot);
+    fetchLatest(window: CapitalFlowWindowKey = "1d"): Promise<CapitalFlowSnapshot> {
+      return request(`${LATEST_URL}?window=${window}`, parseSnapshot);
     },
     fetchDate(tradeDate: string): Promise<CapitalFlowSnapshot> {
       const url = `/api/capital-flow/snapshot?trade_date=${encodeURIComponent(tradeDate)}`;
