@@ -12,7 +12,7 @@ overwrite a good prior snapshot.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from .models import (
@@ -32,6 +32,12 @@ READY_COVERAGE = 0.9
 
 #: Tolerance for the P1 == P2 == P3 aggregation invariant, in CNY.
 AGGREGATION_TOLERANCE = 0.01
+
+#: How many recent trading days to try when ``latest`` has no data yet.
+#: Money flow is an end-of-day dataset, so a sync run before/around market
+#: close legitimately finds no data for today; walking back 5 days covers a
+#: long weekend plus the prior close.
+LATEST_FALLBACK_DAYS = 5
 
 
 class SnapshotSyncError(RuntimeError):
@@ -54,16 +60,59 @@ class CapitalFlowSyncService:
         self._registry_root = registry_root
 
     def sync(self, trade_date_spec: str) -> SnapshotDraft:
-        """Run one sync. ``trade_date_spec`` is ``"latest"`` or ``YYYY-MM-DD``."""
+        """Run one sync. ``trade_date_spec`` is ``"latest"`` or ``YYYY-MM-DD``.
+
+        For ``"latest"``, if the most recent trading day has no money-flow
+        data yet (common before/around market close, since money flow is an
+        end-of-day dataset), the syncer automatically retries the previous
+        few trading days until it finds data — so a morning run still
+        produces a usable snapshot from the prior close.
+        """
         registry = load_registry(self._registry_root)
         try:
-            trade_date = self._resolve_trade_date(trade_date_spec)
-            draft = self._build_draft(trade_date, registry)
+            if trade_date_spec == "latest":
+                draft = self._sync_latest_with_fallback(registry)
+            else:
+                trade_date = self._resolve_trade_date(trade_date_spec)
+                draft = self._build_draft(trade_date, registry)
         finally:
             self._source.close()
         # Persist only after every invariant passes.
         self._repository.save_snapshot(draft)
         return draft
+
+    def _sync_latest_with_fallback(self, registry: RegistryResult) -> SnapshotDraft:
+        """Try the latest trade date; on 'no usable points', walk back up to
+        :data:`LATEST_FALLBACK_DAYS` days until data is found."""
+        trade_date = self._source.latest_trade_date()
+        last_error: Optional[Exception] = None
+        for attempt in range(LATEST_FALLBACK_DAYS):
+            try:
+                return self._build_draft(trade_date, registry)
+            except SnapshotSyncError as exc:
+                last_error = exc
+                trade_date = self._previous_trade_date(trade_date)
+                if trade_date is None:
+                    break
+        # Every fallback exhausted — surface the original error.
+        raise last_error or SnapshotSyncError(
+            "no usable capital flow points in the last "
+            f"{LATEST_FALLBACK_DAYS} trading days"
+        )
+
+    def _previous_trade_date(self, trade_date: date) -> Optional[date]:
+        """Return the trading day strictly before ``trade_date``.
+
+        Walks back calendar days one at a time and asks the source's calendar
+        whether each is a trading day. Capped at 10 calendar days to bound cost
+        (no 10-calendar-day window contains zero trading days).
+        """
+        probe = trade_date - timedelta(days=1)
+        for _ in range(10):
+            if self._source.is_trade_date(probe):
+                return probe
+            probe -= timedelta(days=1)
+        return None
 
     # ------------------------------------------------------------------
     # Steps
@@ -108,7 +157,11 @@ class CapitalFlowSyncService:
                 succeeded_points.append(point)
 
         if not succeeded_points:
-            raise SnapshotSyncError("no usable JQData points for this trade date")
+            raise SnapshotSyncError(
+                f"no usable capital flow points for {trade_date} "
+                f"(data may not be available yet — money flow updates after "
+                f"market close; try a past trading day)"
+            )
 
         # Pre-filtered unsupported codes are reported but excluded from the
         # coverage denominator, matching the design's definition of "requested".

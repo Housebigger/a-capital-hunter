@@ -12,7 +12,7 @@
     "sync:capital-flow": "python3 -m server.capital_flow.sync --trade-date latest",
     "e2e": "playwright test",
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\"",
-    "dev:backend": "CLEAR_PROXY_ON_STARTUP=true python3 -m server.app"
+    "dev:backend": "python3 -m server.app"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",

@@ -5,11 +5,18 @@ Flask backend wrapping AkShare to serve real A-share sector capital flow data.
 import os
 import logging
 
-# Only clear proxy env vars when explicitly requested (default: keep system proxy)
-if os.environ.get("CLEAR_PROXY_ON_STARTUP", "").lower() == "true":
+# Clear proxy env vars by default. AkShare/Tushare/JQData all hit domestic
+# Chinese endpoints that a system VPN/proxy will break. Previously this was
+# opt-in via CLEAR_PROXY_ON_STARTUP=true; making it default removes a footgun
+# where forgetting the flag makes every upstream call hang or fail.
+# Set KEEP_PROXY_ON_STARTUP=true to opt OUT (e.g. you genuinely need a proxy).
+if os.environ.get("KEEP_PROXY_ON_STARTUP", "").lower() != "true":
     _PROXY_KEYS = [k for k in os.environ if "proxy" in k.lower()]
     for _k in _PROXY_KEYS:
         del os.environ[_k]
+    logging.getLogger("capital_hunter").info(
+        "cleared %d proxy env vars (set KEEP_PROXY_ON_STARTUP=true to keep)", len(_PROXY_KEYS)
+    )
 
 import akshare as ak
 from flask import Flask, jsonify
@@ -451,4 +458,9 @@ if __name__ == "__main__":
     # its SQLite connection) and confuse the parent's connection. The single
     # process with check_same_thread=False + a write lock in the repository is
     # the safe mode for local development.
-    app.run(debug=True, use_reloader=False, port=5001)
+    # threaded=True lets Flask handle concurrent requests (the dev server's
+    # default single-thread mode serializes everything and a slow request can
+    # freeze the whole API). debug=False + use_reloader=False avoids the
+    # reloader fork that re-creates module-level state (like the SQLite
+    # repository) and has historically crashed this app on macOS.
+    app.run(debug=False, use_reloader=False, threaded=True, port=5001)

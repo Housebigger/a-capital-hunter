@@ -154,7 +154,7 @@ def test_duplicate_security_is_fetched_and_aggregated_once(service_fixture):
 
 
 def test_zero_success_does_not_replace_existing_snapshot(service_fixture):
-    with pytest.raises(SnapshotSyncError, match="no usable JQData points"):
+    with pytest.raises(SnapshotSyncError, match="no usable capital flow points"):
         service_fixture.sync_with_success_count(0)
     assert service_fixture.saved_snapshots == []
 
