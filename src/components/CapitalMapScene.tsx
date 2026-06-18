@@ -1083,7 +1083,7 @@ function ThemePlate({
       <extrudeGeometry args={[shape, { depth: THEME_PLATE_THICKNESS, bevelEnabled: false }]} />
       <meshStandardMaterial
         color={themeColor}
-        opacity={0.5}
+        opacity={0.32}
         transparent
         roughness={0.7}
       />
