@@ -17,7 +17,7 @@ def _sample_draft(trade_date=date(2026, 6, 12), status="ready") -> SnapshotDraft
     return SnapshotDraft(
         trade_date=trade_date,
         fetched_at="2026-06-12T16:00:00Z",
-        source="jqdata",
+        source="tushare",
         metric="net_amount_main",
         unit="CNY",
         status=status,
@@ -71,11 +71,26 @@ def test_latest_snapshot_endpoint(client):
     response = client.get("/api/capital-flow/snapshot/latest")
     assert response.status_code == 200
     data = response.get_json()
-    assert data["source"] == "jqdata"
+    assert data["source"] == "tushare"
     assert data["tradeDate"] == "2026-06-12"
     assert data["status"] == "ready"
     assert data["points"][0]["aggregationRole"] == "primary"
     assert data["points"][0]["netAmountMain"] == 12_345_600.0
+
+
+def test_latest_snapshot_points_carry_trade_date(client):
+    """Each point must include tradeDate.
+
+    The frontend validator (parsePoint) requires a non-empty tradeDate string on
+    every point; without it parseSnapshot throws InvalidSnapshotError and the
+    whole real snapshot is rejected in the browser.
+    """
+    response = client.get("/api/capital-flow/snapshot/latest")
+    data = response.get_json()
+    assert data["tradeDate"] == "2026-06-12"
+    assert data["points"], "expected at least one point"
+    for point in data["points"]:
+        assert point["tradeDate"] == "2026-06-12"
 
 
 def test_snapshot_by_date_returns_404_for_missing_date(client):
@@ -107,7 +122,7 @@ def test_status_never_contacts_jqdata(client):
     assert response.status_code == 200
     body = response.get_json()
     assert body["availableTradeDates"] == ["2026-06-12"]
-    assert body["source"] == "jqdata"
+    assert body["source"] == "tushare"
     assert body["metric"] == "net_amount_main"
     assert body["databaseAvailable"] is True
     assert body["latestTradeDate"] == "2026-06-12"

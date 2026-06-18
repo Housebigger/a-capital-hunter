@@ -244,6 +244,10 @@ class SnapshotRepository:
         resolved = []
         for p in points:
             d = dict(p)
+            # Every point belongs to this snapshot's trade date. The frontend
+            # contract (StockCapitalFlowPoint.tradeDate / parsePoint) requires it
+            # on each point; omitting it makes parseSnapshot reject the snapshot.
+            d["tradeDate"] = row["trade_date"]
             if d.get("stockId") is None:
                 fallback = self._conn.execute(
                     """
@@ -345,15 +349,20 @@ class SnapshotRepository:
             dates = self.list_trade_dates()
             latest_trade_date = dates[0] if dates else None
             latest_status = None
+            latest_source = None
             if latest_trade_date is not None:
                 row = self._snapshot_row(latest_trade_date)
                 if row is not None:
                     latest_status = row["status"]
+                    latest_source = row["source"]
         return {
             "databaseAvailable": True,
             "latestTradeDate": latest_trade_date,
             "latestStatus": latest_status,
-            "source": "jqdata",
+            # Report the actual source of the latest snapshot so status and the
+            # snapshot it describes never disagree. Default to the configured
+            # default source (tushare) when the database is still empty.
+            "source": latest_source or "tushare",
             "metric": "net_amount_main",
             "availableTradeDates": dates,
         }

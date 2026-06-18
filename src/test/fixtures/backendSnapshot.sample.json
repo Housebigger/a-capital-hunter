@@ -1,0 +1,42 @@
+{
+  "tradeDate": "2026-06-12",
+  "fetchedAt": "2026-06-12T16:00:00Z",
+  "source": "tushare",
+  "metric": "net_amount_main",
+  "unit": "CNY",
+  "status": "ready",
+  "coverage": {
+    "requested": 10,
+    "succeeded": 9,
+    "failed": 1
+  },
+  "points": [
+    {
+      "securityCode": "002475.XSHE",
+      "stockName": "立讯精密",
+      "netAmountMain": -4200000.0,
+      "stockId": "ce-lxkj",
+      "subThemeId": "consumer-electronics-assembly",
+      "themeId": "consumer-electronics",
+      "aggregationRole": "primary",
+      "tradeDate": "2026-06-12"
+    },
+    {
+      "securityCode": "300308.XSHE",
+      "stockName": "中际旭创",
+      "netAmountMain": 12345600.0,
+      "stockId": "aci-zjxc",
+      "subThemeId": "optical-interconnect",
+      "themeId": "ai-computing",
+      "aggregationRole": "primary",
+      "tradeDate": "2026-06-12"
+    }
+  ],
+  "failures": [
+    {
+      "securityCode": "000001.XSHE",
+      "stockId": null,
+      "reason": "missing_source_row"
+    }
+  ]
+}

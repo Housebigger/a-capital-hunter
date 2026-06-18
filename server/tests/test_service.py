@@ -177,3 +177,29 @@ def test_missing_securities_recorded_as_failures(service_fixture):
     missing = [f for f in draft.failures if f.reason == "missing_source_row"]
     assert len(missing) == 2
     assert draft.failed == 2
+
+
+def test_source_name_defaults_to_tushare_when_source_has_no_name():
+    """A source without a ``name`` attribute reports the default source.
+
+    Tushare is the default source (see test_build_source_defaults_to_tushare),
+    so the stored snapshot's source must default to ``tushare``, not ``jqdata``.
+    """
+
+    class _Nameless:
+        pass
+
+    service = CapitalFlowSyncService(
+        source=_Nameless(), repository=None, registry_root=None
+    )
+    assert service._source_name() == "tushare"
+
+
+def test_source_name_honors_explicit_source_name():
+    class _Named:
+        name = "jqdata"
+
+    service = CapitalFlowSyncService(
+        source=_Named(), repository=None, registry_root=None
+    )
+    assert service._source_name() == "jqdata"

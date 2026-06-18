@@ -253,10 +253,10 @@ class CapitalFlowSyncService:
 
         Reads an optional ``name`` attribute from the source so the stored
         snapshot honestly reports its origin (``tushare`` vs ``jqdata``).
-        Falls back to ``jqdata`` for sources that don't set a name, preserving
-        the original contract.
+        Falls back to ``tushare`` (the configured default source) for sources
+        that don't set a name.
         """
-        return getattr(self._source, "name", None) or "jqdata"
+        return getattr(self._source, "name", None) or "tushare"
 
     @staticmethod
     def _to_storage_mapping(m: StockMapping) -> StockMapping:

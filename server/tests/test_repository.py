@@ -35,7 +35,7 @@ def _draft(
     return SnapshotDraft(
         trade_date=trade_date,
         fetched_at=fetched_at,
-        source="jqdata",
+        source="tushare",
         metric="net_amount_main",
         unit="CNY",
         status=status,
@@ -56,7 +56,7 @@ def test_save_and_expand_snapshot(tmp_db_path):
     result = repo.get_snapshot("2026-06-12")
     assert result["tradeDate"] == "2026-06-12"
     assert result["unit"] == "CNY"
-    assert result["source"] == "jqdata"
+    assert result["source"] == "tushare"
     assert result["status"] == "ready"
     assert result["coverage"] == {"requested": 10, "succeeded": 9, "failed": 1}
     assert result["points"][0]["aggregationRole"] == "primary"
@@ -115,7 +115,7 @@ def test_status_lists_dates_descending(tmp_db_path):
     ]
     assert status["latestTradeDate"] == "2026-06-12"
     assert status["latestStatus"] == "ready"
-    assert status["source"] == "jqdata"
+    assert status["source"] == "tushare"
     assert status["metric"] == "net_amount_main"
     assert status["databaseAvailable"] is True
 

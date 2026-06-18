@@ -8,7 +8,29 @@
 
 ## 一句话总结
 
-JQData 真实资金流管线已**全部实现并验证可用**，真实数据已成功入库（2026-06-17，167/168 只股票）。**但前端浏览器至今未能看到渲染结果**，卡在「一直等待真实资金流快照」。
+JQData/Tushare 真实资金流管线已**全部实现并验证可用**，真实数据已成功入库（2026-06-17，167/168 只股票）。前端卡点（「一直等待真实资金流快照」）的**根因已定位并修复**（见下「✅ 卡点根因与修复」），数据层已端到端验证；**浏览器实际渲染待用户最终确认**。
+
+---
+
+## ✅ 卡点根因与修复（2026-06-18）
+
+**根因（已用真实数据 + 真实校验器双重坐实）：**
+
+后端 `repository.py` 的 `_expand()` 序列化每个 point 时**缺少 `tradeDate` 字段**，而前端契约 `capitalFlowSnapshot.ts` 的 `parsePoint` 把 per-point `tradeDate` 列为必填非空字符串。后果：任何含 point 的真实快照，在 `parseSnapshot` 的 `points.map(parsePoint)` 第一个点即抛 `InvalidSnapshotError` → `App.tsx` 置 `error` 态 → `DataStatus` 显示「没有可用的真实资金流快照」+ 重试/加载演示按钮。
+
+**为何此前所有「验证正常」都没抓到：** curl / Python 端模拟都不执行 TS 校验器；前端单测的 mock fixture 每个 point 都手写了 `tradeDate`，比真实后端输出更「完整」，从未踩到这道坎；后端 `test_api.py` 也未断言 per-point `tradeDate`。契约漏洞在「真实生产形状」与「测试 mock 形状」之间。此前怀疑的 4 个方向（竞态 / CORS / StrictMode / 挂载）均非根因。
+
+**修复（方案 A：后端补字段，保持严格契约）：**
+
+- `server/capital_flow/repository.py::_expand` — 每个 point 补 `d["tradeDate"] = row["trade_date"]`（点的交易日 = 快照交易日）。
+- `server/tests/test_api.py` — 新增 `test_latest_snapshot_points_carry_trade_date`（堵生产端洞）。
+- `scripts/dump_snapshot_fixture.py` + `src/test/fixtures/backendSnapshot.sample.json` + `src/data/capitalFlowSnapshot.test.ts` — 从**真实 `_expand`** 生成金标准 fixture，用真实 `parseSnapshot` 解析（堵「mock 比真实更完整」这类漂移复发）。后端形状变更后用脚本重新生成 fixture。
+
+**已验证：** 真实 DB 的 167 点快照（2026-06-17）修复后**完整通过 `parseSnapshot`**；后端 54 passed、前端 158 passed、tsc 0 错误。
+
+**待用户确认：** 在浏览器实跑 `npm run dev:full`，确认 P1/P2/P3 峰面真正渲染（数据 / 校验层已证，UI 渲染走的是与 demo / 单测同一套 render-node 逻辑，预期可正常显示）。
+
+> 顺带发现（非卡点，未在本次改动）：`repository.py::status()` 把 `source` 硬编码成 `"jqdata"`，而真实快照 source 是 `"tushare"`，属轻微不诚实瑕疵，可单独修。
 
 ---
 
@@ -53,7 +75,9 @@ JQData 真实资金流管线已**全部实现并验证可用**，真实数据已
 
 ---
 
-## ⚠️ 当前卡点：前端看不到数据
+## ✅（已解决）原卡点记录：前端看不到数据
+
+> 根因与修复见上方「✅ 卡点根因与修复」。以下为定位过程中的历史排查记录,保留备查。
 
 ### 症状
 
