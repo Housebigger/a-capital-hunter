@@ -5,7 +5,7 @@ import { InspectorPanel } from "./components/InspectorPanel";
 import { SceneLegend } from "./components/SceneLegend";
 import { DataStatus } from "./components/DataStatus";
 import { layoutStages } from "./domain/layoutStages";
-import { createCapitalFlowDataProvider, type CapitalFlowDataProvider } from "./data/capitalFlowDataProvider";
+import { createCapitalFlowDataProvider, type CapitalFlowDataProvider, type CapitalFlowWindowKey } from "./data/capitalFlowDataProvider";
 import type { CapitalFlowSnapshot, CapitalFlowStatus } from "./data/capitalFlowSnapshot";
 import { createScenarioDataProvider } from "./domain/scenarioDataProvider";
 import { themes } from "./domain/themeRegistry";
@@ -46,7 +46,7 @@ export default function App({ provider }: AppProps = {}) {
   const [viewState, setViewState] = useState<SnapshotViewState>({ status: "loading" });
   const [status, setStatus] = useState<CapitalFlowStatus | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("P1");
-  const [activeTradeDate, setActiveTradeDate] = useState<string>("");
+  const [activeWindow, setActiveWindow] = useState<CapitalFlowWindowKey>("1d");
   const hunterState = useHunterState();
 
   // Always use first layout stage — layout is static relative to data.
@@ -55,18 +55,14 @@ export default function App({ provider }: AppProps = {}) {
   // ---- Initial load: status + latest snapshot ----
   const loadInitial = useCallback(async () => {
     setViewState({ status: "loading" });
-    let resolvedStatus: CapitalFlowStatus | null = null;
     try {
-      resolvedStatus = await dataProvider.fetchStatus();
+      const resolvedStatus = await dataProvider.fetchStatus();
       setStatus(resolvedStatus);
-      if (resolvedStatus.latestTradeDate) {
-        setActiveTradeDate(resolvedStatus.latestTradeDate);
-      }
     } catch {
       // Status is best-effort; continue to try the snapshot directly.
     }
     try {
-      const snapshot = await dataProvider.fetchLatest();
+      const snapshot = await dataProvider.fetchLatest(activeWindow);
       setViewState(
         snapshot.status === "partial"
           ? { status: "partial", snapshot }
@@ -78,7 +74,7 @@ export default function App({ provider }: AppProps = {}) {
         message: err instanceof Error ? err.message : "unknown_error",
       });
     }
-  }, [dataProvider]);
+  }, [dataProvider, activeWindow]);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,33 +85,6 @@ export default function App({ provider }: AppProps = {}) {
       cancelled = true;
     };
   }, [loadInitial]);
-
-  // ---- Date change: keep old scene until the new snapshot resolves ----
-  const handleTradeDateChange = useCallback(
-    async (tradeDate: string) => {
-      setActiveTradeDate(tradeDate);
-      // Retain the previous snapshot for display while loading the new date.
-      setViewState((prev) =>
-        prev.status === "ready" || prev.status === "partial"
-          ? { status: "loading", previous: prev.snapshot }
-          : { status: "loading" }
-      );
-      try {
-        const snapshot = await dataProvider.fetchDate(tradeDate);
-        setViewState(
-          snapshot.status === "partial"
-            ? { status: "partial", snapshot }
-            : { status: "ready", snapshot }
-        );
-      } catch (err) {
-        setViewState({
-          status: "error",
-          message: err instanceof Error ? err.message : "unknown_error",
-        });
-      }
-    },
-    [dataProvider]
-  );
 
   const handleLoadDemo = useCallback(() => {
     setViewState({ status: "demo", scenario: FALLBACK_PROVIDER.getScenarios()[0] });
@@ -220,7 +189,7 @@ export default function App({ provider }: AppProps = {}) {
           {activeSnapshot ? (
             <>
               <span>真实资金流快照</span>
-              <p>{sourceLabel(activeSnapshot.source)} 主力净流入 · {activeSnapshot.tradeDate}</p>
+              <p>{sourceLabel(activeSnapshot.source)} {activeSnapshot.window.label}主力净流入 · {activeSnapshot.window.from}~{activeSnapshot.window.to}{activeSnapshot.window.availableDays < activeSnapshot.window.days ? `（仅${activeSnapshot.window.availableDays}日可用）` : ""}</p>
             </>
           ) : isDemo ? (
             <>
@@ -239,9 +208,8 @@ export default function App({ provider }: AppProps = {}) {
       <section className="workspace">
         <ControlsPanel
           themes={themes}
-          activeTradeDate={activeTradeDate || activeSnapshot?.tradeDate || ""}
-          availableTradeDates={status?.availableTradeDates ?? (activeSnapshot ? [activeSnapshot.tradeDate] : [])}
-          onTradeDateChange={handleTradeDateChange}
+          activeWindow={activeWindow}
+          onWindowChange={setActiveWindow}
           themeFilter={hunterState.themeFilter}
           capitalStateFilter={hunterState.capitalStateFilter}
           cameraPreset={hunterState.cameraPreset}

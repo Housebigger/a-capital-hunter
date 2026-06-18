@@ -1,4 +1,5 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { CapitalFlowSnapshot, CapitalFlowStatus } from "./data/capitalFlowSnapshot";
 import type { CapitalFlowDataProvider } from "./data/capitalFlowDataProvider";
@@ -112,10 +113,10 @@ describe("App data states", () => {
     expect(screen.getByText(/演示数据/)).toBeInTheDocument();
   });
 
-  it("exposes the date select in the controls panel once data is loaded", async () => {
+  it("exposes the window selector in the controls panel once data is loaded", async () => {
     renderApp(mockProvider());
     expect(await screen.findByText("数据截至 2026-06-12")).toBeInTheDocument();
-    expect(screen.getByLabelText("资金流快照日期")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "今日" })).toBeInTheDocument();
   });
 
   it("header shows the snapshot's real data source label", async () => {
@@ -136,7 +137,22 @@ describe("App data states", () => {
       fetchDate: async () => SAMPLE_TUSHARE,
     };
     renderApp(provider);
-    // The header <p> must say "Tushare 主力净流入 ·…", not the hardcoded "JQData"
-    expect(await screen.findByText(/Tushare 主力净流入/)).toBeInTheDocument();
+    // The header <p> must say "Tushare 今日主力净流入 ·…", not the hardcoded "JQData"
+    expect(await screen.findByText(/Tushare 今日主力净流入/)).toBeInTheDocument();
+  });
+
+  it("refetches with the chosen window and labels the header", async () => {
+    const fetchLatest = vi.fn(async (w?: string) => ({
+      ...snapshotFixture,
+      window: { days: w === "5d" ? 5 : 1, label: w === "5d" ? "近5日" : "今日",
+                from: snapshotFixture.tradeDate, to: snapshotFixture.tradeDate,
+                availableDays: w === "5d" ? 5 : 1 },
+    }));
+    const provider = { fetchStatus: mockProvider().fetchStatus, fetchLatest, fetchDate: mockProvider().fetchDate };
+    render(<App provider={provider as any} />);
+    await screen.findByText(/今日主力净流入/);
+    await userEvent.click(screen.getByRole("button", { name: "近5日" }));
+    expect(fetchLatest).toHaveBeenLastCalledWith("5d");
+    expect(await screen.findByText(/近5日主力净流入/)).toBeInTheDocument();
   });
 });

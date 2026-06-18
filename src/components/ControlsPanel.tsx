@@ -5,14 +5,12 @@ import type {
   Theme,
   ThemeFilter
 } from "../domain/types";
+import type { CapitalFlowWindowKey } from "../data/capitalFlowDataProvider";
 
 interface ControlsPanelProps {
   themes: readonly Theme[];
-  /** Active snapshot trade date (YYYY-MM-DD). */
-  activeTradeDate: string;
-  /** Trade dates the backend has snapshots for (descending). */
-  availableTradeDates: readonly string[];
-  onTradeDateChange: (tradeDate: string) => void;
+  activeWindow: CapitalFlowWindowKey;
+  onWindowChange: (window: CapitalFlowWindowKey) => void;
   themeFilter: ThemeFilter;
   capitalStateFilter: CapitalStateFilter;
   cameraPreset: CameraPreset;
@@ -22,6 +20,13 @@ interface ControlsPanelProps {
   onCapitalStateFilterChange: (filter: CapitalStateFilter) => void;
   onCameraPresetChange: (preset: CameraPreset) => void;
 }
+
+const WINDOW_OPTIONS: readonly { value: CapitalFlowWindowKey; label: string }[] = [
+  { value: "1d", label: "今日" },
+  { value: "5d", label: "近5日" },
+  { value: "10d", label: "近10日" },
+  { value: "20d", label: "近20日" },
+];
 
 const CAMERA_PRESET_OPTIONS: readonly { value: CameraPreset; label: string }[] = [
   { value: "angled", label: "斜视" },
@@ -37,24 +42,19 @@ export function ControlsPanel(props: ControlsPanelProps) {
           <Activity size={16} aria-hidden="true" />
           <span>资金流快照</span>
         </div>
-        <label>
-          <span>资金流快照日期</span>
-          <select
-            aria-label="资金流快照日期"
-            value={props.activeTradeDate}
-            onChange={(event) => props.onTradeDateChange(event.target.value)}
-          >
-            {props.availableTradeDates.length === 0 ? (
-              <option value={props.activeTradeDate}>{props.activeTradeDate || "暂无快照"}</option>
-            ) : (
-              props.availableTradeDates.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
+        <div className="segmented" role="group" aria-label="时间档位">
+          {WINDOW_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              className={props.activeWindow === value ? "active" : ""}
+              aria-pressed={props.activeWindow === value}
+              onClick={() => props.onWindowChange(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="control-section">
