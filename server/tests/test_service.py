@@ -20,15 +20,16 @@ class _ScriptedSource:
     appears in the returned frame.
     """
 
-    def __init__(self, succeeding_codes):
+    def __init__(self, succeeding_codes, trade_dates=None):
         self._succeeding = list(succeeding_codes)
+        self._trade_dates = list(trade_dates) if trade_dates else [date(2026, 6, 12)]
         self.requested: list = []
 
     def latest_trade_date(self) -> date:
-        return date(2026, 6, 12)
+        return max(self._trade_dates)
 
     def is_trade_date(self, trade_date: date) -> bool:
-        return trade_date == date(2026, 6, 12)
+        return trade_date in self._trade_dates
 
     def fetch_daily(self, trade_date, securities):
         self.requested = list(securities)
@@ -203,3 +204,19 @@ def test_source_name_honors_explicit_source_name():
         source=_Named(), repository=None, registry_root=None
     )
     assert service._source_name() == "jqdata"
+
+
+def test_sync_backfill_saves_n_trading_days(service_fixture):
+    from datetime import date
+    days = [date(2026, 6, 17), date(2026, 6, 16), date(2026, 6, 15)]  # consecutive
+    source = _ScriptedSource(service_fixture.all_codes, trade_dates=days)
+    service = CapitalFlowSyncService(
+        source=source,
+        repository=service_fixture.repository,
+        registry_root=service_fixture.tmp_path,
+    )
+    results = service.sync_backfill(3)
+    assert [r["status"] for r in results] == ["ready", "ready", "ready"]
+    assert sorted(service_fixture.repository.list_trade_dates(), reverse=True) == [
+        "2026-06-17", "2026-06-16", "2026-06-15",
+    ]

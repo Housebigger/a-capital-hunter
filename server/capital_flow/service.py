@@ -81,6 +81,33 @@ class CapitalFlowSyncService:
         self._repository.save_snapshot(draft)
         return draft
 
+    def sync_backfill(self, count: int) -> list:
+        """Attempt the latest ``count`` trading days; persist each that has data.
+
+        Keeps the source open across all days (unlike :meth:`sync`, which closes
+        per call) and never aborts the run on a single empty day — it records the
+        skip and continues, so one missing day cannot block the backfill.
+        """
+        registry = load_registry(self._registry_root)
+        results: list = []
+        try:
+            trade_date = self._source.latest_trade_date()
+            for _ in range(count):
+                if trade_date is None:
+                    break
+                try:
+                    draft = self._build_draft(trade_date, registry)
+                    self._repository.save_snapshot(draft)
+                    results.append({"tradeDate": trade_date.isoformat(),
+                                    "status": draft.status, "error": None})
+                except SnapshotSyncError as exc:
+                    results.append({"tradeDate": trade_date.isoformat(),
+                                    "status": None, "error": str(exc)})
+                trade_date = self._previous_trade_date(trade_date)
+        finally:
+            self._source.close()
+        return results
+
     def _sync_latest_with_fallback(self, registry: RegistryResult) -> SnapshotDraft:
         """Try the latest trade date; on 'no usable points', walk back up to
         :data:`LATEST_FALLBACK_DAYS` days until data is found."""
