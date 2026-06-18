@@ -401,12 +401,17 @@ select {
    Data status / loading / error (JQData snapshot path)
    --------------------------------------------------------------------------- */
 .data-status {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 14px;
+  max-width: 46%;
+  justify-content: flex-end;
   display: flex;
   flex-wrap: wrap;
   gap: 10px 16px;
   align-items: center;
   padding: 8px 14px;
-  margin: 8px 0;
   background: rgba(26, 32, 44, 0.72);
   border: 1px solid rgba(120, 144, 200, 0.25);
   border-radius: 6px;
