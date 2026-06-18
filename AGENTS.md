@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (and other coding agents) when working with code in this repository. It mirrors `CLAUDE.md`; keep the two in sync.
 
 ## Project Overview
 
@@ -148,5 +148,5 @@ Pure functions / frozen immutable data, **zero React imports**, fully unit-testa
 
 - **STATUS.md** — current progress, the unresolved frontend-rendering blocker, root-cause notes, and next steps (read this first when picking up the project).
 - **README.md** — setup, the data pipeline, and the Tushare-vs-JQData source comparison.
-- **AGENTS.md** — Codex's guidance file; mirrors this doc. Keep the two in sync when either changes.
+- **CLAUDE.md** — Claude Code's guidance file; this AGENTS.md mirrors it.
 - **docs/superpowers/{plans,specs}/** — generation-by-generation design history (gen2 layout engine → gen10 real data source → JQData/Tushare capital flow).
