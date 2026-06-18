@@ -8,7 +8,38 @@
 
 ## 一句话总结
 
-JQData/Tushare 真实资金流管线已**全部实现并验证可用**，真实数据已成功入库（2026-06-17，167/168 只股票）。前端卡点（「一直等待真实资金流快照」）的**根因已定位并修复**（见下「✅ 卡点根因与修复」），数据层已端到端验证；**浏览器实际渲染待用户最终确认**。
+JQData/Tushare 真实资金流管线已**全部实现并验证可用**，真实数据已成功入库（2026-06-17，167/168 只股票）。前端卡点（「一直等待真实资金流快照」）的**根因已定位并修复**（见下「✅ 卡点根因与修复」），数据层已端到端验证、**浏览器已确认渲染正常**。在此之上完成一轮 **UI 优化 + 资金流时间档位（P0–P5）**，已合并入 `main`（见下「✅ UI 优化 + 资金流时间档位」）。
+
+---
+
+## ✅ UI 优化 + 资金流时间档位（P0–P5，2026-06-18 合并入 main）
+
+承接卡点修复后，完成一轮界面走查 + 新功能，经 spec → plan → 子代理逐任务 TDD → 整支评审 → 合并（merge commit `ad66c5f`，18 commits）。全门禁绿：后端 **69 passed**、前端 **170 passed**、tsc 0 错误、build OK。
+
+设计/计划文档：
+- spec：`docs/superpowers/specs/2026-06-18-ui-polish-and-time-windows-design.md`
+- plan：`docs/superpowers/plans/2026-06-18-ui-polish-and-time-windows.md`
+
+**交付项：**
+
+- **P0** — header 与 DataStatus 经共享 `src/data/sourceLabel.ts` 显示真实数据源（不再硬编码「JQData」）。
+- **P1** — `.data-status` 改右上角浮层，消除与 `.scene-toolbar` 的重叠乱码。
+- **P5（主功能）** — 今日/近5/近10/近20日时间档位：`server/capital_flow/window.py::aggregate_window`（按 stockId 累加 N 个交易日单日净额）→ `repository.get_window_snapshot` → 只读 API `?window=1d|5d|10d|20d`（每个快照响应统一带 `window` 字段）→ `service.sync_backfill` + CLI `--backfill N`（回补历史）→ 前端 `CapitalFlowSnapshot.window` 必填契约 + `parseWindow` → `fetchLatest(window)` → ControlsPanel 4 按钮档位选择器（替换日期下拉）→ App 接线 + 档位标签 header。
+- **P2b** — 未选中板块时，InspectorPanel 展示当日概览（Top 净流入/净流出 + 全市场合计），复用 `src/domain/capitalFlowOverview.ts`。
+- **P4** — 左栏「读图规则」改为可折叠（默认收起）+ 图例加「红=流入（A股习惯）」注。
+- **P3a/P3b/P2a** — 主题底板去饱和（opacity 0.5→0.32）、P3 个股标签加描边/增大、默认相机取景居中（视觉调参，已浏览器确认）。
+
+**评审与回归修复：** 整支代码经一轮独立评审，发现并修复 3 个真实回归（均补回归测试）：
+- **I1** — 切换档位时 3D 场景闪烁（`loadInitial` 丢了「加载时保留上一帧快照」逻辑，已恢复）。
+- **I2** — `App.tsx` 残留无用的 `status` state + 每次切档冗余 `fetchStatus()`（已移除）。
+- **I3** — `sync_backfill` 仅捕获 `SnapshotSyncError`，遇 `CapitalFlowSourceError` 会中断整次回补（已放宽为同时捕获）。
+- 驳回评审的 M4（误报：`isString` 本就拒绝空串）。
+
+**已记录的非阻塞待办：**
+- **M1** — 多日窗口的 `coverage`/`status` 目前只反映锚点当天；多日成为常用路径前需定义「窗口级覆盖」语义（`window.availableDays` 已诚实反映窗口完整度）。
+- **M6** — `repository.get_latest_snapshot()` 生产路径已不再调用（仍有测试覆盖），可后续清理。
+
+> 注：P0 顺带把上一节末尾提到的 `status()` 硬编码 `"jqdata"` 一并修掉了（动态读真实 source，缺省 tushare）。
 
 ---
 
