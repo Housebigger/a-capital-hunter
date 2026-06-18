@@ -39,3 +39,18 @@ def test_stock_present_in_only_some_days():
 def test_window_specs_map_keys_to_days_and_labels():
     assert WINDOW_SPECS["1d"] == (1, "今日")
     assert WINDOW_SPECS["20d"] == (20, "近20日")
+
+def test_window_status_is_worst_of_days_coverage_is_anchor():
+    # An older partial day downgrades the whole window to partial; coverage stays
+    # the anchor (newest) day's breadth.
+    snaps = [
+        _snap("2026-06-17", [_pt("a", 100)], status="ready"),
+        _snap("2026-06-16", [_pt("a", 10)], status="partial",
+              coverage={"requested": 10, "succeeded": 5, "failed": 5}),
+    ]
+    out = aggregate_window(snaps, 5, "近5日")
+    assert out["status"] == "partial"
+    assert out["coverage"] == {"requested": 2, "succeeded": 2, "failed": 0}  # anchor day's
+    # An all-ready window stays ready.
+    all_ready = aggregate_window([_snap("2026-06-17", [_pt("a", 1)])], 1, "今日")
+    assert all_ready["status"] == "ready"

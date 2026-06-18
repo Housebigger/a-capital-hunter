@@ -46,7 +46,10 @@ def aggregate_window(snapshots: List[dict], requested_days: int, label: str) -> 
         "source": anchor["source"],
         "metric": anchor["metric"],
         "unit": anchor["unit"],
-        "status": anchor["status"],
+        # status reflects the WORST constituent day (any partial → the window is
+        # partial), so a multi-day window touching a partial day is honestly
+        # flagged. coverage stays the anchor (newest) day's breadth.
+        "status": "partial" if any(s["status"] == "partial" for s in snapshots) else anchor["status"],
         "coverage": anchor["coverage"],
         "points": [merged[sid] for sid in order],
         "failures": anchor["failures"],
