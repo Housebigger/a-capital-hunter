@@ -5,6 +5,46 @@ flows onto an interactive 3D surface. Sectors are positioned by
 industrial-chain / market-comovement relationships; column height encodes net
 capital inflow intensity. The UI is Chinese; code identifiers are English.
 
+## Quick Start
+
+Prerequisites: **Node 18+** and **Python 3.9+**.
+
+```bash
+# 1. Clone
+git clone https://github.com/Housebigger/a-capital-hunter.git
+cd a-capital-hunter
+
+# 2. Install dependencies (JS + Python)
+npm install
+python3 -m pip install -r server/requirements.txt
+
+# 3. Configure the data source
+cp .env.example .env
+#   Fill in TUSHARE_TOKEN — register free at https://tushare.pro/register,
+#   then copy the token from https://tushare.pro/user/token.
+
+# 4. Collect snapshots into SQLite (the sync reads .env from the environment)
+set -a; source .env; set +a
+npm run sync:capital-flow                     # latest trading day only
+npm run sync:capital-flow -- --backfill 20    # recommended: 20 trading days,
+                                              # so 今日 / 近5日 / 近10日 / 近20日
+                                              # windows each show a distinct map
+
+# 5. Run the full stack (Vite :5173 + Flask :5001)
+npm run dev:full
+```
+
+Then open **http://localhost:5173**.
+
+> A fresh clone ships **no** snapshot data — `server/data/*.sqlite3` is local
+> state (gitignored). Step 4 populates it; until then the UI shows an explicit
+> "no snapshot" error (by design — it never fabricates data).
+
+> **Backend launch note:** start the backend from the **project root** as
+> `python3 -m server.app` so the read-only snapshot Blueprint registers. The
+> legacy `cd server && python3 app.py` only serves the AkShare diagnostic routes
+> (a warning is logged). Run long-lived servers from your own terminal.
+
 ## Data pipeline
 
 The map consumes **real end-of-day snapshots** — never simulated numbers
@@ -61,36 +101,6 @@ Switch sources via `CAPITAL_FLOW_SOURCE=tushare|jqdata` in `.env`.
 A snapshot is `ready` when ≥ 90% of supported unique securities have a real
 point; otherwise `partial` (still shown, with a warning). A `failed` snapshot
 (0 usable points) is never written, so a bad day cannot overwrite a good one.
-
-## Setup
-
-```bash
-# 1. Install Python + JS dependencies
-python3 -m pip install -r server/requirements.txt
-npm install
-
-# 2. Configure data source credentials
-cp .env.example .env
-#   … fill in TUSHARE_TOKEN (register free at https://tushare.pro/register,
-#     then copy your token from https://tushare.pro/user/token) …
-
-# 3. Sync the latest trading day into SQLite
-set -a; source .env; set +a
-npm run sync:capital-flow
-
-# 4. Run the full stack (Vite + Flask on port 5001)
-npm run dev:full
-```
-
-> **Backend launch note:** run Flask from the **project root** so the JQData
-> Blueprint registers:
->
-> ```bash
-> python3 -m server.app
-> ```
->
-> The legacy `cd server && python3 app.py` launch still serves the AkShare
-> diagnostic routes but skips the JQData Blueprint (a warning is logged).
 
 ## Commands
 
