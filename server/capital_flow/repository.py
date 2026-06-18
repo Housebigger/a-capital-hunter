@@ -309,35 +309,6 @@ class SnapshotRepository:
         with self._lock:
             return self._expand(row)
 
-    def get_latest_snapshot(self) -> Optional[dict]:
-        """Newest ``ready`` snapshot, else newest ``partial``.
-
-        ``failed`` snapshots are never returned as "latest" because they carry
-        no usable point data.
-        """
-        with self._lock:
-            row = self._conn.execute(
-                """
-                SELECT * FROM capital_flow_snapshots
-                WHERE status = 'ready'
-                ORDER BY trade_date DESC
-                LIMIT 1
-                """
-            ).fetchone()
-            if row is None:
-                row = self._conn.execute(
-                    """
-                    SELECT * FROM capital_flow_snapshots
-                    WHERE status = 'partial'
-                    ORDER BY trade_date DESC
-                    LIMIT 1
-                    """
-                ).fetchone()
-        if row is None:
-            return None
-        with self._lock:
-            return self._expand(row)
-
     def get_window_snapshot(self, requested_days: int, label: str):
         """Window snapshot over the newest ``requested_days`` trading days.
 

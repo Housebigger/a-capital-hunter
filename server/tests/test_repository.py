@@ -65,28 +65,6 @@ def test_save_and_expand_snapshot(tmp_db_path):
     assert result["failures"][0]["reason"] == "missing_source_row"
 
 
-def test_latest_prefers_ready_over_partial(tmp_db_path):
-    repo = SnapshotRepository(tmp_db_path)
-    repo.save_snapshot(_draft(trade_date=date(2026, 6, 11), status="ready"))
-    repo.save_snapshot(_draft(trade_date=date(2026, 6, 12), status="partial"))
-    latest = repo.get_latest_snapshot()
-    # Even though 06-12 partial is newer, the ready 06-11 wins.
-    assert latest["status"] == "ready"
-    assert latest["tradeDate"] == "2026-06-11"
-
-
-def test_latest_falls_back_to_partial_when_no_ready(tmp_db_path):
-    repo = SnapshotRepository(tmp_db_path)
-    repo.save_snapshot(_draft(trade_date=date(2026, 6, 12), status="partial"))
-    latest = repo.get_latest_snapshot()
-    assert latest["status"] == "partial"
-
-
-def test_latest_returns_none_when_empty(tmp_db_path):
-    repo = SnapshotRepository(tmp_db_path)
-    assert repo.get_latest_snapshot() is None
-
-
 def test_get_snapshot_returns_none_for_missing_date(tmp_db_path):
     repo = SnapshotRepository(tmp_db_path)
     assert repo.get_snapshot("2026-06-11") is None
