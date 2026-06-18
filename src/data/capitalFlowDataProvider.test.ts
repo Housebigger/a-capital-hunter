@@ -25,6 +25,7 @@ const snapshotFixture: CapitalFlowSnapshot = {
     },
   ],
   failures: [{ securityCode: "000001.XSHE", reason: "missing_source_row" }],
+  window: { days: 1, label: "今日", from: "2026-06-12", to: "2026-06-12", availableDays: 1 },
 };
 
 const okJson = (body: unknown) => ({

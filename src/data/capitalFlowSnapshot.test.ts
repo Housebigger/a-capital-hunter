@@ -36,3 +36,17 @@ describe("backend snapshot contract", () => {
     expect(() => parseSnapshot(broken)).toThrow(InvalidSnapshotError);
   });
 });
+
+describe("window field contract", () => {
+  const base = backendSnapshot as Record<string, unknown>;
+  it("parses the window field", () => {
+    const snap = parseSnapshot(base);
+    expect(snap.window.days).toBeGreaterThanOrEqual(1);
+    expect(snap.window.label.length).toBeGreaterThan(0);
+    expect(snap.window.to).toBe(snap.tradeDate);
+  });
+  it("rejects a snapshot missing window", () => {
+    const { window: _omit, ...broken } = base;
+    expect(() => parseSnapshot(broken)).toThrow(InvalidSnapshotError);
+  });
+});

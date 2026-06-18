@@ -92,7 +92,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         repo = SnapshotRepository(Path(tmp) / "fixture.sqlite3")
         repo.save_snapshot(_build_draft())
-        snapshot = repo.get_latest_snapshot()
+        snapshot = repo.get_window_snapshot(1, "今日")
         repo.close()
 
     out_path = (

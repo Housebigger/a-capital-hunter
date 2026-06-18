@@ -29,6 +29,7 @@ const snapshotFixture: CapitalFlowSnapshot = {
     },
   ],
   failures: [],
+  window: { days: 1, label: "今日", from: "2026-06-12", to: "2026-06-12", availableDays: 1 },
 };
 
 const statusFixture: CapitalFlowStatus = {
