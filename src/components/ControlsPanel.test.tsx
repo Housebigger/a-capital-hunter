@@ -84,4 +84,11 @@ describe("ControlsPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "近5日" }));
     expect(onWindowChange).toHaveBeenCalledWith("5d");
   });
+
+  it("collapses the read-guide notes by default and expands on click", async () => {
+    render(<ControlsPanel {...baseProps} activeWindow="1d" onWindowChange={vi.fn()} />);
+    expect(screen.queryByText(/二维位置表达关系/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /读图规则/ }));
+    expect(screen.getByText(/二维位置表达关系/)).toBeInTheDocument();
+  });
 });

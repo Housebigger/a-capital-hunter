@@ -1,4 +1,5 @@
-import { Activity, Eye, Filter, Layers3, Rotate3D } from "lucide-react";
+import { useState } from "react";
+import { Activity, Filter, Layers3, Rotate3D } from "lucide-react";
 import type {
   CameraPreset,
   CapitalStateFilter,
@@ -35,6 +36,7 @@ const CAMERA_PRESET_OPTIONS: readonly { value: CameraPreset; label: string }[] =
 ];
 
 export function ControlsPanel(props: ControlsPanelProps) {
+  const [notesOpen, setNotesOpen] = useState(false);
   return (
     <aside className="controls-panel" aria-label="A Capital Hunter 控制面板">
       <section className="control-section">
@@ -148,16 +150,21 @@ export function ControlsPanel(props: ControlsPanelProps) {
       </section>
 
       <section className="control-section compact-note">
-        <div className="section-title">
+        <button
+          type="button"
+          className="notes-toggle section-title"
+          aria-expanded={notesOpen}
+          onClick={() => setNotesOpen((open) => !open)}
+        >
           <Layers3 size={16} aria-hidden="true" />
           <span>读图规则</span>
-        </div>
-        <p>二维位置表达关系，柱高表达资金强度，红色为流入，绿色为流出。点击分题材区域展开详细标签。</p>
-        <div className="section-title">
-          <Eye size={16} aria-hidden="true" />
-          <span>第三版策略</span>
-        </div>
-        <p>第三版：11个主题、~80个板块、5种关系类型、国家地图底座。</p>
+        </button>
+        {notesOpen && (
+          <>
+            <p>二维位置表达关系，柱高表达资金强度，红色为流入，绿色为流出。点击分题材区域展开详细标签。</p>
+            <p>第三版：11个主题、~80个板块、5种关系类型、国家地图底座。</p>
+          </>
+        )}
       </section>
     </aside>
   );
