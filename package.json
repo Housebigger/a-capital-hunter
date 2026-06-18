@@ -11,8 +11,8 @@
     "test:backend": "python3 -m pytest server/tests -q",
     "sync:capital-flow": "python3 -m server.capital_flow.sync --trade-date latest",
     "e2e": "playwright test",
-    "dev:full": "concurrently \"npm run dev\" \"env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u http_proxy -u HTTPS_PROXY -u https_proxy -u NO_PROXY -u no_proxy cd server && python3 app.py\"",
-    "dev:backend": "env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u http_proxy -u HTTPS_PROXY -u https_proxy -u NO_PROXY -u no_proxy cd server && python3 app.py"
+    "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\"",
+    "dev:backend": "CLEAR_PROXY_ON_STARTUP=true python3 -m server.app"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",
