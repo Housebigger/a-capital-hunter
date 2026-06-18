@@ -158,7 +158,7 @@ describe("CapitalMapScene helpers", () => {
 
     applyCameraPreset(camera, "side", controls);
 
-    expect(camera.position.set).toHaveBeenCalledWith(24, 9, 0);
+    expect(camera.position.set).toHaveBeenCalledWith(22, 9, 0);
     expect(camera.lookAt).toHaveBeenCalledWith(0, 0, 0);
     expect(camera.updateProjectionMatrix).toHaveBeenCalledOnce();
     expect(controls.target.set).toHaveBeenCalledWith(0, 0, 0);
@@ -174,7 +174,7 @@ describe("CapitalMapScene helpers", () => {
 
     applyCameraPreset(camera, "angled");
 
-    expect(camera.position.set).toHaveBeenCalledWith(18, 18, 22);
+    expect(camera.position.set).toHaveBeenCalledWith(15, 15, 19);
   });
 
   it("applies top camera preset correctly", () => {
@@ -186,15 +186,15 @@ describe("CapitalMapScene helpers", () => {
 
     applyCameraPreset(camera, "top");
 
-    expect(camera.position.set).toHaveBeenCalledWith(0, 28, 0.1);
+    expect(camera.position.set).toHaveBeenCalledWith(0, 26, 0.1);
   });
 });
 
 describe("Gen4 camera positions", () => {
   it("has updated positions for the larger Voronoi map", () => {
-    expect(cameraPositions.angled).toEqual([18, 18, 22]);
-    expect(cameraPositions.top).toEqual([0, 28, 0.1]);
-    expect(cameraPositions.side).toEqual([24, 9, 0]);
+    expect(cameraPositions.angled).toEqual([15, 15, 19]);
+    expect(cameraPositions.top).toEqual([0, 26, 0.1]);
+    expect(cameraPositions.side).toEqual([22, 9, 0]);
   });
 });
 

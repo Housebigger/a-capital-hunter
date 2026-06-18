@@ -43,9 +43,9 @@ const P3_STOCK_COLUMN_SEGMENTS = 8;
 /* ================================================================== */
 
 export const cameraPositions: Record<CameraPreset, [number, number, number]> = {
-  angled: [18, 18, 22],
-  top: [0, 28, 0.1],
-  side: [24, 9, 0]
+  angled: [15, 15, 19],
+  top: [0, 26, 0.1],
+  side: [22, 9, 0]
 };
 
 /**
