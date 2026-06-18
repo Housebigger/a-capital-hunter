@@ -1,4 +1,11 @@
-from server.capital_flow.window import aggregate_window, WINDOW_SPECS
+from datetime import date
+
+from server.capital_flow.window import (
+    aggregate_window,
+    select_window_dates,
+    WINDOW_SPECS,
+    MAX_TRADING_GAP_DAYS,
+)
 
 def _snap(trade_date, points, status="ready", coverage=None):
     return {
@@ -39,6 +46,27 @@ def test_stock_present_in_only_some_days():
 def test_window_specs_map_keys_to_days_and_labels():
     assert WINDOW_SPECS["1d"] == (1, "今日")
     assert WINDOW_SPECS["20d"] == (20, "近20日")
+
+def test_select_window_dates_caps_at_requested_count():
+    dates = ["2026-06-17", "2026-06-16", "2026-06-15", "2026-06-12"]
+    assert select_window_dates(dates, 2) == ["2026-06-17", "2026-06-16"]
+    # Fewer stored than requested → return all (still contiguous).
+    assert select_window_dates(dates, 10) == dates
+
+def test_select_window_dates_breaks_at_stale_gap():
+    # A 3-month-old snapshot is NOT part of "近5日" — the hole bounds the window
+    # instead of being silently summed in.
+    dates = ["2026-06-17", "2026-03-13"]
+    assert select_window_dates(dates, 5) == ["2026-06-17"]
+
+def test_select_window_dates_keeps_holiday_gap():
+    # A long-holiday gap (Spring-Festival-style, ≤ tolerance) stays contiguous.
+    dates = ["2026-02-23", "2026-02-12"]  # 11 calendar days apart
+    assert (date.fromisoformat(dates[0]) - date.fromisoformat(dates[1])).days <= MAX_TRADING_GAP_DAYS
+    assert select_window_dates(dates, 5) == dates
+
+def test_select_window_dates_empty():
+    assert select_window_dates([], 5) == []
 
 def test_window_status_is_worst_of_days_coverage_is_anchor():
     # An older partial day downgrades the whole window to partial; coverage stays

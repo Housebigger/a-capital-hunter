@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .models import SnapshotDraft
-from .window import aggregate_window
+from .window import aggregate_window, select_window_dates
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS capital_flow_snapshots (
@@ -319,7 +319,9 @@ class SnapshotRepository:
             dates = self.list_trade_dates()  # DESC
             if not dates:
                 return None
-            chosen = dates[:requested_days]
+            # Anchored run of contiguous trading days — a stale snapshot far
+            # behind a data hole is excluded, so the window label stays honest.
+            chosen = select_window_dates(dates, requested_days)
             expanded = []
             for d in chosen:
                 row = self._snapshot_row(d)

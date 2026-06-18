@@ -135,3 +135,17 @@ def test_get_window_snapshot_none_when_empty(tmp_db_path):
     repo = SnapshotRepository(tmp_db_path)
     assert repo.get_window_snapshot(5, "近5日") is None
     repo.close()
+
+
+def test_get_window_snapshot_excludes_stale_outlier(tmp_db_path):
+    """A months-old snapshot must not be summed into a "近5日" window."""
+    repo = SnapshotRepository(tmp_db_path)
+    repo.save_snapshot(_draft(trade_date=date(2026, 6, 17)))
+    repo.save_snapshot(_draft(trade_date=date(2026, 3, 13)))  # 3 months stale
+    snap = repo.get_window_snapshot(5, "近5日")
+    assert snap["window"]["availableDays"] == 1
+    assert snap["window"]["from"] == "2026-06-17"
+    assert snap["window"]["to"] == "2026-06-17"
+    # Only the anchor day's value — NOT doubled by the stale day.
+    assert snap["points"][0]["netAmountMain"] == 12_345_600.0
+    repo.close()
