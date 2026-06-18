@@ -139,3 +139,21 @@ def test_transaction_rolls_back_when_mapping_insert_fails(tmp_db_path):
         repo.save_snapshot(draft)
     # Nothing persisted.
     assert repo.list_trade_dates() == []
+
+
+def test_get_window_snapshot_sums_across_days(tmp_db_path):
+    repo = SnapshotRepository(tmp_db_path)
+    repo.save_snapshot(_draft(trade_date=date(2026, 6, 17)))
+    repo.save_snapshot(_draft(trade_date=date(2026, 6, 16)))
+    snap = repo.get_window_snapshot(5, "近5日")
+    assert snap["window"]["availableDays"] == 2
+    assert snap["window"]["to"] == "2026-06-17"
+    assert snap["window"]["from"] == "2026-06-16"
+    assert snap["points"][0]["netAmountMain"] == 12_345_600.0 * 2
+    repo.close()
+
+
+def test_get_window_snapshot_none_when_empty(tmp_db_path):
+    repo = SnapshotRepository(tmp_db_path)
+    assert repo.get_window_snapshot(5, "近5日") is None
+    repo.close()
