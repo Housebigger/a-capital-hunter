@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .models import SnapshotDraft
+from .window import aggregate_window
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS capital_flow_snapshots (
@@ -336,6 +337,26 @@ class SnapshotRepository:
             return None
         with self._lock:
             return self._expand(row)
+
+    def get_window_snapshot(self, requested_days: int, label: str):
+        """Window snapshot over the newest ``requested_days`` trading days.
+
+        Anchored at the newest stored trade date (ready or partial). Returns
+        ``None`` when the database holds no snapshots.
+        """
+        with self._lock:
+            dates = self.list_trade_dates()  # DESC
+            if not dates:
+                return None
+            chosen = dates[:requested_days]
+            expanded = []
+            for d in chosen:
+                row = self._snapshot_row(d)
+                if row is not None:
+                    expanded.append(self._expand(row))
+        if not expanded:
+            return None
+        return aggregate_window(expanded, requested_days, label)
 
     def list_trade_dates(self) -> List[str]:
         with self._lock:

@@ -13,6 +13,7 @@ const readySnapshot: CapitalFlowSnapshot = {
   coverage: { requested: 10, succeeded: 9, failed: 1 },
   points: [],
   failures: [],
+  window: { days: 1, label: "今日", from: "2026-06-12", to: "2026-06-12", availableDays: 1 },
 };
 
 describe("DataStatus", () => {

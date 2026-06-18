@@ -1,4 +1,5 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { CapitalFlowSnapshot, CapitalFlowStatus } from "./data/capitalFlowSnapshot";
 import type { CapitalFlowDataProvider } from "./data/capitalFlowDataProvider";
@@ -29,6 +30,7 @@ const snapshotFixture: CapitalFlowSnapshot = {
     },
   ],
   failures: [],
+  window: { days: 1, label: "今日", from: "2026-06-12", to: "2026-06-12", availableDays: 1 },
 };
 
 const statusFixture: CapitalFlowStatus = {
@@ -111,9 +113,68 @@ describe("App data states", () => {
     expect(screen.getByText(/演示数据/)).toBeInTheDocument();
   });
 
-  it("exposes the date select in the controls panel once data is loaded", async () => {
+  it("exposes the window selector in the controls panel once data is loaded", async () => {
     renderApp(mockProvider());
     expect(await screen.findByText("数据截至 2026-06-12")).toBeInTheDocument();
-    expect(screen.getByLabelText("资金流快照日期")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "今日" })).toBeInTheDocument();
+  });
+
+  it("header shows the snapshot's real data source label", async () => {
+    const SAMPLE_TUSHARE: CapitalFlowSnapshot = {
+      ...snapshotFixture,
+      source: "tushare",
+    };
+    const provider: CapitalFlowDataProvider = {
+      fetchStatus: async () => ({
+        databaseAvailable: true,
+        source: "tushare",
+        metric: "net_amount_main",
+        availableTradeDates: ["2026-06-12"],
+        latestTradeDate: "2026-06-12",
+        latestStatus: "ready",
+      }),
+      fetchLatest: async () => SAMPLE_TUSHARE,
+      fetchDate: async () => SAMPLE_TUSHARE,
+    };
+    renderApp(provider);
+    // The header <p> must say "Tushare 今日主力净流入 ·…", not the hardcoded "JQData"
+    expect(await screen.findByText(/Tushare 今日主力净流入/)).toBeInTheDocument();
+  });
+
+  it("keeps the previous scene visible while switching windows", async () => {
+    // Regression for I1+I2: window switch must not blank the 3D scene while the
+    // next fetch is pending.  The provider here has NO fetchStatus — after the
+    // I2 fix App must not call it, so this also guards against a crash when
+    // fetchStatus is absent.
+    let resolveSecond: (v: any) => void = () => {};
+    let call = 0;
+    const fetchLatest = vi.fn((w?: string) => {
+      call += 1;
+      if (call === 1) return Promise.resolve(snapshotFixture); // initial 1d load
+      return new Promise((res) => { resolveSecond = res; });   // window switch: pending
+    });
+    const provider = { fetchLatest, fetchDate: async () => snapshotFixture };
+    render(<App provider={provider as any} />);
+    await screen.findByText(/今日主力净流入/);                  // initial scene shown
+    await userEvent.click(screen.getByRole("button", { name: "近5日" }));
+    // While the 2nd fetch is pending, the previous snapshot's content is still shown
+    // (multiple elements match the regex — use getAllByText to avoid "multiple found" error):
+    expect(screen.getAllByText(/主力净流入/).length).toBeGreaterThan(0);
+    resolveSecond({ ...snapshotFixture, window: { days: 5, label: "近5日", from: snapshotFixture.tradeDate, to: snapshotFixture.tradeDate, availableDays: 5 } });
+  });
+
+  it("refetches with the chosen window and labels the header", async () => {
+    const fetchLatest = vi.fn(async (w?: string) => ({
+      ...snapshotFixture,
+      window: { days: w === "5d" ? 5 : 1, label: w === "5d" ? "近5日" : "今日",
+                from: snapshotFixture.tradeDate, to: snapshotFixture.tradeDate,
+                availableDays: w === "5d" ? 5 : 1 },
+    }));
+    const provider = { fetchStatus: mockProvider().fetchStatus, fetchLatest, fetchDate: mockProvider().fetchDate };
+    render(<App provider={provider as any} />);
+    await screen.findByText(/今日主力净流入/);
+    await userEvent.click(screen.getByRole("button", { name: "近5日" }));
+    expect(fetchLatest).toHaveBeenLastCalledWith("5d");
+    expect(await screen.findByText(/近5日主力净流入/)).toBeInTheDocument();
   });
 });

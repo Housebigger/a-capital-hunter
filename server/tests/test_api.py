@@ -148,3 +148,28 @@ def test_error_shape_is_consistent(client):
     body = response.get_json()
     assert set(body.keys()) == {"error"}
     assert set(body["error"].keys()) == {"code", "message"}
+
+
+def test_latest_defaults_to_1d_window(client):
+    data = client.get("/api/capital-flow/snapshot/latest").get_json()
+    assert data["window"] == {"days": 1, "label": "今日",
+                              "from": "2026-06-12", "to": "2026-06-12", "availableDays": 1}
+
+
+def test_latest_accepts_window_param(client):
+    data = client.get("/api/capital-flow/snapshot/latest?window=5d").get_json()
+    assert data["window"]["days"] == 5
+    assert data["window"]["label"] == "近5日"
+    assert data["window"]["availableDays"] == 1  # only one day stored in fixture
+
+
+def test_latest_rejects_unknown_window(client):
+    resp = client.get("/api/capital-flow/snapshot/latest?window=7d")
+    assert resp.status_code == 400
+    assert resp.get_json()["error"]["code"] == "invalid_window"
+
+
+def test_by_date_carries_1d_window(client):
+    data = client.get("/api/capital-flow/snapshot?trade_date=2026-06-12").get_json()
+    assert data["window"]["days"] == 1
+    assert data["window"]["to"] == "2026-06-12"

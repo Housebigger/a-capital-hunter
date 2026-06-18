@@ -25,6 +25,7 @@ const snapshotFixture: CapitalFlowSnapshot = {
     },
   ],
   failures: [{ securityCode: "000001.XSHE", reason: "missing_source_row" }],
+  window: { days: 1, label: "今日", from: "2026-06-12", to: "2026-06-12", availableDays: 1 },
 };
 
 const okJson = (body: unknown) => ({
@@ -123,6 +124,16 @@ describe("createCapitalFlowDataProvider", () => {
     expect(mockFetch).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+  });
+
+  it("fetchLatest sends the window query param", async () => {
+    mockFetch.mockResolvedValueOnce(okJson(snapshotFixture));
+    const provider = createCapitalFlowDataProvider();
+    await provider.fetchLatest("5d");
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("window=5d"),
+      expect.any(Object)
     );
   });
 });

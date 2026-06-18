@@ -2,20 +2,34 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { CapitalStateFilter, CameraPreset, ThemeFilter } from "../domain/types";
+import type { CapitalFlowWindowKey } from "../data/capitalFlowDataProvider";
 import { themes } from "../domain/themeRegistry";
 import { ControlsPanel } from "./ControlsPanel";
 
 describe("ControlsPanel", () => {
+  const baseProps = {
+    themes,
+    activeWindow: "1d" as CapitalFlowWindowKey,
+    onWindowChange: vi.fn(),
+    themeFilter: "all" as ThemeFilter,
+    capitalStateFilter: "all" as CapitalStateFilter,
+    cameraPreset: "angled" as CameraPreset,
+    viewMode: "P1" as "P1" | "P2" | "P3",
+    onViewModeChange: vi.fn(),
+    onThemeFilterChange: vi.fn(),
+    onCapitalStateFilterChange: vi.fn(),
+    onCameraPresetChange: vi.fn(),
+  };
+
   function renderControlsPanel(options?: {
-    activeTradeDate?: string;
-    availableTradeDates?: readonly string[];
+    activeWindow?: CapitalFlowWindowKey;
     themeFilter?: ThemeFilter;
     capitalStateFilter?: CapitalStateFilter;
     cameraPreset?: CameraPreset;
     viewMode?: "P1" | "P2" | "P3";
   }) {
     const handlers = {
-      onTradeDateChange: vi.fn(),
+      onWindowChange: vi.fn(),
       onThemeFilterChange: vi.fn(),
       onCapitalStateFilterChange: vi.fn(),
       onCameraPresetChange: vi.fn(),
@@ -25,10 +39,7 @@ describe("ControlsPanel", () => {
     render(
       <ControlsPanel
         themes={themes}
-        activeTradeDate={options?.activeTradeDate ?? "2026-06-12"}
-        availableTradeDates={
-          options?.availableTradeDates ?? ["2026-06-12", "2026-06-11"]
-        }
+        activeWindow={options?.activeWindow ?? "1d"}
         themeFilter={options?.themeFilter ?? "all"}
         capitalStateFilter={options?.capitalStateFilter ?? "all"}
         cameraPreset={options?.cameraPreset ?? "angled"}
@@ -44,24 +55,13 @@ describe("ControlsPanel", () => {
     const user = userEvent.setup();
     const handlers = renderControlsPanel();
 
-    await user.selectOptions(screen.getByLabelText("资金流快照日期"), "2026-06-11");
     await user.selectOptions(screen.getByLabelText("主题筛选"), "ai-computing");
     await user.selectOptions(screen.getByLabelText("资金状态"), "inflow");
     await user.click(screen.getByRole("button", { name: "俯视" }));
 
-    expect(handlers.onTradeDateChange).toHaveBeenCalledWith("2026-06-11");
     expect(handlers.onThemeFilterChange).toHaveBeenCalledWith("ai-computing");
     expect(handlers.onCapitalStateFilterChange).toHaveBeenCalledWith("inflow");
     expect(handlers.onCameraPresetChange).toHaveBeenCalledWith("top");
-  });
-
-  it("populates the date select from availableTradeDates", () => {
-    renderControlsPanel({
-      availableTradeDates: ["2026-06-12", "2026-06-11", "2026-06-10"],
-    });
-    const select = screen.getByLabelText("资金流快照日期") as HTMLSelectElement;
-    expect(select.options).toHaveLength(3);
-    expect(select.options[0].value).toBe("2026-06-12");
   });
 
   it("reflects the active view mode in the segmented control", () => {
@@ -74,5 +74,21 @@ describe("ControlsPanel", () => {
     renderControlsPanel({ cameraPreset: "side" });
     expect(screen.getByRole("button", { name: "侧视", pressed: true })).toBeVisible();
     expect(screen.getByRole("button", { name: "斜视", pressed: false })).toBeVisible();
+  });
+
+  it("renders four window buttons and reports clicks", async () => {
+    const onWindowChange = vi.fn();
+    render(<ControlsPanel {...baseProps} activeWindow="1d" onWindowChange={onWindowChange} />);
+    expect(screen.getByRole("button", { name: "今日" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "近20日" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "近5日" }));
+    expect(onWindowChange).toHaveBeenCalledWith("5d");
+  });
+
+  it("collapses the read-guide notes by default and expands on click", async () => {
+    render(<ControlsPanel {...baseProps} activeWindow="1d" onWindowChange={vi.fn()} />);
+    expect(screen.queryByText(/二维位置表达关系/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /读图规则/ }));
+    expect(screen.getByText(/二维位置表达关系/)).toBeInTheDocument();
   });
 });

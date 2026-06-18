@@ -24,6 +24,14 @@ export interface StockCapitalFlowPoint {
   readonly tradeDate: string;
 }
 
+export interface CapitalFlowWindowMeta {
+  readonly days: number;
+  readonly label: string;
+  readonly from: string;
+  readonly to: string;
+  readonly availableDays: number;
+}
+
 export interface CapitalFlowSnapshot {
   readonly tradeDate: string;
   readonly fetchedAt: string;
@@ -38,6 +46,7 @@ export interface CapitalFlowSnapshot {
     stockId?: string;
     reason: string;
   }>[];
+  readonly window: CapitalFlowWindowMeta;
 }
 
 export interface CapitalFlowStatus {
@@ -112,6 +121,18 @@ function parsePoint(raw: unknown): StockCapitalFlowPoint {
   };
 }
 
+function parseWindow(raw: unknown): CapitalFlowWindowMeta {
+  if (!isObject(raw)) throw new InvalidSnapshotError("Invalid capital flow snapshot: window missing");
+  const { days, label, from, to, availableDays } = raw;
+  if (!isFiniteNumber(days) || !isFiniteNumber(availableDays)) {
+    throw new InvalidSnapshotError("Invalid capital flow snapshot: window days must be finite");
+  }
+  if (!isString(label) || !isString(from) || !isString(to)) {
+    throw new InvalidSnapshotError("Invalid capital flow snapshot: window label/from/to must be non-empty strings");
+  }
+  return { days, label, from, to, availableDays };
+}
+
 function parseFailures(raw: unknown): CapitalFlowSnapshot["failures"] {
   if (!Array.isArray(raw)) {
     throw new InvalidSnapshotError("Invalid capital flow snapshot: failures is not an array");
@@ -135,7 +156,7 @@ function parseFailures(raw: unknown): CapitalFlowSnapshot["failures"] {
 export function parseSnapshot(raw: unknown): CapitalFlowSnapshot {
   if (!isObject(raw)) throw new InvalidSnapshotError("Invalid capital flow snapshot: not an object");
   const {
-    tradeDate, fetchedAt, source, metric, unit, status, coverage, points, failures,
+    tradeDate, fetchedAt, source, metric, unit, status, coverage, points, failures, window,
   } = raw;
 
   if (!isString(tradeDate) || !isString(fetchedAt)) {
@@ -167,6 +188,7 @@ export function parseSnapshot(raw: unknown): CapitalFlowSnapshot {
     coverage: parseCoverage(coverage),
     points: points.map(parsePoint),
     failures: parseFailures(failures),
+    window: parseWindow(window),
   };
 }
 

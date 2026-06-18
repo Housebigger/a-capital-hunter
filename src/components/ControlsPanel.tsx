@@ -1,18 +1,17 @@
-import { Activity, Eye, Filter, Layers3, Rotate3D } from "lucide-react";
+import { useState } from "react";
+import { Activity, Filter, Layers3, Rotate3D } from "lucide-react";
 import type {
   CameraPreset,
   CapitalStateFilter,
   Theme,
   ThemeFilter
 } from "../domain/types";
+import type { CapitalFlowWindowKey } from "../data/capitalFlowDataProvider";
 
 interface ControlsPanelProps {
   themes: readonly Theme[];
-  /** Active snapshot trade date (YYYY-MM-DD). */
-  activeTradeDate: string;
-  /** Trade dates the backend has snapshots for (descending). */
-  availableTradeDates: readonly string[];
-  onTradeDateChange: (tradeDate: string) => void;
+  activeWindow: CapitalFlowWindowKey;
+  onWindowChange: (window: CapitalFlowWindowKey) => void;
   themeFilter: ThemeFilter;
   capitalStateFilter: CapitalStateFilter;
   cameraPreset: CameraPreset;
@@ -23,6 +22,13 @@ interface ControlsPanelProps {
   onCameraPresetChange: (preset: CameraPreset) => void;
 }
 
+const WINDOW_OPTIONS: readonly { value: CapitalFlowWindowKey; label: string }[] = [
+  { value: "1d", label: "今日" },
+  { value: "5d", label: "近5日" },
+  { value: "10d", label: "近10日" },
+  { value: "20d", label: "近20日" },
+];
+
 const CAMERA_PRESET_OPTIONS: readonly { value: CameraPreset; label: string }[] = [
   { value: "angled", label: "斜视" },
   { value: "top", label: "俯视" },
@@ -30,6 +36,7 @@ const CAMERA_PRESET_OPTIONS: readonly { value: CameraPreset; label: string }[] =
 ];
 
 export function ControlsPanel(props: ControlsPanelProps) {
+  const [notesOpen, setNotesOpen] = useState(false);
   return (
     <aside className="controls-panel" aria-label="A Capital Hunter 控制面板">
       <section className="control-section">
@@ -37,24 +44,19 @@ export function ControlsPanel(props: ControlsPanelProps) {
           <Activity size={16} aria-hidden="true" />
           <span>资金流快照</span>
         </div>
-        <label>
-          <span>资金流快照日期</span>
-          <select
-            aria-label="资金流快照日期"
-            value={props.activeTradeDate}
-            onChange={(event) => props.onTradeDateChange(event.target.value)}
-          >
-            {props.availableTradeDates.length === 0 ? (
-              <option value={props.activeTradeDate}>{props.activeTradeDate || "暂无快照"}</option>
-            ) : (
-              props.availableTradeDates.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
+        <div className="segmented" role="group" aria-label="时间档位">
+          {WINDOW_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              className={props.activeWindow === value ? "active" : ""}
+              aria-pressed={props.activeWindow === value}
+              onClick={() => props.onWindowChange(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="control-section">
@@ -148,16 +150,21 @@ export function ControlsPanel(props: ControlsPanelProps) {
       </section>
 
       <section className="control-section compact-note">
-        <div className="section-title">
+        <button
+          type="button"
+          className="notes-toggle section-title"
+          aria-expanded={notesOpen}
+          onClick={() => setNotesOpen((open) => !open)}
+        >
           <Layers3 size={16} aria-hidden="true" />
           <span>读图规则</span>
-        </div>
-        <p>二维位置表达关系，柱高表达资金强度，红色为流入，绿色为流出。点击分题材区域展开详细标签。</p>
-        <div className="section-title">
-          <Eye size={16} aria-hidden="true" />
-          <span>第三版策略</span>
-        </div>
-        <p>第三版：11个主题、~80个板块、5种关系类型、国家地图底座。</p>
+        </button>
+        {notesOpen && (
+          <>
+            <p>二维位置表达关系，柱高表达资金强度，红色为流入，绿色为流出。点击分题材区域展开详细标签。</p>
+            <p>第三版：11个主题、~80个板块、5种关系类型、国家地图底座。</p>
+          </>
+        )}
       </section>
     </aside>
   );

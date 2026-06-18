@@ -43,9 +43,9 @@ const P3_STOCK_COLUMN_SEGMENTS = 8;
 /* ================================================================== */
 
 export const cameraPositions: Record<CameraPreset, [number, number, number]> = {
-  angled: [18, 18, 22],
-  top: [0, 28, 0.1],
-  side: [24, 9, 0]
+  angled: [15, 15, 19],
+  top: [0, 26, 0.1],
+  side: [22, 9, 0]
 };
 
 /**
@@ -1006,11 +1006,13 @@ function P3CapitalMapScene(props: P3CapitalMapSceneProps) {
             key={`p3-label-${node.stock.id}`}
             position={[node.position.x, THEME_PLATE_THICKNESS + Math.abs(node.metric.height) + 0.08, node.position.z]}
             rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.09}
-            color="#e8eef5"
+            fontSize={0.12}
+            color="#f3f6fa"
+            outlineWidth={0.012}
+            outlineColor="#0b0f14"
             anchorX="center"
             anchorY="middle"
-            maxWidth={0.7}
+            maxWidth={0.9}
           >
             {node.stock.shortName}
           </Text>
@@ -1081,7 +1083,7 @@ function ThemePlate({
       <extrudeGeometry args={[shape, { depth: THEME_PLATE_THICKNESS, bevelEnabled: false }]} />
       <meshStandardMaterial
         color={themeColor}
-        opacity={0.5}
+        opacity={0.32}
         transparent
         roughness={0.7}
       />

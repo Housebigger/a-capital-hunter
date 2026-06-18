@@ -13,6 +13,7 @@ export function SceneLegend() {
         <i className="legend-dot flat" />
         弱/平
       </span>
+      <span className="legend-note">红=流入（A股习惯）</span>
     </div>
   );
 }
