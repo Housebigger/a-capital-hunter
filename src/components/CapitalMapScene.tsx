@@ -1006,11 +1006,13 @@ function P3CapitalMapScene(props: P3CapitalMapSceneProps) {
             key={`p3-label-${node.stock.id}`}
             position={[node.position.x, THEME_PLATE_THICKNESS + Math.abs(node.metric.height) + 0.08, node.position.z]}
             rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.09}
-            color="#e8eef5"
+            fontSize={0.12}
+            color="#f3f6fa"
+            outlineWidth={0.012}
+            outlineColor="#0b0f14"
             anchorX="center"
             anchorY="middle"
-            maxWidth={0.7}
+            maxWidth={0.9}
           >
             {node.stock.shortName}
           </Text>
