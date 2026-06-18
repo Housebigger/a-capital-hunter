@@ -84,7 +84,13 @@ class SnapshotRepository:
 
     def __init__(self, db_path: Path):
         self._db_path = Path(db_path)
-        self._lock = threading.Lock()
+        # RLock (reentrant) so public methods that call other public methods
+        # (e.g. status -> list_trade_dates -> _snapshot_row) don't self-deadlock.
+        # Critical: SQLite connections are NOT thread-safe even with
+        # check_same_thread=False — concurrent execute() on one connection
+        # corrupts memory (observed SIGSEGV in sqlite3VdbeExec). Every public
+        # method must hold this lock for the whole operation.
+        self._lock = threading.RLock()
         self._conn = _connect(self._db_path)
         with self._lock:
             self._conn.executescript(_SCHEMA)
@@ -95,7 +101,8 @@ class SnapshotRepository:
     # ------------------------------------------------------------------
 
     def close(self) -> None:
-        self._conn.close()
+        with self._lock:
+            self._conn.close()
 
     def __enter__(self) -> "SnapshotRepository":
         return self
@@ -290,10 +297,12 @@ class SnapshotRepository:
         trade_date_str = (
             trade_date.isoformat() if isinstance(trade_date, date) else str(trade_date)
         )
-        row = self._snapshot_row(trade_date_str)
+        with self._lock:
+            row = self._snapshot_row(trade_date_str)
         if row is None:
             return None
-        return self._expand(row)
+        with self._lock:
+            return self._expand(row)
 
     def get_latest_snapshot(self) -> Optional[dict]:
         """Newest ``ready`` snapshot, else newest ``partial``.
@@ -301,41 +310,45 @@ class SnapshotRepository:
         ``failed`` snapshots are never returned as "latest" because they carry
         no usable point data.
         """
-        row = self._conn.execute(
-            """
-            SELECT * FROM capital_flow_snapshots
-            WHERE status = 'ready'
-            ORDER BY trade_date DESC
-            LIMIT 1
-            """
-        ).fetchone()
-        if row is None:
+        with self._lock:
             row = self._conn.execute(
                 """
                 SELECT * FROM capital_flow_snapshots
-                WHERE status = 'partial'
+                WHERE status = 'ready'
                 ORDER BY trade_date DESC
                 LIMIT 1
                 """
             ).fetchone()
+            if row is None:
+                row = self._conn.execute(
+                    """
+                    SELECT * FROM capital_flow_snapshots
+                    WHERE status = 'partial'
+                    ORDER BY trade_date DESC
+                    LIMIT 1
+                    """
+                ).fetchone()
         if row is None:
             return None
-        return self._expand(row)
+        with self._lock:
+            return self._expand(row)
 
     def list_trade_dates(self) -> List[str]:
-        rows = self._conn.execute(
-            "SELECT trade_date FROM capital_flow_snapshots ORDER BY trade_date DESC"
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT trade_date FROM capital_flow_snapshots ORDER BY trade_date DESC"
+            ).fetchall()
         return [r["trade_date"] for r in rows]
 
     def status(self) -> dict:
-        dates = self.list_trade_dates()
-        latest_trade_date = dates[0] if dates else None
-        latest_status = None
-        if latest_trade_date is not None:
-            row = self._snapshot_row(latest_trade_date)
-            if row is not None:
-                latest_status = row["status"]
+        with self._lock:
+            dates = self.list_trade_dates()
+            latest_trade_date = dates[0] if dates else None
+            latest_status = None
+            if latest_trade_date is not None:
+                row = self._snapshot_row(latest_trade_date)
+                if row is not None:
+                    latest_status = row["status"]
         return {
             "databaseAvailable": True,
             "latestTradeDate": latest_trade_date,
