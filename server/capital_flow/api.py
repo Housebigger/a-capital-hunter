@@ -15,6 +15,7 @@ import sqlite3
 from flask import Blueprint, jsonify, request
 
 from .repository import SnapshotRepository
+from .window import WINDOW_SPECS, aggregate_window
 
 
 def _error(code: str, message: str, status: int):
@@ -31,20 +32,18 @@ def create_capital_flow_blueprint(repository: SnapshotRepository) -> Blueprint:
 
     @bp.get("/api/capital-flow/snapshot/latest")
     def latest_snapshot():
+        window = request.args.get("window", "1d")
+        spec = WINDOW_SPECS.get(window)
+        if spec is None:
+            return _error("invalid_window",
+                          f"Unknown window '{window}' (expected one of {sorted(WINDOW_SPECS)})", 400)
+        days, label = spec
         try:
-            snapshot = repository.get_latest_snapshot()
+            snapshot = repository.get_window_snapshot(days, label)
         except sqlite3.Error as exc:
-            return _error(
-                "snapshot_unavailable",
-                f"Cannot read capital flow database: {exc}",
-                503,
-            )
+            return _error("snapshot_unavailable", f"Cannot read capital flow database: {exc}", 503)
         if snapshot is None:
-            return _error(
-                "snapshot_not_found",
-                "No usable capital flow snapshot has been synced yet",
-                404,
-            )
+            return _error("snapshot_not_found", "No usable capital flow snapshot has been synced yet", 404)
         return jsonify(snapshot)
 
     @bp.get("/api/capital-flow/snapshot")
@@ -59,18 +58,11 @@ def create_capital_flow_blueprint(repository: SnapshotRepository) -> Blueprint:
         try:
             snapshot = repository.get_snapshot(trade_date)
         except sqlite3.Error as exc:
-            return _error(
-                "snapshot_unavailable",
-                f"Cannot read capital flow database: {exc}",
-                503,
-            )
+            return _error("snapshot_unavailable", f"Cannot read capital flow database: {exc}", 503)
         if snapshot is None:
-            return _error(
-                "snapshot_not_found",
-                f"No snapshot for {trade_date}",
-                404,
-            )
-        return jsonify(snapshot)
+            return _error("snapshot_not_found", f"No snapshot for {trade_date}", 404)
+        # Uniform contract: every snapshot response carries a window (single day = 1d).
+        return jsonify(aggregate_window([snapshot], 1, "今日"))
 
     @bp.get("/api/capital-flow/status")
     def status():
