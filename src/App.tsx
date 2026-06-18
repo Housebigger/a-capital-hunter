@@ -17,6 +17,7 @@ import { buildP3StockRenderNodes } from "./domain/stockRenderNodes";
 import { buildCapitalFlowAggregates } from "./domain/capitalFlowAggregation";
 import { useHunterState } from "./state/useHunterState";
 import type { MarketScenario } from "./domain/types";
+import { sourceLabel } from "./data/sourceLabel";
 
 const themeLayoutProvider = createThemeLayoutProvider();
 const subThemeLayoutProvider = createSubThemeLayoutProvider();
@@ -219,7 +220,7 @@ export default function App({ provider }: AppProps = {}) {
           {activeSnapshot ? (
             <>
               <span>真实资金流快照</span>
-              <p>JQData 主力净流入 · {activeSnapshot.tradeDate}</p>
+              <p>{sourceLabel(activeSnapshot.source)} 主力净流入 · {activeSnapshot.tradeDate}</p>
             </>
           ) : isDemo ? (
             <>

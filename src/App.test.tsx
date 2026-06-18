@@ -116,4 +116,26 @@ describe("App data states", () => {
     expect(await screen.findByText("数据截至 2026-06-12")).toBeInTheDocument();
     expect(screen.getByLabelText("资金流快照日期")).toBeInTheDocument();
   });
+
+  it("header shows the snapshot's real data source label", async () => {
+    const SAMPLE_TUSHARE: CapitalFlowSnapshot = {
+      ...snapshotFixture,
+      source: "tushare",
+    };
+    const provider: CapitalFlowDataProvider = {
+      fetchStatus: async () => ({
+        databaseAvailable: true,
+        source: "tushare",
+        metric: "net_amount_main",
+        availableTradeDates: ["2026-06-12"],
+        latestTradeDate: "2026-06-12",
+        latestStatus: "ready",
+      }),
+      fetchLatest: async () => SAMPLE_TUSHARE,
+      fetchDate: async () => SAMPLE_TUSHARE,
+    };
+    renderApp(provider);
+    // The header <p> must say "Tushare 主力净流入 ·…", not the hardcoded "JQData"
+    expect(await screen.findByText(/Tushare 主力净流入/)).toBeInTheDocument();
+  });
 });

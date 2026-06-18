@@ -11,6 +11,7 @@
  */
 
 import type { CapitalFlowSnapshot } from "../data/capitalFlowSnapshot";
+import { sourceLabel } from "../data/sourceLabel";
 
 interface DataStatusProps {
   readonly snapshot: CapitalFlowSnapshot | null;
@@ -54,13 +55,13 @@ export function DataStatus({ snapshot, isDemo, onRetry, onLoadDemo }: DataStatus
   // --- Ready / partial: show provenance + coverage ---
   const isPartial = snapshot.status === "partial";
   const coverage = snapshot.coverage;
-  const sourceLabel = snapshot.source === "tushare" ? "Tushare" : "JQData";
+  const sourceText = sourceLabel(snapshot.source);
 
   return (
     <div className={`data-status${isPartial ? " partial" : ""}`} role="status">
       <span>数据截至 {snapshot.tradeDate}</span>
       <span>
-        {sourceLabel} · 主力净流入 · 单位 {snapshot.unit}
+        {sourceText} · 主力净流入 · 单位 {snapshot.unit}
       </span>
       <span>
         覆盖 {coverage.succeeded} / {coverage.requested}（{coveragePercent(coverage.succeeded, coverage.requested)}）
