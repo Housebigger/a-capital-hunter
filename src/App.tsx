@@ -6,7 +6,7 @@ import { SceneLegend } from "./components/SceneLegend";
 import { DataStatus } from "./components/DataStatus";
 import { layoutStages } from "./domain/layoutStages";
 import { createCapitalFlowDataProvider, type CapitalFlowDataProvider, type CapitalFlowWindowKey } from "./data/capitalFlowDataProvider";
-import type { CapitalFlowSnapshot, CapitalFlowStatus } from "./data/capitalFlowSnapshot";
+import type { CapitalFlowSnapshot } from "./data/capitalFlowSnapshot";
 import { createScenarioDataProvider } from "./domain/scenarioDataProvider";
 import { themes } from "./domain/themeRegistry";
 import { createThemeLayoutProvider } from "./domain/themeVoronoiLayoutProvider";
@@ -38,7 +38,7 @@ type SnapshotViewState =
   | { status: "demo"; scenario: MarketScenario };
 
 export interface AppProps {
-  /** Inject a provider (tests). Defaults to the real JQData snapshot provider. */
+  /** Inject a provider (tests). Defaults to the real capital-flow snapshot provider. */
   readonly provider?: CapitalFlowDataProvider;
 }
 
@@ -46,7 +46,6 @@ export default function App({ provider }: AppProps = {}) {
   const dataProvider = provider ?? DEFAULT_DATA_PROVIDER;
 
   const [viewState, setViewState] = useState<SnapshotViewState>({ status: "loading" });
-  const [status, setStatus] = useState<CapitalFlowStatus | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("P1");
   const [activeWindow, setActiveWindow] = useState<CapitalFlowWindowKey>("1d");
   const hunterState = useHunterState();
@@ -56,13 +55,11 @@ export default function App({ provider }: AppProps = {}) {
 
   // ---- Initial load: status + latest snapshot ----
   const loadInitial = useCallback(async () => {
-    setViewState({ status: "loading" });
-    try {
-      const resolvedStatus = await dataProvider.fetchStatus();
-      setStatus(resolvedStatus);
-    } catch {
-      // Status is best-effort; continue to try the snapshot directly.
-    }
+    setViewState((prev) =>
+      prev.status === "ready" || prev.status === "partial"
+        ? { status: "loading", previous: prev.snapshot }
+        : { status: "loading" }
+    );
     try {
       const snapshot = await dataProvider.fetchLatest(activeWindow);
       setViewState(
@@ -190,6 +187,13 @@ export default function App({ provider }: AppProps = {}) {
   const showScene = activeSnapshot !== null || isDemo;
   const isLoading = viewState.status === "loading" && activeSnapshot === null && !isDemo;
 
+  // M5: elide identical from/to date (show single date when from === to)
+  const range = activeSnapshot
+    ? activeSnapshot.window.from === activeSnapshot.window.to
+      ? activeSnapshot.window.from
+      : `${activeSnapshot.window.from}~${activeSnapshot.window.to}`
+    : "";
+
   return (
     <main className="app-shell">
       <header className="top-bar">
@@ -201,7 +205,7 @@ export default function App({ provider }: AppProps = {}) {
           {activeSnapshot ? (
             <>
               <span>真实资金流快照</span>
-              <p>{sourceLabel(activeSnapshot.source)} {activeSnapshot.window.label}主力净流入 · {activeSnapshot.window.from}~{activeSnapshot.window.to}{activeSnapshot.window.availableDays < activeSnapshot.window.days ? `（仅${activeSnapshot.window.availableDays}日可用）` : ""}</p>
+              <p>{sourceLabel(activeSnapshot.source)} {activeSnapshot.window.label}主力净流入 · {range}{activeSnapshot.window.availableDays < activeSnapshot.window.days ? `（仅${activeSnapshot.window.availableDays}日可用）` : ""}</p>
             </>
           ) : isDemo ? (
             <>

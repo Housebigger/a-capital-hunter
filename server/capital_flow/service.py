@@ -100,7 +100,7 @@ class CapitalFlowSyncService:
                     self._repository.save_snapshot(draft)
                     results.append({"tradeDate": trade_date.isoformat(),
                                     "status": draft.status, "error": None})
-                except SnapshotSyncError as exc:
+                except (SnapshotSyncError, CapitalFlowSourceError) as exc:
                     results.append({"tradeDate": trade_date.isoformat(),
                                     "status": None, "error": str(exc)})
                 trade_date = self._previous_trade_date(trade_date)
@@ -151,7 +151,7 @@ class CapitalFlowSyncService:
         candidate = _parse_trade_date(spec)
         if not self._source.is_trade_date(candidate):
             raise CapitalFlowSourceError(
-                f"{spec} is not a JQData trade date for this account"
+                f"{spec} is not a trade date for this data source"
             )
         return candidate
 

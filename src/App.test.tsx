@@ -141,6 +141,28 @@ describe("App data states", () => {
     expect(await screen.findByText(/Tushare 今日主力净流入/)).toBeInTheDocument();
   });
 
+  it("keeps the previous scene visible while switching windows", async () => {
+    // Regression for I1+I2: window switch must not blank the 3D scene while the
+    // next fetch is pending.  The provider here has NO fetchStatus — after the
+    // I2 fix App must not call it, so this also guards against a crash when
+    // fetchStatus is absent.
+    let resolveSecond: (v: any) => void = () => {};
+    let call = 0;
+    const fetchLatest = vi.fn((w?: string) => {
+      call += 1;
+      if (call === 1) return Promise.resolve(snapshotFixture); // initial 1d load
+      return new Promise((res) => { resolveSecond = res; });   // window switch: pending
+    });
+    const provider = { fetchLatest, fetchDate: async () => snapshotFixture };
+    render(<App provider={provider as any} />);
+    await screen.findByText(/今日主力净流入/);                  // initial scene shown
+    await userEvent.click(screen.getByRole("button", { name: "近5日" }));
+    // While the 2nd fetch is pending, the previous snapshot's content is still shown
+    // (multiple elements match the regex — use getAllByText to avoid "multiple found" error):
+    expect(screen.getAllByText(/主力净流入/).length).toBeGreaterThan(0);
+    resolveSecond({ ...snapshotFixture, window: { days: 5, label: "近5日", from: snapshotFixture.tradeDate, to: snapshotFixture.tradeDate, availableDays: 5 } });
+  });
+
   it("refetches with the chosen window and labels the header", async () => {
     const fetchLatest = vi.fn(async (w?: string) => ({
       ...snapshotFixture,
