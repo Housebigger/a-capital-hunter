@@ -15,6 +15,8 @@ import { createSubThemeLayoutProvider } from "./domain/voronoiLayoutProvider";
 import { buildSubThemeRenderNodes } from "./domain/subThemeRenderNodes";
 import { buildP3StockRenderNodes } from "./domain/stockRenderNodes";
 import { buildCapitalFlowAggregates } from "./domain/capitalFlowAggregation";
+import { buildOverview } from "./domain/capitalFlowOverview";
+import { subThemes } from "./domain/subThemeRegistry";
 import { useHunterState } from "./state/useHunterState";
 import type { MarketScenario } from "./domain/types";
 import { sourceLabel } from "./data/sourceLabel";
@@ -103,6 +105,16 @@ export default function App({ provider }: AppProps = {}) {
     () => (activeSnapshot ? buildCapitalFlowAggregates(activeSnapshot.points) : null),
     [activeSnapshot]
   );
+
+  const overview = useMemo(() => {
+    if (!aggregates) return undefined;
+    if (viewMode === "P1") {
+      const nameOf = (id: string) => themes.find((t) => t.id === id)?.name ?? id;
+      return buildOverview(aggregates.byTheme, nameOf);
+    }
+    const nameOf = (id: string) => subThemes.find((s) => s.id === id)?.name ?? id;
+    return buildOverview(aggregates.bySubTheme, nameOf);
+  }, [aggregates, viewMode]);
 
   // Layout is independent of data — compute once.
   const themeLayout = useMemo(
@@ -264,7 +276,7 @@ export default function App({ provider }: AppProps = {}) {
           <SceneLegend />
         </section>
 
-        <InspectorPanel />
+        <InspectorPanel overview={overview} overviewTitle={viewMode === "P1" ? "主线概览" : "子题材概览"} />
       </section>
     </main>
   );

@@ -13,6 +13,18 @@ const nodes = buildRenderNodes({
   showCentersOnly: false
 });
 
+it("shows the daily overview when no sector is selected", () => {
+  const overview = {
+    totalNetInflow: 5_0000_0000,
+    topInflow: [{ id: "ai-computing", name: "AI算力", value: 3_0000_0000 }],
+    topOutflow: [{ id: "fintech", name: "金融科技", value: -1_0000_0000 }],
+  };
+  render(<InspectorPanel overview={overview} overviewTitle="主线概览" />);
+  expect(screen.getByText("主线概览")).toBeInTheDocument();
+  expect(screen.getByText("AI算力")).toBeInTheDocument();
+  expect(screen.getByText("金融科技")).toBeInTheDocument();
+});
+
 describe("InspectorPanel", () => {
   it("renders selected sector details", () => {
     const node = nodes.find((candidate) => candidate.sector.id === "ai-computing");

@@ -1,4 +1,5 @@
 import type { RenderNode, StockRenderNode } from "../domain/types";
+import type { CapitalFlowOverview } from "../domain/capitalFlowOverview";
 
 const RELATIONSHIP_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   "industrial-chain": { label: "产业链", color: "#4a9eff" },
@@ -11,9 +12,11 @@ const RELATIONSHIP_TYPE_LABELS: Record<string, { label: string; color: string }>
 interface InspectorPanelProps {
   node?: RenderNode;
   selectedStockNode?: StockRenderNode;
+  overview?: CapitalFlowOverview;
+  overviewTitle?: string;
 }
 
-export function InspectorPanel({ node, selectedStockNode }: InspectorPanelProps) {
+export function InspectorPanel({ node, selectedStockNode, overview, overviewTitle }: InspectorPanelProps) {
   // Stock-level detail view
   if (selectedStockNode) {
     const { stock, subTheme, theme, metric } = selectedStockNode;
@@ -49,6 +52,22 @@ export function InspectorPanel({ node, selectedStockNode }: InspectorPanelProps)
   }
 
   if (!node) {
+    if (overview) {
+      const fmt = (v: number) => `${v >= 0 ? "+" : "−"}${(Math.abs(v) / 1e8).toFixed(2)}亿`;
+      return (
+        <section className="inspector-panel" aria-label="当日概览">
+          <h2>{overviewTitle ?? "当日概览"}</h2>
+          <div className="metric-row"><span>主力净流入合计</span>
+            <strong style={{ color: overview.totalNetInflow >= 0 ? "#e64646" : "#3fae6a" }}>{fmt(overview.totalNetInflow)}</strong></div>
+          <h3>净流入 Top</h3>
+          <ul>{overview.topInflow.map((e) => (
+            <li key={e.id}>{e.name} <strong style={{ color: "#e64646" }}>{fmt(e.value)}</strong></li>))}</ul>
+          <h3>净流出 Top</h3>
+          <ul>{overview.topOutflow.map((e) => (
+            <li key={e.id}>{e.name} <strong style={{ color: "#3fae6a" }}>{fmt(e.value)}</strong></li>))}</ul>
+        </section>
+      );
+    }
     return (
       <section className="inspector-panel" aria-label="板块详情">
         <h2>点击板块查看资金状态</h2>
