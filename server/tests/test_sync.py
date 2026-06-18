@@ -71,3 +71,34 @@ def test_build_source_rejects_unknown_kind():
     with pytest.raises(CapitalFlowSourceError, match="Unknown CAPITAL_FLOW_SOURCE"):
         build_source_from_environment({"CAPITAL_FLOW_SOURCE": "bloomberg"})
 
+
+def test_backfill_flag_syncs_multiple_days(monkeypatch, tmp_path):
+    from datetime import date
+    from server.capital_flow import sync as sync_mod
+    from server.capital_flow.models import SourcePoint
+    from server.capital_flow.repository import SnapshotRepository
+
+    class _AllSucceed:
+        def __init__(self, dates):
+            self._dates = dates
+        def latest_trade_date(self):
+            return max(self._dates)
+        def is_trade_date(self, d):
+            return d in self._dates
+        def fetch_daily(self, trade_date, securities):
+            return [SourcePoint(security_code=c, trade_date=trade_date,
+                                net_amount_main=1_000_000.0) for c in securities]
+        def close(self):
+            pass
+
+    days = [date(2026, 6, 17), date(2026, 6, 16)]  # consecutive trading days
+    monkeypatch.setattr(sync_mod, "build_source_from_environment", lambda env: _AllSucceed(days))
+    db = tmp_path / "cf.sqlite3"
+
+    code = sync_mod.run_sync(["--backfill", "2", "--database", str(db)], env={})
+    assert code == 0
+
+    repo = SnapshotRepository(db)
+    assert sorted(repo.list_trade_dates(), reverse=True) == ["2026-06-17", "2026-06-16"]
+    repo.close()
+

@@ -107,6 +107,12 @@ def run_sync(argv: list, env: Optional[dict] = None) -> int:
         default=None,
         help="Override CAPITAL_FLOW_SOURCE: 'tushare' or 'jqdata'",
     )
+    parser.add_argument(
+        "--backfill",
+        type=int,
+        default=None,
+        help="Backfill the latest N trading days instead of a single date",
+    )
     args = parser.parse_args(argv)
 
     db_path = Path(args.database) if args.database else _project_root() / DEFAULT_DB
@@ -130,6 +136,10 @@ def run_sync(argv: list, env: Optional[dict] = None) -> int:
     )
 
     try:
+        if args.backfill is not None:
+            results = service.sync_backfill(args.backfill)
+            print(json.dumps({"backfill": results}, ensure_ascii=False))
+            return 0 if any(r.get("status") for r in results) else 1
         draft = service.sync(args.trade_date)
     except (CapitalFlowSourceError, SnapshotSyncError) as exc:
         print(json.dumps(build_summary(
