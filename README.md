@@ -143,6 +143,44 @@ so the pipeline works even with a fresh account that only meets the lower tier.
 New accounts start with ~120 points; reach 2000 by sharing articles or inviting
 users on tushare.pro to unlock the fallback path, or 5000 for the direct path.
 
+## Deployment (GitHub Pages)
+
+The production site is **fully static**: a GitHub Action syncs the latest 20
+trading days, exports them to static JSON, builds the SPA, and deploys to
+GitHub Pages. The Tushare token is only used inside the Action (a repo secret)
+and is never shipped to the browser. Local development is unchanged
+(`npm run dev:full` still uses Flask + SQLite).
+
+Pipeline (`.github/workflows/deploy.yml`, runs on a weekday cron, manual
+dispatch, and pushes to `main`):
+
+```
+sync --backfill 20  →  export_static_data.py  →  build:pages  →  deploy-pages
+```
+
+One-time setup (you must do these):
+
+1. **Add the token secret:** Settings → Secrets and variables → Actions → New
+   repository secret → name `TUSHARE_TOKEN`, value = your tushare.pro token.
+2. **Enable Pages:** Settings → Pages → Build and deployment → Source:
+   **GitHub Actions**.
+3. **First deploy:** Actions tab → *Deploy to GitHub Pages* → *Run workflow*
+   (or wait for the cron). The site goes live at
+   `https://housebigger.github.io/a-capital-hunter/`.
+
+Build it yourself locally:
+
+```bash
+set -a; source .env; set +a
+npm run sync:capital-flow -- --backfill 20
+npm run export:data        # writes public/data/snapshot-*.json
+npm run build:pages        # static bundle in dist/
+```
+
+**Disclaimer:** the public site shows "数据来源 Tushare · 仅供学习与展示，非投资
+建议". Publicly redistributing Tushare-derived data may be subject to Tushare's
+terms of service — review them before publishing.
+
 ## Architecture
 
 See [`AGENTS.md`](./AGENTS.md) for the full domain/component map. Key points:
