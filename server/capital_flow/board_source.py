@@ -10,7 +10,8 @@ generator logic is tested against the fake.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Protocol
+from datetime import date
+from typing import Dict, List, Protocol, Tuple, runtime_checkable
 
 from .registry_builder import MemberBasic
 
@@ -22,6 +23,7 @@ class BoardInfo:
     member_count: int
 
 
+@runtime_checkable
 class BoardMembershipSource(Protocol):
     def latest_trade_date(self) -> str: ...
     def list_boards(self) -> List[BoardInfo]: ...
@@ -32,7 +34,13 @@ class BoardMembershipSource(Protocol):
 class FakeBoardSource:
     """In-memory source for tests."""
 
-    def __init__(self, latest, boards, members, basics):
+    def __init__(
+        self,
+        latest: str,
+        boards: List[BoardInfo],
+        members: Dict[str, List[str]],
+        basics: Dict[str, MemberBasic],
+    ):
         self._latest = latest
         self._boards = boards
         self._members = members
@@ -58,7 +66,7 @@ class TushareBoardSource:
 
     def __init__(self, api):
         self._api = api
-        self._stock_basic_cache: Dict[str, tuple] = {}
+        self._stock_basic_cache: Dict[str, Tuple[str, str]] = {}
 
     @classmethod
     def from_environment(cls, env: dict) -> "TushareBoardSource":
@@ -71,9 +79,10 @@ class TushareBoardSource:
     def latest_trade_date(self) -> str:
         df = self._api.trade_cal(
             exchange="SSE", is_open="1",
-            end_date=__import__("datetime").date.today().strftime("%Y%m%d"),
+            end_date=date.today().strftime("%Y%m%d"),
+            limit=1,
         )
-        return str(sorted(df["cal_date"].tolist())[-1])
+        return str(df.iloc[-1]["cal_date"])
 
     def list_boards(self) -> List[BoardInfo]:
         df = self._api.ths_index(exchange="A", type="N")  # N = 概念指数
