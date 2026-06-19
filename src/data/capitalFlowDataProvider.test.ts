@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createCapitalFlowDataProvider } from "./capitalFlowDataProvider";
+import {
+  createCapitalFlowDataProvider,
+  createStaticCapitalFlowDataProvider,
+} from "./capitalFlowDataProvider";
 import type { CapitalFlowSnapshot } from "./capitalFlowSnapshot";
 
 const mockFetch = vi.fn();
@@ -135,5 +138,46 @@ describe("createCapitalFlowDataProvider", () => {
       expect.stringContaining("window=5d"),
       expect.any(Object)
     );
+  });
+});
+
+describe("createStaticCapitalFlowDataProvider", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    (globalThis as Record<string, unknown>).fetch = mockFetch;
+  });
+
+  it("fetches the per-window static JSON file (base-relative)", async () => {
+    mockFetch.mockResolvedValueOnce(okJson(snapshotFixture));
+    await createStaticCapitalFlowDataProvider().fetchLatest("10d");
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/data/snapshot-10d.json",
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+  });
+
+  it("defaults to the 1d file", async () => {
+    mockFetch.mockResolvedValueOnce(okJson(snapshotFixture));
+    await createStaticCapitalFlowDataProvider().fetchLatest();
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/data/snapshot-1d.json",
+      expect.any(Object)
+    );
+  });
+
+  it("validates and rejects malformed payloads (no silent mock data)", async () => {
+    mockFetch.mockResolvedValueOnce(okJson({ source: "tushare", points: [] }));
+    await expect(
+      createStaticCapitalFlowDataProvider().fetchLatest()
+    ).rejects.toThrow("Invalid capital flow snapshot");
+  });
+
+  it("has no per-date or status endpoint in static mode", async () => {
+    await expect(
+      createStaticCapitalFlowDataProvider().fetchDate("2026-06-11")
+    ).rejects.toThrow("snapshot_unavailable");
+    await expect(
+      createStaticCapitalFlowDataProvider().fetchStatus()
+    ).rejects.toThrow("snapshot_unavailable");
   });
 });

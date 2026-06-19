@@ -88,3 +88,28 @@ export function createCapitalFlowDataProvider(): CapitalFlowDataProvider {
     },
   };
 }
+
+// Production (static) provider: the daily snapshot is exported to static JSON
+// under <base>/data/ by scripts/export_static_data.py and fetched same-origin.
+// import.meta.env.BASE_URL ends with "/" and reflects the Vite --base flag,
+// so this resolves to "/data/..." in dev/test and "/a-capital-hunter/data/..."
+// in the GitHub Pages build. Validation is identical to the live provider.
+const STATIC_DATA_DIR = `${import.meta.env.BASE_URL}data`;
+
+export function createStaticCapitalFlowDataProvider(): CapitalFlowDataProvider {
+  return {
+    fetchLatest(
+      window: CapitalFlowWindowKey = "1d"
+    ): Promise<CapitalFlowSnapshot> {
+      return request(`${STATIC_DATA_DIR}/snapshot-${window}.json`, parseSnapshot);
+    },
+    fetchDate(): Promise<CapitalFlowSnapshot> {
+      // Per-date browsing is not exported for the static site.
+      return Promise.reject(new Error("snapshot_unavailable"));
+    },
+    fetchStatus(): Promise<CapitalFlowStatus> {
+      // Status is not exported; the header reads the date from window meta.
+      return Promise.reject(new Error("snapshot_unavailable"));
+    },
+  };
+}
