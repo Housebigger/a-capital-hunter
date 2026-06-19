@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "export:data": "python3 scripts/export_static_data.py",
+    "build:pages": "tsc && vite build --base=/a-capital-hunter/",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:backend": "python3 -m pytest server/tests -q",

@@ -15,3 +15,6 @@ playwright-report/
 !.env.example
 server/data/*.sqlite3
 server/data/*.sqlite3-*
+
+# Generated static snapshot data (produced by scripts/export_static_data.py)
+public/data/*.json
