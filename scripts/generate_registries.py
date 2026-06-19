@@ -21,6 +21,7 @@ from typing import Dict, List
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from server.capital_flow.board_source import TushareBoardSource
+from server.capital_flow.registry import normalize_a_share_code
 from server.capital_flow.registry_builder import (
     MemberBasic, build_registries, compute_order_index, assign_primary, rank_members,
 )
@@ -39,7 +40,8 @@ def run_build(source, mapping, *, target_n=8, min_amount=5e5, min_listed_days=60
     ranked_by_sub: Dict[str, List[MemberBasic]] = {}
     for spec in mapping:
         codes = source.board_members(spec["boardTsCode"])
-        members = [basics[c] for c in codes if c in basics]
+        members = [basics[c] for c in codes
+                   if c in basics and normalize_a_share_code(c.split(".")[0]) is not None]
         ranked_by_sub[spec["subThemeId"]] = rank_members(
             members, ref, min_amount, min_listed_days)
     assignments = assign_primary(ranked_by_sub, order_index, target_n)

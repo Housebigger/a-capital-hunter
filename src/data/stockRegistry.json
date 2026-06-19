@@ -175,13 +175,6 @@
     "code": "603085"
   },
   {
-    "id": "cc-dzkj",
-    "name": "鼎智科技",
-    "shortName": "鼎智科技",
-    "subThemeId": "core-components",
-    "code": "873593"
-  },
-  {
     "id": "pl-apt",
     "name": "奥普特",
     "shortName": "奥普特",
@@ -238,25 +231,11 @@
     "code": "300024"
   },
   {
-    "id": "as-ubx",
-    "name": "优必选",
-    "shortName": "优必选",
-    "subThemeId": "application-scenarios",
-    "code": "988000"
-  },
-  {
     "id": "as-xsjqr",
     "name": "新松机器人",
     "shortName": "新松机器人",
     "subThemeId": "application-scenarios",
     "code": "300025"
-  },
-  {
-    "id": "ac-yhzl",
-    "name": "亿航智能",
-    "shortName": "亿航智能",
-    "subThemeId": "aircraft-control",
-    "code": "900001"
   },
   {
     "id": "ac-zhgf",
@@ -763,13 +742,6 @@
     "code": "002405"
   },
   {
-    "id": "ad-hskj",
-    "name": "禾赛科技",
-    "shortName": "禾赛科技",
-    "subThemeId": "autonomous-driving-st",
-    "code": "920242"
-  },
-  {
     "id": "ad-yxgs",
     "name": "永新光学",
     "shortName": "永新光学",
@@ -838,13 +810,6 @@
     "shortName": "传音控股",
     "subThemeId": "terminal-devices",
     "code": "688036"
-  },
-  {
-    "id": "td-xmjt",
-    "name": "小米集团",
-    "shortName": "小米集团",
-    "subThemeId": "terminal-devices",
-    "code": "988800"
   },
   {
     "id": "td-fhkj",
@@ -1078,13 +1043,6 @@
     "code": "603416"
   },
   {
-    "id": "ds-djwr",
-    "name": "大疆无人机",
-    "shortName": "大疆",
-    "subThemeId": "drone-systems",
-    "code": "988900"
-  },
-  {
     "id": "lac-scdz2",
     "name": "四创电子B",
     "shortName": "四创电子",
@@ -1209,13 +1167,6 @@
     "shortName": "立讯精密",
     "subThemeId": "smart-cockpit-st",
     "code": "002476"
-  },
-  {
-    "id": "vr-pckj",
-    "name": "PICO",
-    "shortName": "PICO",
-    "subThemeId": "vr-ar",
-    "code": "988810"
   },
   {
     "id": "vr-sjgt2",

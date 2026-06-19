@@ -40,6 +40,22 @@ def test_run_build_produces_deduped_registries():
     assert summary["totalStocks"] == len(stocks)
 
 
+def test_run_build_excludes_unsupported_codes():
+    src = FakeBoardSource(
+        latest="20260617",
+        boards=[BoardInfo("885001.TI", "CPO", 2)],
+        members={"885001.TI": ["300308.SZ", "873593.BJ"]},   # 873593 = BSE, unsupported
+        basics={
+            "300308.SZ": MemberBasic("300308.SZ", "中际旭创", 9e6, 9e5, "20120101"),
+            "873593.BJ": MemberBasic("873593.BJ", "鼎智科技", 1e6, 5e5, "20200101"),
+        },
+    )
+    mapping = [{"subThemeId": "opt", "name": "光通信", "shortName": "光通信",
+                "themeId": "ai-computing", "boardTsCode": "885001.TI", "boardName": "CPO"}]
+    subs, stocks, summary = run_build(src, mapping)
+    assert [s["code"] for s in stocks] == ["300308"]   # 873593 excluded
+
+
 def test_preflight_permission_error_is_reported(capsys):
     from scripts.generate_registries import preflight
 

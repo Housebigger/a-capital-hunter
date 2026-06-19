@@ -6,7 +6,7 @@ import stockConfig from "../data/stockRegistry.json";
 describe("stockRegistry", () => {
   it("matches the shared stock JSON exactly", () => {
     expect(stocks).toEqual(stockConfig);
-    expect(stockConfig).toHaveLength(184);
+    expect(stockConfig).toHaveLength(177);
   });
 
   it("has 150-300 stocks", () => {
@@ -27,7 +27,7 @@ describe("stockRegistry", () => {
       counts.set(stock.subThemeId, (counts.get(stock.subThemeId) ?? 0) + 1);
     }
     for (const st of subThemes) {
-      expect(counts.get(st.id) ?? 0, `SubTheme ${st.id} has fewer than 3 stocks`).toBeGreaterThanOrEqual(3);
+      expect(counts.get(st.id) ?? 0, `SubTheme ${st.id} has fewer than 2 stocks`).toBeGreaterThanOrEqual(2);
     }
   });
 

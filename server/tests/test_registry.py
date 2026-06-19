@@ -23,13 +23,14 @@ def test_registry_deduplicates_requests_and_keeps_all_mappings(project_root):
     assert len(registry.securities) < len(registry.mappings)
 
 
-def test_registry_rejects_unsupported_codes_as_failures(project_root):
+def test_registry_has_no_unsupported_codes(project_root):
+    # After Part-1 cleanup the 7 non-A-share / BSE placeholders were removed
+    # from stockRegistry.json.  The registry should now have zero failures.
     registry = load_registry(project_root)
-    rejected_codes = {f.raw_code for f in registry.failures}
-    # Placeholder / non-A-share codes present in the shared registry
-    assert "988000" in rejected_codes
-    assert "900001" in rejected_codes
-    assert "988800" in rejected_codes
+    assert registry.failures == [], (
+        f"Unexpected unsupported codes in registry: "
+        f"{[f.raw_code for f in registry.failures]}"
+    )
 
 
 def test_registry_securities_have_no_duplicates(project_root):
