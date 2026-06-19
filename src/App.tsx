@@ -4,8 +4,9 @@ import { HunterScene } from "./components/HunterScene";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { SceneLegend } from "./components/SceneLegend";
 import { DataStatus } from "./components/DataStatus";
+import { SiteDisclaimer } from "./components/SiteDisclaimer";
 import { layoutStages } from "./domain/layoutStages";
-import { createCapitalFlowDataProvider, type CapitalFlowDataProvider, type CapitalFlowWindowKey } from "./data/capitalFlowDataProvider";
+import { createCapitalFlowDataProvider, createStaticCapitalFlowDataProvider, type CapitalFlowDataProvider, type CapitalFlowWindowKey } from "./data/capitalFlowDataProvider";
 import type { CapitalFlowSnapshot } from "./data/capitalFlowSnapshot";
 import { createScenarioDataProvider } from "./domain/scenarioDataProvider";
 import { themes } from "./domain/themeRegistry";
@@ -24,9 +25,12 @@ import { sourceLabel } from "./data/sourceLabel";
 const themeLayoutProvider = createThemeLayoutProvider();
 const subThemeLayoutProvider = createSubThemeLayoutProvider();
 const FALLBACK_PROVIDER = createScenarioDataProvider();
-// Default real provider lives at module scope so it has a stable identity
-// across renders (avoids a useEffect re-run loop). Tests inject their own.
-const DEFAULT_DATA_PROVIDER = createCapitalFlowDataProvider();
+// Production (static GitHub Pages build) reads exported JSON; local dev talks
+// to the Flask proxy. Tests inject their own provider, so neither branch runs
+// under test.
+const DEFAULT_DATA_PROVIDER = import.meta.env.PROD
+  ? createStaticCapitalFlowDataProvider()
+  : createCapitalFlowDataProvider();
 
 export type ViewMode = "P1" | "P2" | "P3";
 
@@ -282,6 +286,7 @@ export default function App({ provider }: AppProps = {}) {
 
         <InspectorPanel overview={overview} overviewTitle={viewMode === "P1" ? "主线概览" : "子题材概览"} />
       </section>
+      <SiteDisclaimer />
     </main>
   );
 }
