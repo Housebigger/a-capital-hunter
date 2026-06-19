@@ -1,9 +1,29 @@
-# A Capital Hunter · A股主力资金动向捕捉神器
+# A Capital Hunter · A主猎人
+
+**English** · [简体中文](./README.zh-CN.md)
 
 A React + Three.js 3D visualization that maps A-share market sector capital
 flows onto an interactive 3D surface. Sectors are positioned by
 industrial-chain / market-comovement relationships; column height encodes net
 capital inflow intensity. The UI is Chinese; code identifiers are English.
+
+## Screenshots
+
+![A Capital Hunter — P1 theme map](image_log/Screenshot%202026-06-19%20at%2007.56.35.png)
+
+> **P1 (主线)** — the 11 themes as a Voronoi map; column height & color encode
+> main-force net inflow (red = inflow, green = outflow), and the right rail
+> ranks the top 净流入 / 净流出.
+
+![Drill-down to sub-themes and stocks](image_log/Screenshot%202026-06-19%20at%2007.57.50.png)
+
+> **P2 (子题材) / P3 (个股)** — sub-theme and individual-stock cells nested
+> inside each theme cell.
+
+The [`image_log/`](./image_log) folder is the project's **visual changelog**:
+it archives full-resolution screenshots of the *actual rendered output* across
+versions (the two above are the latest real effect shots). It is documentation
+only — no application or build code reads from it.
 
 ## Quick Start
 
