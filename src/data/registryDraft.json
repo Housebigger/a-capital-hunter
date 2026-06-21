@@ -67,7 +67,7 @@
       { "code": "600845", "name": "宝信软件" },
       { "code": "002405", "name": "四维图新" },
       { "code": "600588", "name": "用友网络" },
-      { "code": "002268", "name": "卫士通" },
+      { "code": "002268", "name": "电科网安" },
       { "code": "000555", "name": "神州信息" }
     ]
   },
@@ -120,6 +120,305 @@
       { "code": "000021", "name": "深科技" },
       { "code": "603986", "name": "兆易创新" },
       { "code": "300223", "name": "北京君正" }
+    ]
+  },
+  {
+    "subThemeId": "robo-humanoid",
+    "name": "人形机器人整机",
+    "shortName": "人形整机",
+    "themeId": "robotics-physical-ai",
+    "primarySectorId": "humanoid-robot",
+    "candidates": [
+      { "code": "002050", "name": "三花智控" },
+      { "code": "601689", "name": "拓普集团" },
+      { "code": "300124", "name": "汇川技术" },
+      { "code": "002472", "name": "双环传动" },
+      { "code": "688017", "name": "绿的谐波" },
+      { "code": "003021", "name": "兆威机电" },
+      { "code": "603728", "name": "鸣志电器" },
+      { "code": "002747", "name": "埃斯顿" }
+    ]
+  },
+  {
+    "subThemeId": "robo-reducers",
+    "name": "减速器",
+    "shortName": "减速器",
+    "themeId": "robotics-physical-ai",
+    "primarySectorId": "reducers",
+    "candidates": [
+      { "code": "688017", "name": "绿的谐波" },
+      { "code": "002472", "name": "双环传动" },
+      { "code": "002896", "name": "中大力德" },
+      { "code": "603915", "name": "国茂股份" },
+      { "code": "301368", "name": "丰立智能" },
+      { "code": "000837", "name": "秦川机床" }
+    ]
+  },
+  {
+    "subThemeId": "robo-servo",
+    "name": "伺服系统 / 电机",
+    "shortName": "伺服电机",
+    "themeId": "robotics-physical-ai",
+    "primarySectorId": "servo-systems",
+    "candidates": [
+      { "code": "300124", "name": "汇川技术" },
+      { "code": "603728", "name": "鸣志电器" },
+      { "code": "002979", "name": "雷赛智能" },
+      { "code": "688320", "name": "禾川科技" },
+      { "code": "688160", "name": "步科股份" },
+      { "code": "603416", "name": "信捷电气" },
+      { "code": "300660", "name": "江苏雷利" }
+    ]
+  },
+  {
+    "subThemeId": "robo-sensors",
+    "name": "传感器 / 触觉",
+    "shortName": "传感器",
+    "themeId": "robotics-physical-ai",
+    "primarySectorId": "sensors",
+    "candidates": [
+      { "code": "603662", "name": "柯力传感" },
+      { "code": "300007", "name": "汉威科技" },
+      { "code": "301413", "name": "安培龙" },
+      { "code": "300354", "name": "东华测试" },
+      { "code": "300667", "name": "必创科技" },
+      { "code": "300507", "name": "苏奥传感" }
+    ]
+  },
+  {
+    "subThemeId": "robo-vision",
+    "name": "机器视觉",
+    "shortName": "机器视觉",
+    "themeId": "robotics-physical-ai",
+    "primarySectorId": "machine-vision",
+    "candidates": [
+      { "code": "688686", "name": "奥普特" },
+      { "code": "688400", "name": "凌云光" },
+      { "code": "688003", "name": "天准科技" },
+      { "code": "300802", "name": "矩子科技" },
+      { "code": "600288", "name": "大恒科技" },
+      { "code": "300400", "name": "劲拓股份" }
+    ]
+  },
+  {
+    "subThemeId": "robo-actuators",
+    "name": "丝杠 / 执行器",
+    "shortName": "丝杠执行器",
+    "themeId": "robotics-physical-ai",
+    "primarySectorId": "actuators",
+    "candidates": [
+      { "code": "300580", "name": "贝斯特" },
+      { "code": "603667", "name": "五洲新春" },
+      { "code": "601100", "name": "恒立液压" },
+      { "code": "603009", "name": "北特科技" },
+      { "code": "300718", "name": "长盛轴承" },
+      { "code": "300100", "name": "双林股份" }
+    ]
+  },
+  {
+    "subThemeId": "robo-integration",
+    "name": "本体 / 系统集成",
+    "shortName": "本体集成",
+    "themeId": "robotics-physical-ai",
+    "primarySectorId": "industrial-robotics",
+    "candidates": [
+      { "code": "002747", "name": "埃斯顿" },
+      { "code": "300607", "name": "拓斯达" },
+      { "code": "002527", "name": "新时达" },
+      { "code": "688165", "name": "埃夫特" },
+      { "code": "300024", "name": "机器人" },
+      { "code": "002031", "name": "巨轮智能" }
+    ]
+  },
+  {
+    "subThemeId": "lowalt-evtol",
+    "name": "eVTOL / 整机",
+    "shortName": "eVTOL",
+    "themeId": "low-altitude-economy",
+    "primarySectorId": "evtol",
+    "candidates": [
+      { "code": "002085", "name": "万丰奥威" },
+      { "code": "600580", "name": "卧龙电驱" },
+      { "code": "002097", "name": "山河智能" },
+      { "code": "002111", "name": "威海广泰" },
+      { "code": "603767", "name": "中马传动" },
+      { "code": "688208", "name": "道通科技" }
+    ]
+  },
+  {
+    "subThemeId": "lowalt-drones",
+    "name": "无人机",
+    "shortName": "无人机",
+    "themeId": "low-altitude-economy",
+    "primarySectorId": "drones",
+    "candidates": [
+      { "code": "688297", "name": "中无人机" },
+      { "code": "002389", "name": "航天彩虹" },
+      { "code": "688070", "name": "纵横股份" },
+      { "code": "688287", "name": "观典防务" },
+      { "code": "603766", "name": "隆鑫通用" },
+      { "code": "001696", "name": "宗申动力" }
+    ]
+  },
+  {
+    "subThemeId": "lowalt-flightcontrol",
+    "name": "飞控 / 导航",
+    "shortName": "飞控导航",
+    "themeId": "low-altitude-economy",
+    "primarySectorId": "flight-control-systems",
+    "candidates": [
+      { "code": "300627", "name": "华测导航" },
+      { "code": "002465", "name": "海格通信" },
+      { "code": "600562", "name": "国睿科技" },
+      { "code": "002253", "name": "川大智胜" },
+      { "code": "688568", "name": "中科星图" },
+      { "code": "300456", "name": "赛微电子" }
+    ]
+  },
+  {
+    "subThemeId": "lowalt-comms-traffic",
+    "name": "低空通信 / 空管",
+    "shortName": "低空空管",
+    "themeId": "low-altitude-economy",
+    "primarySectorId": "air-traffic-systems",
+    "candidates": [
+      { "code": "688631", "name": "莱斯信息" },
+      { "code": "600990", "name": "四创电子" },
+      { "code": "301091", "name": "深城交" },
+      { "code": "002373", "name": "千方科技" },
+      { "code": "300098", "name": "高新兴" }
+    ]
+  },
+  {
+    "subThemeId": "lowalt-materials",
+    "name": "航空材料 / 部件",
+    "shortName": "航空材料",
+    "themeId": "low-altitude-economy",
+    "primarySectorId": "aerospace-materials",
+    "candidates": [
+      { "code": "300699", "name": "光威复材" },
+      { "code": "600862", "name": "中航高科" },
+      { "code": "002171", "name": "楚江新材" },
+      { "code": "300696", "name": "爱乐达" },
+      { "code": "002651", "name": "利君股份" },
+      { "code": "300395", "name": "菲利华" }
+    ]
+  },
+  {
+    "subThemeId": "lowalt-operations",
+    "name": "通航运营 / 基建",
+    "shortName": "通航运营",
+    "themeId": "low-altitude-economy",
+    "primarySectorId": "general-aviation-operations",
+    "candidates": [
+      { "code": "000099", "name": "中信海直" },
+      { "code": "002097", "name": "山河智能" },
+      { "code": "300284", "name": "苏交科" },
+      { "code": "600170", "name": "上海建工" },
+      { "code": "002111", "name": "威海广泰" }
+    ]
+  },
+  {
+    "subThemeId": "semi-wafer-fab",
+    "name": "晶圆制造",
+    "shortName": "晶圆制造",
+    "themeId": "semiconductors",
+    "primarySectorId": "wafer-fabrication",
+    "candidates": [
+      { "code": "688981", "name": "中芯国际" },
+      { "code": "688347", "name": "华虹公司" },
+      { "code": "688249", "name": "晶合集成" },
+      { "code": "688469", "name": "芯联集成" }
+    ]
+  },
+  {
+    "subThemeId": "semi-equipment",
+    "name": "半导体设备",
+    "shortName": "半导体设备",
+    "themeId": "semiconductors",
+    "primarySectorId": "semiconductor-equipment",
+    "candidates": [
+      { "code": "002371", "name": "北方华创" },
+      { "code": "688012", "name": "中微公司" },
+      { "code": "688072", "name": "拓荆科技" },
+      { "code": "688082", "name": "盛美上海" },
+      { "code": "688120", "name": "华海清科" },
+      { "code": "688037", "name": "芯源微" },
+      { "code": "600641", "name": "万业企业" },
+      { "code": "300604", "name": "长川科技" }
+    ]
+  },
+  {
+    "subThemeId": "semi-chip-design",
+    "name": "芯片设计",
+    "shortName": "芯片设计",
+    "themeId": "semiconductors",
+    "primarySectorId": "chip-design",
+    "candidates": [
+      { "code": "603501", "name": "韦尔股份" },
+      { "code": "300782", "name": "卓胜微" },
+      { "code": "300661", "name": "圣邦股份" },
+      { "code": "688536", "name": "思瑞浦" },
+      { "code": "688052", "name": "纳芯微" },
+      { "code": "688099", "name": "晶晨股份" },
+      { "code": "688008", "name": "澜起科技" }
+    ]
+  },
+  {
+    "subThemeId": "semi-packaging",
+    "name": "先进封装",
+    "shortName": "先进封装",
+    "themeId": "semiconductors",
+    "primarySectorId": "advanced-packaging",
+    "candidates": [
+      { "code": "600584", "name": "长电科技" },
+      { "code": "002156", "name": "通富微电" },
+      { "code": "002185", "name": "华天科技" },
+      { "code": "688362", "name": "甬矽电子" },
+      { "code": "603005", "name": "晶方科技" }
+    ]
+  },
+  {
+    "subThemeId": "semi-materials",
+    "name": "半导体材料",
+    "shortName": "半导体材料",
+    "themeId": "semiconductors",
+    "primarySectorId": "photoresist",
+    "candidates": [
+      { "code": "688126", "name": "沪硅产业" },
+      { "code": "605358", "name": "立昂微" },
+      { "code": "300054", "name": "鼎龙股份" },
+      { "code": "688019", "name": "安集科技" },
+      { "code": "002409", "name": "雅克科技" },
+      { "code": "300666", "name": "江丰电子" },
+      { "code": "688233", "name": "神工股份" }
+    ]
+  },
+  {
+    "subThemeId": "semi-photoresist",
+    "name": "光刻胶",
+    "shortName": "光刻胶",
+    "themeId": "semiconductors",
+    "primarySectorId": "photoresist",
+    "candidates": [
+      { "code": "603650", "name": "彤程新材" },
+      { "code": "300655", "name": "晶瑞电材" },
+      { "code": "300346", "name": "南大光电" },
+      { "code": "603306", "name": "华懋科技" },
+      { "code": "300236", "name": "上海新阳" }
+    ]
+  },
+  {
+    "subThemeId": "semi-eda",
+    "name": "EDA / IP",
+    "shortName": "EDA",
+    "themeId": "semiconductors",
+    "primarySectorId": "chip-design",
+    "candidates": [
+      { "code": "301269", "name": "华大九天" },
+      { "code": "688206", "name": "概伦电子" },
+      { "code": "301095", "name": "广立微" },
+      { "code": "002049", "name": "紫光国微" }
     ]
   }
 ]
