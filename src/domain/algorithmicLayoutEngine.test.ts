@@ -75,7 +75,7 @@ describe("createAlgorithmicLayout", () => {
   it("includes SubTheme info in explanation summaries", () => {
     const result = runLayout();
     const aiComputingExplain = result.explanations["ai-computing"];
-    expect(aiComputingExplain.summary).toContain("ai-computing-infra");
+    expect(aiComputingExplain.summary).toContain("ai-optical-interconnect");
   });
 
   it("places SubTheme members closer to each other than to sectors from other SubThemes", () => {
@@ -87,7 +87,7 @@ describe("createAlgorithmicLayout", () => {
       return Math.abs(first.x - second.x) + Math.abs(first.z - second.z);
     };
 
-    // Both optical-modules and cpo are in "ai-computing-infra" SubTheme
+    // Both optical-modules and cpo are in the "ai-optical-interconnect" SubTheme
     // traditional-chinese-medicine is in "traditional-medicine" SubTheme
     const infraPairDist = distance("optical-modules", "cpo");
     const crossSubThemeDist = distance("optical-modules", "traditional-chinese-medicine");

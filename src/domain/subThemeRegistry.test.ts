@@ -8,9 +8,9 @@ describe("subThemeRegistry", () => {
     expect(subThemes).toEqual(subThemeConfig);
   });
 
-  it("has approximately 45 sub-themes", () => {
-    expect(subThemes.length).toBeGreaterThanOrEqual(40);
-    expect(subThemes.length).toBeLessThanOrEqual(55);
+  it("has approximately 74 sub-themes", () => {
+    expect(subThemes.length).toBeGreaterThanOrEqual(60);
+    expect(subThemes.length).toBeLessThanOrEqual(90);
   });
 
   it("every sub-theme references a valid theme", () => {

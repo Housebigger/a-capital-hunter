@@ -6,12 +6,12 @@ import stockConfig from "../data/stockRegistry.json";
 describe("stockRegistry", () => {
   it("matches the shared stock JSON exactly", () => {
     expect(stocks).toEqual(stockConfig);
-    expect(stockConfig).toHaveLength(177);
+    expect(stockConfig).toHaveLength(408);
   });
 
-  it("has 150-300 stocks", () => {
+  it("has 150-500 stocks", () => {
     expect(stocks.length).toBeGreaterThanOrEqual(150);
-    expect(stocks.length).toBeLessThanOrEqual(300);
+    expect(stocks.length).toBeLessThanOrEqual(500);
   });
 
   it("every stock references a valid subThemeId", () => {

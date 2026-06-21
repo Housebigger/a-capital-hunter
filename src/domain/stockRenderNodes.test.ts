@@ -47,29 +47,29 @@ describe("buildP3StockRenderNodes", () => {
   });
 
   it("returns correct stock count for cells with stocks", () => {
-    // "optical-interconnect" has 5 stocks in stockRegistry
-    const cell = makeCell("optical-interconnect", "ai-computing");
+    // "ai-optical-interconnect" has 5 stocks in stockRegistry
+    const cell = makeCell("ai-optical-interconnect", "ai-computing");
     const result = buildP3StockRenderNodes({
       voronoiCells: [cell],
       scenario: mockScenario,
     });
 
     const opticalStocks = stocks.filter(
-      (s) => s.subThemeId === "optical-interconnect"
+      (s) => s.subThemeId === "ai-optical-interconnect"
     );
     expect(opticalStocks.length).toBeGreaterThan(0);
     expect(result.length).toBe(opticalStocks.length);
   });
 
   it("all positions match stockLayoutEngine output", () => {
-    const cell = makeCell("optical-interconnect", "ai-computing");
+    const cell = makeCell("ai-optical-interconnect", "ai-computing");
     const result = buildP3StockRenderNodes({
       voronoiCells: [cell],
       scenario: mockScenario,
     });
 
     const cellStocks = stocks.filter(
-      (s) => s.subThemeId === "optical-interconnect"
+      (s) => s.subThemeId === "ai-optical-interconnect"
     );
     const positions = placeStocksInCell(cell, cellStocks);
     const posMap = new Map(positions.map((p) => [p.stockId, p]));
@@ -84,8 +84,8 @@ describe("buildP3StockRenderNodes", () => {
 
   it("filters by theme when themeFilter is set", () => {
     // Two cells from different themes
-    const aiCell = makeCell("optical-interconnect", "ai-computing");
-    const robotCell = makeCell("core-components", "robotics-physical-ai");
+    const aiCell = makeCell("ai-optical-interconnect", "ai-computing");
+    const robotCell = makeCell("robo-reducers", "robotics-physical-ai");
 
     const resultAll = buildP3StockRenderNodes({
       voronoiCells: [aiCell, robotCell],
@@ -111,7 +111,7 @@ describe("buildP3StockRenderNodes", () => {
   });
 
   it("stock metrics have valid values", () => {
-    const cell = makeCell("optical-interconnect", "ai-computing");
+    const cell = makeCell("ai-optical-interconnect", "ai-computing");
     const result = buildP3StockRenderNodes({
       voronoiCells: [cell],
       scenario: mockScenario,
@@ -160,20 +160,20 @@ describe("buildP3StockRenderNodes", () => {
   });
 
   it("each node references the correct stock, subTheme, and theme", () => {
-    const cell = makeCell("core-components", "robotics-physical-ai");
+    const cell = makeCell("robo-reducers", "robotics-physical-ai");
     const result = buildP3StockRenderNodes({
       voronoiCells: [cell],
       scenario: mockScenario,
     });
 
     const expectedSubTheme = subThemes.find(
-      (st) => st.id === "core-components"
+      (st) => st.id === "robo-reducers"
     );
     expect(expectedSubTheme).toBeDefined();
 
     for (const node of result) {
-      expect(node.stock.subThemeId).toBe("core-components");
-      expect(node.subTheme.id).toBe("core-components");
+      expect(node.stock.subThemeId).toBe("robo-reducers");
+      expect(node.subTheme.id).toBe("robo-reducers");
       expect(node.theme.id).toBe("robotics-physical-ai");
       expect(node.cell).toBe(cell);
     }
@@ -186,9 +186,9 @@ describe("buildP3StockRenderNodes", () => {
 
 describe("buildP3StockRenderNodes (real points)", () => {
   it("omits stocks that have no real point", () => {
-    const cell = makeCell("optical-interconnect", "ai-computing");
+    const cell = makeCell("ai-optical-interconnect", "ai-computing");
     const opticalStocks = stocks.filter(
-      (s) => s.subThemeId === "optical-interconnect"
+      (s) => s.subThemeId === "ai-optical-interconnect"
     );
     // Only one stock has a real point.
     const points: StockCapitalFlowPoint[] = [
@@ -196,7 +196,7 @@ describe("buildP3StockRenderNodes (real points)", () => {
         stockId: opticalStocks[0].id,
         securityCode: "300308.XSHE",
         stockName: opticalStocks[0].name,
-        subThemeId: "optical-interconnect",
+        subThemeId: "ai-optical-interconnect",
         themeId: "ai-computing",
         aggregationRole: "primary",
         netAmountMain: 12_345_600,
@@ -213,7 +213,7 @@ describe("buildP3StockRenderNodes (real points)", () => {
   });
 
   it("never uses the synthetic value 5 when real points are provided", () => {
-    const cell = makeCell("optical-interconnect", "ai-computing");
+    const cell = makeCell("ai-optical-interconnect", "ai-computing");
     const nodes = buildP3StockRenderNodes({
       voronoiCells: [cell],
       points: [], // empty → no nodes at all, not synthetic placeholders
@@ -223,15 +223,15 @@ describe("buildP3StockRenderNodes (real points)", () => {
   });
 
   it("uses each point's true netAmountMain", () => {
-    const cell = makeCell("optical-interconnect", "ai-computing");
+    const cell = makeCell("ai-optical-interconnect", "ai-computing");
     const opticalStocks = stocks.filter(
-      (s) => s.subThemeId === "optical-interconnect"
+      (s) => s.subThemeId === "ai-optical-interconnect"
     );
     const points: StockCapitalFlowPoint[] = opticalStocks.map((s, i) => ({
       stockId: s.id,
       securityCode: `${s.code}.${s.code.startsWith("6") ? "XSHG" : "XSHE"}`,
       stockName: s.name,
-      subThemeId: "optical-interconnect",
+      subThemeId: "ai-optical-interconnect",
       themeId: "ai-computing",
       aggregationRole: i === 0 ? "primary" : "related",
       netAmountMain: (i + 1) * 10_000_000,

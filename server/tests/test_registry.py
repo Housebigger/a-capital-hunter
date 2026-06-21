@@ -1,3 +1,5 @@
+import json
+
 from server.capital_flow.registry import load_registry, normalize_a_share_code
 
 
@@ -14,13 +16,36 @@ def test_rejects_placeholder_and_unconfirmed_markets():
     assert normalize_a_share_code("873593") is None
 
 
-def test_registry_deduplicates_requests_and_keeps_all_mappings(project_root):
-    registry = load_registry(project_root)
-    mappings = [item for item in registry.mappings if item.raw_code == "688111"]
+def test_load_registry_dedups_cross_listed_stock(tmp_path):
+    """A stock listed under two sub-themes -> one security, two mappings (first
+    primary, the rest related). The shared registry no longer cross-lists any
+    stock (the generator emits each once), so this exercises the loader's dedup
+    mechanism against a synthetic registry."""
+    data = tmp_path / "src" / "data"
+    data.mkdir(parents=True)
+    (data / "subThemeRegistry.json").write_text(
+        json.dumps(
+            [
+                {"id": "sa", "themeId": "ai-computing"},
+                {"id": "sb", "themeId": "ai-computing"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (data / "stockRegistry.json").write_text(
+        json.dumps(
+            [
+                {"id": "x-a", "name": "X", "shortName": "X", "subThemeId": "sa", "code": "300308"},
+                {"id": "x-b", "name": "X", "shortName": "X", "subThemeId": "sb", "code": "300308"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    registry = load_registry(tmp_path)
+    mappings = [m for m in registry.mappings if m.raw_code == "300308"]
     assert len(mappings) == 2
-    assert mappings[0].aggregation_role == "primary"
-    assert mappings[1].aggregation_role == "related"
-    assert len(registry.securities) < len(registry.mappings)
+    assert {m.aggregation_role for m in mappings} == {"primary", "related"}
+    assert len(registry.securities) == 1
 
 
 def test_registry_has_no_unsupported_codes(project_root):
