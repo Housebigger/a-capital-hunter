@@ -5,7 +5,7 @@ import type { VoronoiLayout } from "./types";
 import type { ThemeCell } from "./themeVoronoiLayoutEngine";
 
 export interface VoronoiLayoutProvider {
-  getLayout(stageId?: string, themeCells?: ReadonlyArray<ThemeCell>): VoronoiLayout;
+  getLayout(stageId?: string, themeCells?: ReadonlyArray<ThemeCell>, subThemeHeat?: Record<string, number>): VoronoiLayout;
 }
 
 /**
@@ -14,7 +14,7 @@ export interface VoronoiLayoutProvider {
  */
 export function createSubThemeLayoutProvider(): VoronoiLayoutProvider {
   return {
-    getLayout: (stageId, themeCells) => {
+    getLayout: (stageId, themeCells, subThemeHeat) => {
       const stage = stageId ? getLayoutStageById(stageId) : layoutStages[0];
       if (!themeCells || themeCells.length === 0) {
         // Fallback: return empty layout if no theme cells provided
@@ -34,6 +34,7 @@ export function createSubThemeLayoutProvider(): VoronoiLayoutProvider {
           cityBorderGap: 0.02,
           smoothIterations: 1,
         },
+        subThemeHeat,
       });
     },
   };

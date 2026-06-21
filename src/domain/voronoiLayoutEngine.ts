@@ -25,6 +25,7 @@ export interface VoronoiLayoutInput {
   readonly themeCells: ReadonlyArray<ThemeCell>;
   readonly stage: LayoutStage;
   readonly options: VoronoiLayoutOptions;
+  readonly subThemeHeat?: Record<string, number>;
 }
 
 // ---------------------------------------------------------------------------
@@ -457,7 +458,7 @@ const computePerThemeVoronoi = (
  * independently and strictly contained within the theme's polygon.
  */
 export function createVoronoiLayout(input: VoronoiLayoutInput): VoronoiLayout {
-  const { subThemes, themeCells, stage, options } = input;
+  const { subThemes, themeCells, stage, options, subThemeHeat: _subThemeHeat } = input;
 
   const cells: VoronoiCell[] = [];
 
