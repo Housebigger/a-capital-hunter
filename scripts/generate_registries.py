@@ -34,7 +34,7 @@ SUB_OUT = ROOT / "src" / "data" / "subThemeRegistry.json"
 STOCK_OUT = ROOT / "src" / "data" / "stockRegistry.json"
 
 
-def run_build(source, mapping, *, target_n=8, min_amount=5e5, min_listed_days=60):
+def run_build(source, mapping, *, target_n=8, min_amount=1e4, min_listed_days=60):
     ref = source.latest_trade_date()
     basics = source.basics(ref)
     order_index = compute_order_index(mapping)
@@ -67,7 +67,7 @@ def _names_match(a: str, b: str) -> bool:
     return a == b or a in b or b in a
 
 
-def run_build_hybrid(source, draft, *, target_n=8, min_amount=5e5, min_listed_days=60):
+def run_build_hybrid(source, draft, *, target_n=8, min_amount=1e4, min_listed_days=60):
     """Hybrid build: candidate codes come from a human draft; each is verified
     against real Tushare data (basics), unverifiable codes are dropped, name
     mismatches are reported, then the same rank/dedup/emit pipeline runs. Emitted
