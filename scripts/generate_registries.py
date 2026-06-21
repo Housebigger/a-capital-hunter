@@ -29,6 +29,7 @@ from server.capital_flow.registry_builder import (
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "data" / "boardCatalog.json"
 MAPPING = ROOT / "src" / "data" / "conceptBoardMapping.json"
+DRAFT = ROOT / "src" / "data" / "registryDraft.json"
 SUB_OUT = ROOT / "src" / "data" / "subThemeRegistry.json"
 STOCK_OUT = ROOT / "src" / "data" / "stockRegistry.json"
 
@@ -56,6 +57,58 @@ def run_build(source, mapping, *, target_n=8, min_amount=5e5, min_listed_days=60
     return subs, stocks, summary
 
 
+def _names_match(a: str, b: str) -> bool:
+    """Loose match: equal or one contains the other (catches mistyped codes that
+    resolve to a clearly different company). Empty drafted name → no check."""
+    a = (a or "").strip()
+    b = (b or "").strip()
+    if not a or not b:
+        return True
+    return a == b or a in b or b in a
+
+
+def run_build_hybrid(source, draft, *, target_n=8, min_amount=5e5, min_listed_days=60):
+    """Hybrid build: candidate codes come from a human draft; each is verified
+    against real Tushare data (basics), unverifiable codes are dropped, name
+    mismatches are reported, then the same rank/dedup/emit pipeline runs. Emitted
+    stock names are the RESOLVED real names from basics, never the drafted labels.
+    """
+    ref = source.latest_trade_date()
+    basics = source.basics(ref)
+    by_code = {m.ts_code.split(".")[0]: m for m in basics.values()}
+    order_index = compute_order_index(draft)
+    ranked_by_sub = {}
+    unverified = []
+    mismatches = []
+    for spec in draft:
+        members = []
+        for cand in spec.get("candidates", []):
+            code = cand["code"]
+            intended = cand.get("name", "")
+            m = by_code.get(code)
+            if m is None or normalize_a_share_code(code) is None:
+                unverified.append({"subThemeId": spec["subThemeId"], "code": code, "name": intended})
+                continue
+            if not _names_match(intended, m.name):
+                mismatches.append({"subThemeId": spec["subThemeId"], "code": code,
+                                   "drafted": intended, "resolved": m.name})
+            members.append(m)
+        ranked_by_sub[spec["subThemeId"]] = rank_members(
+            members, ref, min_amount, min_listed_days)
+    assignments = assign_primary(ranked_by_sub, order_index, target_n)
+    subs, stocks = build_registries(draft, assignments)
+    summary = {
+        "refDate": ref,
+        "subThemes": len(subs),
+        "totalStocks": len(stocks),
+        "underTarget": [s["subThemeId"] for s in draft
+                        if len(assignments.get(s["subThemeId"], [])) < min(3, target_n)],
+        "unverified": unverified,
+        "nameMismatches": mismatches,
+    }
+    return subs, stocks, summary
+
+
 def preflight(source) -> None:
     try:
         boards = source.list_boards()
@@ -77,6 +130,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--list-boards", action="store_true")
     ap.add_argument("--build", action="store_true")
+    ap.add_argument("--build-hybrid", action="store_true")
     args = ap.parse_args()
     source = TushareBoardSource.from_environment(os.environ)
     if args.list_boards:
@@ -89,7 +143,14 @@ def main() -> None:
         _write(STOCK_OUT, stocks)
         print(json.dumps(summary, ensure_ascii=False, indent=2))
         return
-    ap.error("choose --list-boards or --build")
+    if args.build_hybrid:
+        draft = json.loads(DRAFT.read_text(encoding="utf-8"))
+        subs, stocks, summary = run_build_hybrid(source, draft)
+        _write(SUB_OUT, subs)
+        _write(STOCK_OUT, stocks)
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+        return
+    ap.error("choose --list-boards, --build, or --build-hybrid")
 
 
 if __name__ == "__main__":

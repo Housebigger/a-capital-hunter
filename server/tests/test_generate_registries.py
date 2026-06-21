@@ -68,3 +68,44 @@ def test_preflight_permission_error_is_reported(capsys):
     with pytest.raises(SystemExit):
         preflight(Denied())
     assert "not authorized" in capsys.readouterr().out
+
+
+def test_run_build_hybrid_verifies_drops_and_reports():
+    from scripts.generate_registries import run_build_hybrid
+    src = FakeBoardSource(
+        latest="20260618", boards=[], members={},
+        basics={
+            "300308.SZ": MemberBasic("300308.SZ", "中际旭创", 9e6, 9e5, "20120101"),
+            "688041.SH": MemberBasic("688041.SH", "海光信息", 8e6, 9e5, "20220101"),
+        },
+    )
+    draft = [{"subThemeId": "opt", "name": "光通信", "shortName": "光通信",
+              "themeId": "ai-computing",
+              "candidates": [{"code": "300308", "name": "中际旭创"},
+                             {"code": "688041", "name": "寒武纪"},     # mismatch: resolves 海光信息
+                             {"code": "999999", "name": "幽灵股"}]}]   # unverified
+    subs, stocks, summary = run_build_hybrid(src, draft, target_n=8,
+                                             min_amount=5e5, min_listed_days=60)
+    assert [s["code"] for s in stocks] == ["300308", "688041"]        # 999999 dropped
+    names = {s["code"]: s["name"] for s in stocks}
+    assert names["688041"] == "海光信息"                               # RESOLVED name emitted
+    assert {u["code"] for u in summary["unverified"]} == {"999999"}
+    assert {m["code"] for m in summary["nameMismatches"]} == {"688041"}
+
+
+def test_run_build_hybrid_dedups_across_subthemes():
+    from scripts.generate_registries import run_build_hybrid
+    src = FakeBoardSource(
+        latest="20260618", boards=[], members={},
+        basics={"300308.SZ": MemberBasic("300308.SZ", "中际旭创", 9e6, 9e5, "20120101"),
+                "688041.SH": MemberBasic("688041.SH", "海光信息", 8e6, 9e5, "20220101")},
+    )
+    draft = [
+        {"subThemeId": "opt", "name": "光通信", "shortName": "光通信", "themeId": "ai-computing",
+         "candidates": [{"code": "300308", "name": "中际旭创"}]},
+        {"subThemeId": "chip", "name": "AI芯片", "shortName": "AI芯片", "themeId": "ai-computing",
+         "candidates": [{"code": "300308", "name": "中际旭创"}, {"code": "688041", "name": "海光信息"}]},
+    ]
+    subs, stocks, summary = run_build_hybrid(src, draft, target_n=8,
+                                             min_amount=5e5, min_listed_days=60)
+    assert sorted(s["code"] for s in stocks) == ["300308", "688041"]  # 300308 once (opt wins)
