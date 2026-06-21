@@ -105,3 +105,49 @@ The board mapping records, per sub-theme, which membership source was used, so t
 - SP3 mobile, SP4 polish, SP5 SEO.
 - Changing the 11 themes; expanding `relationshipRegistry` comovement edges (left to SP2).
 - Productionizing the generator beyond an offline curation script (YAGNI).
+
+---
+
+## ADDENDUM (2026-06-21): Hybrid fallback — entitlement-driven pivot
+
+**Why:** Preflight showed the user's Tushare tier **cannot** access concept-board
+membership (`ths_index` and `dc_index` both denied). It **can** access
+`stock_basic`, `daily_basic` (circ_mv), and 申万 `index_classify`/`index_member_all`.
+The owner chose the **hybrid** fallback (curate + verify) over pure 申万 industry
+membership (too mechanical) and over upgrading the Tushare tier. This preserves
+the narrative 题材 structure and works within the current tier. The capital-flow
+**numbers remain 100% real** (from the sync); only the taxonomy *sourcing* changes
+— and the current registry was already hand-curated this way, so this is
+consistent, not a downgrade.
+
+**Approach (draft → verify → emit):**
+1. **Assistant drafts** `src/data/registryDraft.json`: for each of the 11 themes,
+   ~7 sub-themes, each with a candidate list `{code, name}` (my intended 6-digit
+   code + intended company name), ~10-12 candidates per sub-theme (over-provision
+   so eligibility filtering + dedup still yields ~8).
+2. **Tool verifies** (`--build-hybrid`, run by the user with their token):
+   pulls `basics(ref_date)` (stock_basic name/list_date + daily_basic circ_mv +
+   daily amount), indexes it by 6-digit code, and for each drafted candidate:
+   - **drops + reports** codes not found in `basics` (not a real/liquid A-share),
+   - **reports a name mismatch** when the resolved `stock_basic` name differs from
+     my drafted name (catches mis-typed codes that resolve to the wrong company),
+   - applies the existing eligibility floor (ST/suspended/new/illiquid),
+   - ranks eligible by `circ_mv`, takes top N, dedups to one sub-theme per stock.
+3. **Emits** the registries using the **resolved real names** from `stock_basic`
+   (never my labels), so the committed data is ground-truth.
+4. **User reviews** the build report (unverified codes, name mismatches,
+   under-target sub-themes) and the final registry; I fix the draft and rebuild
+   until clean.
+
+**Tooling delta from the board-based plan:** `registry_builder.py` (rank /
+eligibility / dedup / emit) is unchanged. `board_source.basics()` is reused
+as-is. New: `run_build_hybrid(source, draft, ...)` in the generator that takes
+candidate codes from the draft (indexed into `basics` by 6-digit code) instead of
+`board_members`, and produces the verification report; a `--build-hybrid` CLI
+mode. `list_boards`/`board_members`/`--list-boards`/`--build` remain for a future
+concept-board path but are not used here.
+
+**Honesty:** every emitted stock is a verified, liquid, real A-share with its real
+name; the sub-theme assignment is editorial (as the registry always was) and
+user-reviewed; the name-mismatch report prevents a mistyped code from silently
+mislabelling. No fabricated numbers anywhere.
