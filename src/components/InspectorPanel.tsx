@@ -81,11 +81,11 @@ export function InspectorPanel({ node, selectedStockNode, overview, overviewTitl
           <div className="metric-row"><span>主力净流入合计</span>
             <strong style={{ color: overview.totalNetInflow >= 0 ? "#e64646" : "#3fae6a" }}>{fmt(overview.totalNetInflow)}</strong></div>
           <h3>净流入 Top</h3>
-          <ul>{overview.topInflow.map((e) => (
-            <li key={e.id}>{e.name} <strong style={{ color: "#e64646" }}>{fmt(e.value)}</strong></li>))}</ul>
+          <ul className="overview-list">{overview.topInflow.map((e) => (
+            <li className="overview-row" key={e.id}>{e.name} <strong style={{ color: "#e64646" }}>{fmt(e.value)}</strong></li>))}</ul>
           <h3>净流出 Top</h3>
-          <ul>{overview.topOutflow.map((e) => (
-            <li key={e.id}>{e.name} <strong style={{ color: "#3fae6a" }}>{fmt(e.value)}</strong></li>))}</ul>
+          <ul className="overview-list">{overview.topOutflow.map((e) => (
+            <li className="overview-row" key={e.id}>{e.name} <strong style={{ color: "#3fae6a" }}>{fmt(e.value)}</strong></li>))}</ul>
         </section>
       );
     }
@@ -180,7 +180,7 @@ function renderRelationshipReasons(node: RenderNode) {
         const typeInfo = RELATIONSHIP_TYPE_LABELS[reason.relationshipType] ?? { label: reason.relationshipType, color: "#888" };
         return (
           <li key={`${reason.relatedSectorId}-${reason.note}`}>
-            <span style={{ color: typeInfo.color, fontSize: "11px", fontWeight: 600 }}>
+            <span className="rel-tag" style={{ color: typeInfo.color }}>
               [{typeInfo.label}]
             </span>{" "}
             <span>{reason.note}</span>
