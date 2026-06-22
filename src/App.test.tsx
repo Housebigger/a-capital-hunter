@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { CapitalFlowSnapshot, CapitalFlowStatus } from "./data/capitalFlowSnapshot";
@@ -116,7 +116,8 @@ describe("App data states", () => {
   it("exposes the window selector in the controls panel once data is loaded", async () => {
     renderApp(mockProvider());
     expect(await screen.findByText("数据截至 2026-06-12")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "今日" })).toBeInTheDocument();
+    const controlsPanel = screen.getByRole("complementary", { name: "A Capital Hunter 控制面板" });
+    expect(within(controlsPanel).getByRole("button", { name: "今日" })).toBeInTheDocument();
   });
 
   it("header shows the snapshot's real data source label", async () => {
@@ -156,7 +157,8 @@ describe("App data states", () => {
     const provider = { fetchLatest, fetchDate: async () => snapshotFixture };
     render(<App provider={provider as any} />);
     await screen.findByText(/今日主力净流入/);                  // initial scene shown
-    await userEvent.click(screen.getByRole("button", { name: "近5日" }));
+    const controlsPanel = screen.getByRole("complementary", { name: "A Capital Hunter 控制面板" });
+    await userEvent.click(within(controlsPanel).getByRole("button", { name: "近5日" }));
     // While the 2nd fetch is pending, the previous snapshot's content is still shown
     // (multiple elements match the regex — use getAllByText to avoid "multiple found" error):
     expect(screen.getAllByText(/主力净流入/).length).toBeGreaterThan(0);
@@ -173,7 +175,8 @@ describe("App data states", () => {
     const provider = { fetchStatus: mockProvider().fetchStatus, fetchLatest, fetchDate: mockProvider().fetchDate };
     render(<App provider={provider as any} />);
     await screen.findByText(/今日主力净流入/);
-    await userEvent.click(screen.getByRole("button", { name: "近5日" }));
+    const controlsPanel = screen.getByRole("complementary", { name: "A Capital Hunter 控制面板" });
+    await userEvent.click(within(controlsPanel).getByRole("button", { name: "近5日" }));
     expect(fetchLatest).toHaveBeenLastCalledWith("5d");
     expect(await screen.findByText(/近5日主力净流入/)).toBeInTheDocument();
   });

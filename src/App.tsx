@@ -2,6 +2,8 @@ import { useMemo, useState, useCallback, useEffect } from "react";
 import { ControlsPanel } from "./components/ControlsPanel";
 import { HunterScene } from "./components/HunterScene";
 import { InspectorPanel } from "./components/InspectorPanel";
+import { MobileControlBar } from "./components/MobileControlBar";
+import { useIsMobile } from "./hooks/useIsMobile";
 import { SceneLegend } from "./components/SceneLegend";
 import { DataStatus } from "./components/DataStatus";
 import { SiteDisclaimer } from "./components/SiteDisclaimer";
@@ -54,6 +56,7 @@ export default function App({ provider }: AppProps = {}) {
   const [viewMode, setViewMode] = useState<ViewMode>("P1");
   const [activeWindow, setActiveWindow] = useState<CapitalFlowWindowKey>("1d");
   const hunterState = useHunterState();
+  const isMobile = useIsMobile();
 
   // Always use first layout stage — layout is static relative to data.
   const activeLayoutStage = layoutStages[0];
@@ -253,6 +256,13 @@ export default function App({ provider }: AppProps = {}) {
           onCameraPresetChange={hunterState.setCameraPreset}
         />
 
+        <MobileControlBar
+          activeWindow={activeWindow}
+          onWindowChange={setActiveWindow}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
+
         <section className="scene-panel" aria-label="A Capital Hunter 3D资金峰面">
           <div className="scene-toolbar">
             <span>二维位置 = 关系</span>
@@ -281,6 +291,7 @@ export default function App({ provider }: AppProps = {}) {
                 cameraPreset={hunterState.cameraPreset}
                 selectedSectorId={hunterState.selectedSectorId}
                 onSelectSector={hunterState.setSelectedSectorId}
+                compact={isMobile}
               />
             ) : (
               <HunterScene
@@ -291,6 +302,7 @@ export default function App({ provider }: AppProps = {}) {
                 cameraPreset={hunterState.cameraPreset}
                 selectedSectorId={hunterState.selectedSectorId}
                 onSelectSector={hunterState.setSelectedSectorId}
+                compact={isMobile}
               />
             )
           )}

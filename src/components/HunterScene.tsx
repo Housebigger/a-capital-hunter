@@ -25,6 +25,7 @@ export interface HunterSceneProps {
   subThemeCells?: ReadonlyArray<VoronoiCell>;
   subThemeNodes?: SubThemeRenderNode[];
   stockNodes3?: StockRenderNode3[];
+  compact?: boolean;
   cameraPreset: CameraPreset;
   selectedSectorId?: SectorId;
   focusSubThemeId?: string;
