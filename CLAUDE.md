@@ -15,7 +15,7 @@ Since **SP2**, the **P1/P2 cell size and position flow with live market heat** (
 
 Data is **real end-of-day snapshots**, not simulated. The single most important product invariant: the frontend **never silently shows fake numbers as real** — on any fetch/validation failure it surfaces an explicit error with Retry, and demo data is only ever loaded via an opt-in button and always labeled "演示模式".
 
-> **Current state:** data pipeline + frontend work end-to-end (the earlier "frontend stuck on 等待真实资金流快照" blocker was root-caused and fixed). Since then: content depth expanded (SP1 → 74 sub-themes / 408 stocks), the heat-driven dynamic layout shipped (SP2), a static-site deployment path was added, and the mobile/responsive pass shipped (SP3 — a single ≤900px "compact" mode: sticky control bar, two-finger-rotate / one-finger-scroll touch, dpr/shadow/label-density tuning; desktop unchanged). Remaining pre-publish work: SP4 UI/interaction polish, SP5 share/SEO meta. See `STATUS.md` for the full handoff.
+> **Current state:** data pipeline + frontend work end-to-end (the earlier "frontend stuck on 等待真实资金流快照" blocker was root-caused and fixed). Since then: content depth expanded (SP1 → 74 sub-themes / 408 stocks), the heat-driven dynamic layout shipped (SP2), a static-site deployment path was added, and the mobile/responsive pass shipped (SP3 — a single ≤900px "compact" mode: sticky control bar, two-finger-rotate / one-finger-scroll touch, dpr/shadow/label-density tuning; desktop unchanged), and the UI/interaction polish pass shipped (SP4 — real cell selection across P1/P2/P3 with a gold ring + emissive + inspector detail; the honesty fix that real data is labeled 主力净流入 not 模拟; list/transition/typography polish). Remaining pre-publish work: SP5 share/SEO meta. See `STATUS.md` for the full handoff.
 
 ## Commands
 
@@ -144,7 +144,7 @@ Pure functions / frozen immutable data, **zero React imports**, fully unit-testa
 
 ## Test conventions
 
-- Frontend: Vitest globals (`describe`/`it`/`expect`, no imports); component tests use Testing Library + jsdom; `vitest.config` excludes `node_modules`, `dist`, `.worktrees/**`, `tests/e2e/**`. ~200 tests.
+- Frontend: Vitest globals (`describe`/`it`/`expect`, no imports); component tests use Testing Library + jsdom; `vitest.config` excludes `node_modules`, `dist`, `.worktrees/**`, `tests/e2e/**`. ~206 tests.
 - Backend: pytest in `server/tests/` (one file per module + `test_tushare_source.py`); inject fake sources / temp repositories. ~90 tests.
 - E2E: Playwright in `tests/e2e/`, expects the dev server on `http://127.0.0.1:5173`; uses a fixture mock (does **not** exercise the real network).
 
