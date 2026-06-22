@@ -8,12 +8,14 @@ A Capital Hunter (A股主力资金动向捕捉神器) — a React + Three.js 3D 
 
 The map renders **three drill-down views** (toggled in `App.tsx` via `ViewMode`):
 - **P1** — themes (主线, 11 of them)
-- **P2** — sub-themes (子题材, 45)
-- **P3** — individual stocks (个股, 184)
+- **P2** — sub-themes (子题材, 74)
+- **P3** — individual stocks (个股, 408)
+
+Since **SP2**, the **P1/P2 cell size and position flow with live market heat** (|主力净流入| in the active time window), animated ~0.6s on window/snapshot change; cold cells keep a size floor so they never vanish (see `heatMap.ts`).
 
 Data is **real end-of-day snapshots**, not simulated. The single most important product invariant: the frontend **never silently shows fake numbers as real** — on any fetch/validation failure it surfaces an explicit error with Retry, and demo data is only ever loaded via an opt-in button and always labeled "演示模式".
 
-> **Current state / known blocker:** the data pipeline is complete and verified, but the browser frontend was last seen stuck on "等待真实资金流快照" despite the API returning real data. See `STATUS.md` for the full handoff, root-cause analysis, and the recommended next debugging steps (the suspect is the `App.tsx` load state machine / browser fetch layer, which unit tests bypass via a mock provider).
+> **Current state:** data pipeline + frontend work end-to-end (the earlier "frontend stuck on 等待真实资金流快照" blocker was root-caused and fixed). Since then: content depth expanded (SP1 → 74 sub-themes / 408 stocks), the heat-driven dynamic layout shipped (SP2), and a static-site deployment path was added. Remaining pre-publish work: SP3 mobile/responsive, SP4 UI/interaction polish, SP5 share/SEO meta. See `STATUS.md` for the full handoff.
 
 ## Commands
 
@@ -93,7 +95,7 @@ A clean four-layer pipeline; the `CapitalFlowSource` Protocol decouples it from 
 
 - **capitalFlowSnapshot.ts** — the API wire contract (`CapitalFlowSnapshot`, `StockCapitalFlowPoint`, `CapitalFlowStatus`) + strict runtime validators (`parseSnapshot`/`parseStatus`). Rejects missing metadata, non-finite money values, wrong `metric`/`unit`/`status` literals — anything that could let a malformed payload masquerade as real data. Throws `InvalidSnapshotError`.
 - **capitalFlowDataProvider.ts** — `CapitalFlowDataProvider` interface (`fetchLatest`/`fetchDate`/`fetchStatus`) — the **only** module that talks to the Flask API. 10s fetch timeout; validates every response; throws structured error codes; **never falls back to mock data**.
-- **stockRegistry.json** (184 stocks) / **subThemeRegistry.json** (45 sub-themes) — the **single source of truth shared by TS and Python**. Editing a mapping here changes both the backend sync and the frontend.
+- **stockRegistry.json** (408 stocks) / **subThemeRegistry.json** (74 sub-themes) — the **single source of truth shared by TS and Python**. Editing a mapping here changes both the backend sync and the frontend.
 
 ### Domain layer (`src/domain/`)
 
@@ -103,14 +105,16 @@ Pure functions / frozen immutable data, **zero React imports**, fully unit-testa
 - **themeRegistry.ts** — frozen `themes` (11) + `sectors`, built from config arrays.
 - **stockRegistry.ts** / **subThemeRegistry.ts** — typed loaders over the shared JSON registries.
 - **relationshipRegistry.ts** — weighted typed edges (`industrial-chain` | `market-comovement` | `heat-correction`) with `validateRelationshipEdges()`.
-- **layoutStages.ts** — 5 `LayoutStage` rotation phases (linked via `previousStageId`). NOTE: the app currently pins `layoutStages[0]` — layout is static relative to data; stages are legacy scaffolding.
+- **layoutStages.ts** — 5 `LayoutStage` rotation phases (linked via `previousStageId`). The app pins `layoutStages[0]` as the base stage but injects **live heat** into it (see `heatMap.ts`), so since SP2 the P1/P2 layout flows with the data; the rotation phases themselves remain legacy scaffolding.
 - **Layout engines (current, Voronoi-based):**
-  - **themeVoronoiLayoutEngine.ts** / **themeVoronoiLayoutProvider.ts** — P1 theme cells.
-  - **voronoiLayoutEngine.ts** / **voronoiLayoutProvider.ts** — P2 sub-theme cells, nested inside theme cells.
+  - **themeVoronoiLayoutEngine.ts** / **themeVoronoiLayoutProvider.ts** — P1 theme cells; hot themes pull inward (consumes `stage.themeHeat`).
+  - **voronoiLayoutEngine.ts** / **voronoiLayoutProvider.ts** — P2 sub-theme cells, nested inside theme cells; sized by `subThemeHeat` via a **weighted Voronoi treemap** (power diagram, iterated weights → area ∝ heat) so a hotter sub-theme is always larger than a colder sibling, with a size floor.
   - **stockLayoutEngine.ts** — P3 stock placement within sub-theme cells.
   - **circleClip.ts** / **polygonClip.ts** — geometry helpers that clip Voronoi cells to the circular map / parent polygons.
+  - **layoutEasing.ts** — pure `approach(current, target, dt, tau)` frame-rate-independent ease; `CapitalMapScene` uses it for the ~0.6s layout transition.
 - **Layout engines (legacy, superseded by Voronoi):** `algorithmicLayoutEngine.ts`, `layoutProvider.ts` (manual + algorithmic providers). Still present and tested; not on the live render path.
 - **capitalFlowAggregation.ts** — `buildCapitalFlowAggregates(points)` → `{ byTheme, bySubTheme, byStock }`. De-dupes via `aggregationRole` (`primary` vs `related`) so a stock counted in one place isn't double-counted. **Aggregation invariant: P1 total == P2 total == unique-P3 total within 0.01 CNY**, enforced both here and in the Python service.
+- **heatMap.ts** — `buildHeatMap(byTheme, bySubTheme, subThemes)` → `{ themeHeat, subThemeHeat }`: |主力净流入| normalized (theme heat across all themes, sub-theme heat within its parent theme). Pure, zero React; drives the SP2 heat-flow layout. All-flat input → all-zero heat (never fabricated).
 - **renderNodes / themeRenderNodes / subThemeRenderNodes / stockRenderNodes.ts** — `build*RenderNodes(...)` join layout cells + aggregates (or a demo scenario) + filters into `RenderNode[]`.
 - **metricNormalizer.ts** — raw CNY → 3D height, color (red=inflow, green=outflow, gray=flat), intensity.
 - **scenarioDataProvider.ts** — simulated `MarketScenario` generator, used **only** for the opt-in demo mode fallback.
@@ -118,7 +122,7 @@ Pure functions / frozen immutable data, **zero React imports**, fully unit-testa
 ### State & app shell
 
 - **state/useHunterState.ts** — single hook: theme/capital-state filters, camera preset, selected sector.
-- **App.tsx** — owns the **snapshot load state machine** (`SnapshotViewState`: `loading | ready | partial | error | demo`) and `viewMode` (P1/P2/P3). `loadInitial` fetches status (best-effort) then the latest snapshot; date changes keep the prior scene visible while the new one loads. This state machine is the prime suspect for the current frontend blocker (see `STATUS.md`).
+- **App.tsx** — owns the **snapshot load state machine** (`SnapshotViewState`: `loading | ready | partial | error | demo`) and `viewMode` (P1/P2/P3). `loadInitial` fetches status (best-effort) then the latest snapshot; date/window changes keep the prior scene visible while the new one loads, and rebuild the live `heatMap` from the active window's aggregates so the layout re-flows (SP2). (The earlier "frontend never rendered" blocker was root-caused and fixed — see `STATUS.md`.)
 - **components/** — `HunterScene` (R3F Canvas + lighting + OrbitControls), `CapitalMapScene` (grid, clickable cells, columns, drei `Text` labels, camera transitions), `ControlsPanel` (date picker, view-mode/filter/camera controls), `InspectorPanel` (selected-sector detail), `DataStatus` (loading/error/retry/load-demo banner), `SceneLegend`.
 
 ## Key invariants & design principles
@@ -140,13 +144,13 @@ Pure functions / frozen immutable data, **zero React imports**, fully unit-testa
 
 ## Test conventions
 
-- Frontend: Vitest globals (`describe`/`it`/`expect`, no imports); component tests use Testing Library + jsdom; `vitest.config` excludes `node_modules`, `dist`, `.worktrees/**`, `tests/e2e/**`. ~156 tests.
-- Backend: pytest in `server/tests/` (one file per module + `test_tushare_source.py`); inject fake sources / temp repositories. ~53 tests.
-- E2E: Playwright in `tests/e2e/`, expects the dev server on `http://127.0.0.1:5173`; uses a fixture mock (does **not** exercise the real network — which is why it can't catch the current browser blocker).
+- Frontend: Vitest globals (`describe`/`it`/`expect`, no imports); component tests use Testing Library + jsdom; `vitest.config` excludes `node_modules`, `dist`, `.worktrees/**`, `tests/e2e/**`. ~194 tests.
+- Backend: pytest in `server/tests/` (one file per module + `test_tushare_source.py`); inject fake sources / temp repositories. ~90 tests.
+- E2E: Playwright in `tests/e2e/`, expects the dev server on `http://127.0.0.1:5173`; uses a fixture mock (does **not** exercise the real network).
 
 ## Related docs
 
-- **STATUS.md** — current progress, the unresolved frontend-rendering blocker, root-cause notes, and next steps (read this first when picking up the project).
+- **STATUS.md** — current progress, handoff notes, and next steps (read this first when picking up the project).
 - **README.md** — setup, the data pipeline, and the Tushare-vs-JQData source comparison.
 - **CLAUDE.md** — Claude Code's guidance file; this AGENTS.md mirrors it.
 - **docs/superpowers/{plans,specs}/** — generation-by-generation design history (gen2 layout engine → gen10 real data source → JQData/Tushare capital flow).

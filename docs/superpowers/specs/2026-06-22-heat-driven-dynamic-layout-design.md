@@ -1,7 +1,7 @@
 # SP2 — Heat-Driven Dynamic Layout — Design
 
 **Date:** 2026-06-22
-**Status:** Approved (design); spec under review
+**Status:** Implemented & merged (2026-06-22, merge commit `1c4b14c`). See "As-built notes" at the end for where the implementation deviated from this design.
 **Sub-project:** SP2 of the pre-publish optimization set (SP1 content depth done; SP3 mobile, SP4 polish, SP5 SEO remain).
 
 ## Goal
@@ -20,13 +20,13 @@ Make the **P1 theme** and **P2 sub-theme** Voronoi cells' **position and size fl
 
 ## Heat model — `src/domain/heatMap.ts` (new, pure, zero React)
 
-`buildHeatMap(aggregates) → { themeHeat: Record<ThemeId, number>, subThemeHeat: Record<string, number> }`
+`buildHeatMap(byTheme, bySubTheme, subThemes) → { themeHeat: Record<string, number>, subThemeHeat: Record<string, number> }`  *(as-built signature — `byTheme`/`bySubTheme` are the active window's `aggregates` maps; `subThemes` supplies the parent-theme grouping)*
 
 - **Theme heat:** `themeHeat[t] = |byTheme[t]| / maxAbsTheme`, clamped to [0,1], where `maxAbsTheme = max over the 11 themes of |byTheme|`. Normalized **across all themes**.
 - **Sub-theme heat:** `subThemeHeat[s] = |bySubTheme[s]| / maxAbsInParentTheme`, clamped to [0,1], normalized **within the sub-theme's parent theme** (so a theme's sub-themes size relative to each other, not to the whole market).
 - **Source:** the **active window's** `aggregates` (`buildCapitalFlowAggregates` over the current snapshot/window). Switching 今日/近5日/近10日/近20日 recomputes heat → re-flows the layout.
 - **All-flat / empty:** if `maxAbs == 0`, every heat is 0 → a uniform layout (the size floor makes all cells equal). Honest, no division-by-zero.
-- **Demo mode:** derive heat from the scenario's per-sector/theme values (demo already provides these); never fabricate heat for real mode.
+- **Demo mode:** never fabricate heat for real mode. *(As-built: demo mode renders a **static** layout — `heatMap` is `null` when there is no real snapshot — rather than deriving heat from the scenario. Equally honest; demo simply doesn't animate the heat-flow. See As-built notes.)*
 
 Pure and fully unit-testable.
 
@@ -49,7 +49,7 @@ Unchanged. Column height/color already encode signed net inflow; stocks are plac
 ## Dynamic recompute + animation
 
 - **Providers take heat:** `themeVoronoiLayoutProvider.getLayout(...)` and `voronoiLayoutProvider.getLayout(...)` gain a `heatMap` parameter.
-- **App recomputes on change:** `App.tsx` computes `heatMap = buildHeatMap(aggregates)` and passes it to the providers; the layout `useMemo`s gain `heatMap` (or the active window) as a dependency, so layout recomputes when the window/snapshot changes (today it computes once). This is the single wiring change the architecture trace identified.
+- **App recomputes on change:** `App.tsx` computes `heatMap = buildHeatMap(aggregates.byTheme, aggregates.bySubTheme, subThemes)` and passes it to the providers; the layout `useMemo`s gain `heatMap` (or the active window) as a dependency, so layout recomputes when the window/snapshot changes (today it computes once). This is the single wiring change the architecture trace identified.
 - **Animation (`CapitalMapScene.tsx`):** on layout change, ease cell **center positions**, a per-cell **scale**, and **column heights** to the new layout over **~0.6s** (easeInOutCubic), reusing the existing camera-transition pattern. Voronoi **polygon geometry recomputes** at the new layout (shape may "pop"); the columns/positions/heights animate. (Smooth polygon morphing is out of scope — accepted.)
 
 ## Honesty & stability invariants (preserved)
@@ -63,7 +63,7 @@ Unchanged. Column height/color already encode signed net inflow; stocks are plac
 
 | File | Change |
 |---|---|
-| `src/domain/heatMap.ts` (new) | Pure `buildHeatMap(aggregates)` → theme/sub-theme heat (abs, normalized, floored-input). |
+| `src/domain/heatMap.ts` (new) | Pure `buildHeatMap(byTheme, bySubTheme, subThemes)` → theme/sub-theme heat (abs, normalized). |
 | `src/domain/heatMap.test.ts` (new) | Unit tests. |
 | `src/domain/themeVoronoiLayoutEngine.ts` | Accept live `themeHeat`; keep relationship anchor; bound heat inward-pull so cold themes stay visible (area is emergent). |
 | `src/domain/voronoiLayoutEngine.ts` | Accept `subThemeHeat`; weight cell areas (wire `areaWeight` seam to live heat); enforce size floor. |
@@ -92,3 +92,14 @@ Unchanged. Column height/color already encode signed net inflow; stocks are plac
 - Full smooth polygon morphing.
 - New data / registry changes (SP1 done), mobile (SP3), polish (SP4), SEO (SP5).
 - The legacy `layoutStages` rotation mechanism / `algorithmicLayoutEngine` (not on the live path).
+
+## As-built notes (2026-06-22, merged `1c4b14c`)
+
+Where the shipped implementation differs from the design above:
+
+- **`buildHeatMap` signature:** `buildHeatMap(byTheme, bySubTheme, subThemes)` (not `buildHeatMap(aggregates)`). The two maps are the active window's `aggregates.byTheme` / `aggregates.bySubTheme`; `subThemes` provides the parent-theme grouping for within-parent normalization.
+- **P2 sizing mechanism:** implemented as a **weighted Voronoi treemap over a power diagram** (additively-weighted Voronoi) rather than biasing Lloyd seed placement / the `areaWeight` seam. Seed *positions* stay fixed at the Lloyd-relaxed centers (preserves the relationship anchor); only the power *weights* change. Weights are solved by gradient ascent on Aurenhammer's convex potential (gradient = target − area) with a backtracking line search, driving each cell's area to `target ∝ heat-weight` (floored). This was adopted after the single-shot weight assignment was found (in review) to be only per-cell monotone — it could leave a hot cell smaller than a cold sibling against the base geometry's ~5× area variance. The treemap solve guarantees cross-sibling ordering (hotter ⇒ larger) with a size floor, verified 0/426 sibling-pair violations across all 11 themes.
+- **Demo mode:** static layout (`heatMap = null` when there's no real snapshot), not heat-derived-from-scenario. Honest — no fabricated heat — it simply doesn't animate the heat-flow in demo.
+- **New file not in the table above:** `src/domain/layoutEasing.ts` — pure `approach(current, target, dt, tau)` frame-rate-independent ease used by `CapitalMapScene` for the ~0.6s transition (the "interpolation logic, unit-tested if extracted" the testing strategy anticipated).
+- **Animation:** columns ease x/z + height and plates ease x/z via `useFrame`; eased axes are owned imperatively (so React re-renders don't snap them); outflow columns flip with a π rotation (not negative scale) to keep face winding correct. Polygon shapes snap (recompute), as designed.
+- **Gate at merge:** frontend 194 vitest, backend 90 pytest, `tsc` clean, production build OK.
