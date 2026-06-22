@@ -178,16 +178,6 @@ const HEAT_SOLVE_STEP = 1.0;
 const HEAT_SOLVE_TOLERANCE = 0.02;
 
 /**
- * Loose per-iteration cap on the absolute power-weight spread, as a multiple of
- * the theme's bounding-box diagonal². The largest weight gap that does useful
- * work is on the order of the theme extent² (enough for one cell to absorb a
- * neighbour); this cap sits above that so it only bounds runaway transients and
- * never limits sibling reordering. Cold-cell visibility is guaranteed by the
- * floored area TARGETS, not by this cap.
- */
-const HEAT_SPREAD_CAP_RATIO = 4;
-
-/**
  * Map a raw heat value (any non-negative number, typically 0..1) to a target
  * weight in [HEAT_WEIGHT_FLOOR, 1]. Heat is clamped to [0, 1] first.
  */
@@ -576,11 +566,11 @@ const finishCell = (
  * weighted area diagram, Nocaj–Brandes flavour):
  *   target_i = themeArea · weight_i / Σ weight, floored at HEAT_TARGET_FLOOR_RATIO
  *   · equalShare and renormalized; then
- *   pw_i += STEP · (target_i − area_i)   (damped additive, area units)
- * with a per-iteration gauge fix (subtract min pw) and an anti-erasure spread
- * cap. Floored targets are ordered by heat, so once areas approach targets every
- * sibling pair is ordered by heat — monotone ACROSS siblings, deterministic, no
- * randomness.
+ *   pw_i += STEP · (target_i − area_i)   (gradient ascent on Aurenhammer's convex
+ * potential, damped with backtracking + a zero-mean gauge — see the solver
+ * comment below). Floored targets are ordered by heat, so once areas approach
+ * targets every sibling pair is ordered by heat — monotone ACROSS siblings,
+ * deterministic, no randomness.
  *
  * Runs INSTEAD of enforceAreaFloor only when heat is supplied; the no-heat path
  * is untouched.
@@ -615,15 +605,6 @@ const applyHeatSizing = (
   }
   if (!isFinite(minDistSq) || minDistSq <= 0) return initialCells;
   const lengthScale = Math.sqrt(minDistSq);
-
-  // Loose absolute cap on the weight spread, keyed off the theme's bounding-box
-  // diagonal². Raising w_i by the full squared distance to a neighbour is what it
-  // takes for cell i to absorb that neighbour, so the largest legitimate spread
-  // is on the order of the theme extent². The cap sits well above that so it only
-  // catches runaway transients — it never limits reordering.
-  const bb = polygonBounds(themePoly);
-  const diagSq = (bb.maxX - bb.minX) ** 2 + (bb.maxZ - bb.minZ) ** 2;
-  const spreadCap = HEAT_SPREAD_CAP_RATIO * diagSq;
 
   // --- Targets: area proportional to heat-weight, floored then renormalized. ---
   // Floored targets are what keep cold cells visible (≥ HEAT_TARGET_FLOOR_RATIO ·
@@ -725,26 +706,6 @@ const applyHeatSizing = (
     });
 
   let cells = buildCells(pw);
-
-  if ((globalThis as any).__HEAT_DIAG) {
-    const fa = areasOf(pw);
-    let worst = 0;
-    for (let i = 0; i < count; i++) {
-      const e = Math.abs(fa[i] - targets[i]) / equalShare;
-      if (e > worst) worst = e;
-    }
-    // eslint-disable-next-line no-console
-    console.log(`DIAG ${themeCell.themeId} n=${count} minDistSq=${minDistSq.toFixed(3)} worstResid=${worst.toFixed(3)}`);
-    // Per-seed MAX achievable raw area: give seed k a huge weight, others 0.
-    for (let k = 0; k < count; k++) {
-      const probe = new Array<number>(count).fill(0);
-      probe[k] = diagSq * 100;
-      const raw = powerCell(k, centers, probe, themePoly);
-      const maxA = raw.length >= 3 ? polygonArea(raw) : 0;
-      // eslint-disable-next-line no-console
-      console.log(`  seed ${themeSubThemes[k].id} target=${targets[k].toFixed(2)} maxAchievable=${maxA.toFixed(2)}`);
-    }
-  }
 
   // Safety net: with floored targets this should never trigger, but if any final
   // cell falls below the hard share floor, ease the weights toward uniform
