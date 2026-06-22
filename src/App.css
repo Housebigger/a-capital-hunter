@@ -306,6 +306,9 @@ select {
   line-height: 1.45;
 }
 
+/* SP3 mobile primary-control bar — hidden on desktop, sticky in stacked layout */
+.mobile-control-bar { display: none; }
+
 @media (max-width: 1250px) {
   body {
     min-width: 1024px;
@@ -371,6 +374,44 @@ select {
 
   .segmented {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mobile-control-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    order: 0;                 /* above the scene (scene is order:1) */
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 8px;
+    background: rgba(13, 18, 18, 0.92);
+    backdrop-filter: blur(6px);
+    border: 1px solid #2e3838;
+    border-radius: 8px;
+  }
+  /* Window + view selectors live in the sticky bar on mobile; hide the
+     controls-panel's duplicates (its first two control-sections). */
+  .controls-panel > .control-section:nth-child(1),
+  .controls-panel > .control-section:nth-child(2) {
+    display: none;
+  }
+  /* One finger scrolls the page over the canvas; two fingers rotate (OrbitControls). */
+  .scene-panel,
+  .hunter-canvas,
+  .hunter-canvas canvas {
+    touch-action: pan-y;
+  }
+  /* Touch-friendly hit areas */
+  .segmented button,
+  .data-error-actions button {
+    min-height: 44px;
+  }
+  /* Keep the data status out of the sticky bar / toolbar's way */
+  .data-status {
+    position: static;
+    max-width: none;
+    margin: 8px 0;
   }
 }
 
