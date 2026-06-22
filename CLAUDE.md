@@ -15,7 +15,7 @@ Since **SP2**, the **P1/P2 cell size and position flow with live market heat** (
 
 Data is **real end-of-day snapshots**, not simulated. The single most important product invariant: the frontend **never silently shows fake numbers as real** — on any fetch/validation failure it surfaces an explicit error with Retry, and demo data is only ever loaded via an opt-in button and always labeled "演示模式".
 
-> **Current state:** data pipeline + frontend work end-to-end (the earlier "frontend stuck on 等待真实资金流快照" blocker was root-caused and fixed). Since then: content depth expanded (SP1 → 74 sub-themes / 408 stocks), the heat-driven dynamic layout shipped (SP2), and a static-site deployment path was added. Remaining pre-publish work: SP3 mobile/responsive, SP4 UI/interaction polish, SP5 share/SEO meta. See `STATUS.md` for the full handoff.
+> **Current state:** data pipeline + frontend work end-to-end (the earlier "frontend stuck on 等待真实资金流快照" blocker was root-caused and fixed). Since then: content depth expanded (SP1 → 74 sub-themes / 408 stocks), the heat-driven dynamic layout shipped (SP2), a static-site deployment path was added, and the mobile/responsive pass shipped (SP3 — a single ≤900px "compact" mode: sticky control bar, two-finger-rotate / one-finger-scroll touch, dpr/shadow/label-density tuning; desktop unchanged). Remaining pre-publish work: SP4 UI/interaction polish, SP5 share/SEO meta. See `STATUS.md` for the full handoff.
 
 ## Commands
 
@@ -123,7 +123,7 @@ Pure functions / frozen immutable data, **zero React imports**, fully unit-testa
 
 - **state/useHunterState.ts** — single hook: theme/capital-state filters, camera preset, selected sector.
 - **App.tsx** — owns the **snapshot load state machine** (`SnapshotViewState`: `loading | ready | partial | error | demo`) and `viewMode` (P1/P2/P3). `loadInitial` fetches status (best-effort) then the latest snapshot; date/window changes keep the prior scene visible while the new one loads, and rebuild the live `heatMap` from the active window's aggregates so the layout re-flows (SP2). (The earlier "frontend never rendered" blocker was root-caused and fixed — see `STATUS.md`.)
-- **components/** — `HunterScene` (R3F Canvas + lighting + OrbitControls), `CapitalMapScene` (grid, clickable cells, columns, drei `Text` labels, camera transitions), `ControlsPanel` (date picker, view-mode/filter/camera controls), `InspectorPanel` (selected-sector detail), `DataStatus` (loading/error/retry/load-demo banner), `SceneLegend`.
+- **components/** — `HunterScene` (R3F Canvas + lighting + OrbitControls; mobile dpr/shadow/touch tuning via the `compact` prop), `CapitalMapScene` (grid, clickable cells, columns, drei `Text` labels, camera transitions; label density thinned in compact mode via `domain/labelDensity.ts`), `ControlsPanel` (window/view via shared `WindowSelector`/`ViewModeSelector`, filters, camera), `MobileControlBar` (sticky window+view bar, ≤900px only), `InspectorPanel` (selected-sector detail), `DataStatus` (loading/error/retry/load-demo banner), `SceneLegend`. Compact (mobile) mode is driven by the `useIsMobile` hook (`src/hooks/`).
 
 ## Key invariants & design principles
 
@@ -144,7 +144,7 @@ Pure functions / frozen immutable data, **zero React imports**, fully unit-testa
 
 ## Test conventions
 
-- Frontend: Vitest globals (`describe`/`it`/`expect`, no imports); component tests use Testing Library + jsdom; `vitest.config` excludes `node_modules`, `dist`, `.worktrees/**`, `tests/e2e/**`. ~194 tests.
+- Frontend: Vitest globals (`describe`/`it`/`expect`, no imports); component tests use Testing Library + jsdom; `vitest.config` excludes `node_modules`, `dist`, `.worktrees/**`, `tests/e2e/**`. ~200 tests.
 - Backend: pytest in `server/tests/` (one file per module + `test_tushare_source.py`); inject fake sources / temp repositories. ~90 tests.
 - E2E: Playwright in `tests/e2e/`, expects the dev server on `http://127.0.0.1:5173`; uses a fixture mock (does **not** exercise the real network).
 
