@@ -847,6 +847,7 @@ export interface SubThemeCapitalMapSceneProps {
   voronoiCells: ReadonlyArray<VoronoiCell>;
   subThemeNodes: SubThemeRenderNode[];
   cameraPreset: CameraPreset;
+  selectedSectorId?: SectorId;
   onSelectSector: (sectorId: SectorId) => void;
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
   compact?: boolean;
@@ -861,6 +862,7 @@ export interface P3CapitalMapSceneProps {
   voronoiCells: ReadonlyArray<VoronoiCell>;
   stockNodes: StockRenderNode3[];
   cameraPreset: CameraPreset;
+  selectedSectorId?: SectorId;
   onSelectSector: (sectorId: SectorId) => void;
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
   compact?: boolean;
@@ -1223,6 +1225,7 @@ export interface ThemeCapitalMapSceneProps {
   themeCells: ReadonlyArray<ThemeCell>;
   themeNodes: ThemeRenderNode[];
   cameraPreset: CameraPreset;
+  selectedSectorId?: SectorId;
   onSelectSector: (sectorId: SectorId) => void;
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
   compact?: boolean;
@@ -1382,6 +1385,7 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
         voronoiCells={(props as P3CapitalMapSceneProps).voronoiCells}
         stockNodes={(props as P3CapitalMapSceneProps).stockNodes}
         cameraPreset={props.cameraPreset}
+        selectedSectorId={(props as P3CapitalMapSceneProps).selectedSectorId}
         onSelectSector={props.onSelectSector}
         orbitControlsRef={props.orbitControlsRef}
         compact={(props as P3CapitalMapSceneProps).compact}
@@ -1396,6 +1400,7 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
         voronoiCells={(props as SubThemeCapitalMapSceneProps).voronoiCells}
         subThemeNodes={(props as SubThemeCapitalMapSceneProps).subThemeNodes}
         cameraPreset={props.cameraPreset}
+        selectedSectorId={(props as SubThemeCapitalMapSceneProps).selectedSectorId}
         onSelectSector={props.onSelectSector}
         orbitControlsRef={props.orbitControlsRef}
         compact={(props as SubThemeCapitalMapSceneProps).compact}
@@ -1409,6 +1414,7 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
         themeCells={(props as ThemeCapitalMapSceneProps).themeCells}
         themeNodes={(props as ThemeCapitalMapSceneProps).themeNodes}
         cameraPreset={props.cameraPreset}
+        selectedSectorId={(props as ThemeCapitalMapSceneProps).selectedSectorId}
         onSelectSector={props.onSelectSector}
         orbitControlsRef={props.orbitControlsRef}
         compact={(props as ThemeCapitalMapSceneProps).compact}
