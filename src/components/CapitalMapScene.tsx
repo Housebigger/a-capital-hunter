@@ -3,6 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import * as THREE from "three";
+import { approach } from "../domain/layoutEasing";
 import { subThemes as subThemeList } from "../domain/subThemeRegistry";
 import { themes as themeList } from "../domain/themeRegistry";
 import type {
@@ -37,6 +38,12 @@ const SUBTHEME_COLUMN_RADIUS = 0.25;
 const SUBTHEME_COLUMN_SEGMENTS = 10;
 const P3_STOCK_COLUMN_RADIUS = 0.10;
 const P3_STOCK_COLUMN_SEGMENTS = 8;
+
+/**
+ * Approximate settle time (s) for layout/height easing. ~0.6s reads as a smooth
+ * glide without feeling sluggish. Tune here if the in-browser feel is off.
+ */
+const EASE_TAU = 0.6;
 
 /* ================================================================== */
 /*  Camera & types                                                     */
@@ -109,6 +116,142 @@ export function handleBaseCellClick(
   if (node.visible) {
     onSelectSector(node.sector.id);
   }
+}
+
+/* ================================================================== */
+/*  Animated helpers (SP2 Task 6 — heat-driven dynamic layout)          */
+/*                                                                      */
+/*  These ease positions / column heights toward their targets over     */
+/*  ~EASE_TAU seconds (frame-rate independent) so cells and columns      */
+/*  glide instead of snapping when the data window / heat changes.       */
+/*  Polygon SHAPE still recomputes (snaps); only positions and heights   */
+/*  ease — that is the intended SP2 behavior.                            */
+/* ================================================================== */
+
+/**
+ * Eases a mesh's x/z position toward (targetX, targetZ). Used for plates so
+ * the cell glides to its new centroid while its polygon shape snaps.
+ *
+ * IMPORTANT: x/z are owned imperatively (init effect + useFrame) and must NOT
+ * be bound declaratively on the mesh (only `position-y` is), otherwise R3F
+ * would re-apply the target on every prop-change render and defeat the ease.
+ */
+function useEasedXZ(
+  targetX: number,
+  targetZ: number
+): RefObject<THREE.Mesh | null> {
+  const ref = useRef<THREE.Mesh | null>(null);
+  // Initialize at the target on first mount so it never eases in from origin.
+  useEffect(() => {
+    const m = ref.current;
+    if (m) {
+      m.position.x = targetX;
+      m.position.z = targetZ;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useFrame((_, dt) => {
+    const m = ref.current;
+    if (!m) return;
+    m.position.x = approach(m.position.x, targetX, dt, EASE_TAU);
+    m.position.z = approach(m.position.z, targetZ, dt, EASE_TAU);
+  });
+  return ref;
+}
+
+/**
+ * A capital column whose base is anchored to the plate surface and whose
+ * x/z position and height ease toward their targets.
+ *
+ * Geometry is a unit-height cylinder translated so its BASE sits at the group
+ * origin (local y=0). A positive y-scale (= height) grows the column away from
+ * the base without lifting it. Outflow columns hang downward via a π rotation
+ * of the group about X (a real rotation, so face winding / normals stay correct
+ * — using a negative scale here would invert normals and render the column
+ * hollow). x/z position and height (scale.y) are eased every frame; the
+ * up/down orientation snaps on the rare inflow↔outflow flip.
+ */
+function AnimatedColumnMesh({
+  targetX,
+  targetZ,
+  baseY,
+  height,
+  flip,
+  radius,
+  segments,
+  color,
+  opacity,
+  emissiveIntensity,
+  castShadow = true,
+}: {
+  targetX: number;
+  targetZ: number;
+  baseY: number;
+  height: number;
+  flip: boolean;
+  radius: number;
+  segments: number;
+  color: string;
+  opacity: number;
+  emissiveIntensity: number;
+  castShadow?: boolean;
+}) {
+  const groupRef = useRef<THREE.Group | null>(null);
+  const meshRef = useRef<THREE.Mesh | null>(null);
+
+  // Unit cylinder (height 1) translated so its base is at local y=0.
+  const geometry = useMemo(() => {
+    const geo = new THREE.CylinderGeometry(radius, radius, 1, segments);
+    geo.translate(0, 0.5, 0);
+    return geo;
+  }, [radius, segments]);
+
+  useEffect(() => {
+    return () => geometry.dispose();
+  }, [geometry]);
+
+  // Initialize on first mount so we don't ease in from the origin / zero height.
+  // x/z and scale.y are owned imperatively from here on (see useFrame); they
+  // must NOT be bound declaratively or R3F would snap them on every re-render.
+  useEffect(() => {
+    const g = groupRef.current;
+    const m = meshRef.current;
+    if (g) {
+      g.position.x = targetX;
+      g.position.z = targetZ;
+    }
+    if (m) {
+      m.scale.y = height;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useFrame((_, dt) => {
+    const g = groupRef.current;
+    const m = meshRef.current;
+    if (g) {
+      g.position.x = approach(g.position.x, targetX, dt, EASE_TAU);
+      g.position.z = approach(g.position.z, targetZ, dt, EASE_TAU);
+    }
+    if (m) {
+      m.scale.y = approach(m.scale.y, height, dt, EASE_TAU);
+    }
+  });
+
+  return (
+    <group ref={groupRef} position-y={baseY} rotation-x={flip ? Math.PI : 0}>
+      <mesh ref={meshRef} geometry={geometry} castShadow={castShadow} scale-x={1} scale-z={1}>
+        <meshStandardMaterial
+          color={color}
+          opacity={opacity}
+          transparent
+          emissive={color}
+          emissiveIntensity={emissiveIntensity}
+          roughness={0.4}
+        />
+      </mesh>
+    </group>
+  );
 }
 
 /* ================================================================== */
@@ -799,7 +942,10 @@ function SubThemeBoundaryLines({
   );
 }
 
-/** Cylindrical column for SubTheme, centered on cell centroid. */
+/**
+ * Cylindrical column for SubTheme, centered on cell centroid. Its x/z position
+ * and height ease toward their targets when the heat / data window changes.
+ */
 function SubThemeCylinderColumn({
   node,
 }: {
@@ -807,28 +953,26 @@ function SubThemeCylinderColumn({
 }) {
   const { metric, position } = node;
   const rawHeight = Math.max(Math.abs(metric.height), 0.12);
-  const isInflow = metric.direction === "inflow";
   const isOutflow = metric.direction === "outflow";
 
-  const baseY = isInflow ? THEME_PLATE_THICKNESS : isOutflow ? 0 : THEME_PLATE_THICKNESS / 2;
-  const positionY = isInflow ? baseY + rawHeight / 2 : isOutflow ? baseY - rawHeight / 2 : baseY;
+  // Base anchored to the plate surface; height grows up (inflow/flat) or down
+  // (outflow, via the column's π rotation) from that base.
+  const baseY = isOutflow ? 0 : THEME_PLATE_THICKNESS;
   const columnOpacity = isOutflow ? 0.9 : 0.7;
 
   return (
-    <mesh
-      position={[position.x, positionY, position.z]}
-      castShadow
-    >
-      <cylinderGeometry args={[SUBTHEME_COLUMN_RADIUS, SUBTHEME_COLUMN_RADIUS, rawHeight, SUBTHEME_COLUMN_SEGMENTS]} />
-      <meshStandardMaterial
-        color={metric.color}
-        opacity={columnOpacity}
-        transparent
-        emissive={metric.color}
-        emissiveIntensity={0.08}
-        roughness={0.4}
-      />
-    </mesh>
+    <AnimatedColumnMesh
+      targetX={position.x}
+      targetZ={position.z}
+      baseY={baseY}
+      height={rawHeight}
+      flip={isOutflow}
+      radius={SUBTHEME_COLUMN_RADIUS}
+      segments={SUBTHEME_COLUMN_SEGMENTS}
+      color={metric.color}
+      opacity={columnOpacity}
+      emissiveIntensity={0.08}
+    />
   );
 }
 
@@ -1072,11 +1216,14 @@ function ThemePlate({
     return s;
   }, [cell.polygon, cell.center]);
 
+  const meshRef = useEasedXZ(cell.center.x, cell.center.z);
+
   if (!shape) return null;
 
   return (
     <mesh
-      position={[cell.center.x, THEME_PLATE_THICKNESS / 2, cell.center.z]}
+      ref={meshRef}
+      position-y={THEME_PLATE_THICKNESS / 2}
       rotation={[Math.PI / 2, 0, 0]}
       receiveShadow
     >
@@ -1142,32 +1289,27 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
 
       {/* Capital columns */}
       {themeNodes.map((node) => {
-        const rawHeight = Math.abs(node.metric.height);
-        const height = Math.max(rawHeight, 0.15);
-        const isInflow = node.metric.direction === "inflow";
+        const rawHeight = Math.max(Math.abs(node.metric.height), 0.15);
         const isOutflow = node.metric.direction === "outflow";
-        const baseY = isInflow ? THEME_PLATE_THICKNESS : isOutflow ? 0 : THEME_PLATE_THICKNESS / 2;
-        const positionY = isInflow ? baseY + height / 2 : isOutflow ? baseY - height / 2 : baseY;
+        // Base anchored to the plate surface; height grows up (inflow/flat) or
+        // down (outflow, via the column's π rotation) from that base.
+        const baseY = isOutflow ? 0 : THEME_PLATE_THICKNESS;
         const columnOpacity = isOutflow ? 0.9 : 0.7;
 
         return (
           <group key={`col-${node.theme.id}`}>
-            <mesh
-              position={[node.position.x, positionY, node.position.z]}
-              castShadow
-            >
-              <cylinderGeometry
-                args={[THEME_COLUMN_RADIUS, THEME_COLUMN_RADIUS, height, THEME_COLUMN_SEGMENTS]}
-              />
-              <meshStandardMaterial
-                color={node.metric.color}
-                opacity={columnOpacity}
-                transparent
-                emissive={node.metric.color}
-                emissiveIntensity={0.08}
-                roughness={0.4}
-              />
-            </mesh>
+            <AnimatedColumnMesh
+              targetX={node.position.x}
+              targetZ={node.position.z}
+              baseY={baseY}
+              height={rawHeight}
+              flip={isOutflow}
+              radius={THEME_COLUMN_RADIUS}
+              segments={THEME_COLUMN_SEGMENTS}
+              color={node.metric.color}
+              opacity={columnOpacity}
+              emissiveIntensity={0.08}
+            />
             {/* Theme label */}
             <Text
               position={[node.position.x, THEME_PLATE_THICKNESS + 0.02, node.position.z]}
