@@ -1,6 +1,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useRef } from "react";
+import { TOUCH } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type {
   CameraPreset,
@@ -47,6 +48,7 @@ export function HunterScene(props: HunterSceneProps) {
         cameraPreset: props.cameraPreset,
         onSelectSector: props.onSelectSector,
         orbitControlsRef,
+        compact: props.compact ?? false,
       };
     }
     if (props.subThemeCells) {
@@ -58,6 +60,7 @@ export function HunterScene(props: HunterSceneProps) {
         cameraPreset: props.cameraPreset,
         onSelectSector: props.onSelectSector,
         orbitControlsRef,
+        compact: props.compact ?? false,
       };
     }
     if (props.themeCells) {
@@ -68,6 +71,7 @@ export function HunterScene(props: HunterSceneProps) {
         cameraPreset: props.cameraPreset,
         onSelectSector: props.onSelectSector,
         orbitControlsRef,
+        compact: props.compact ?? false,
       };
     }
     if (props.voronoiLayout) {
@@ -81,6 +85,7 @@ export function HunterScene(props: HunterSceneProps) {
         onSelectSector: props.onSelectSector,
         onFocusSubTheme: props.onFocusSubTheme ?? (() => {}),
         orbitControlsRef,
+        compact: props.compact ?? false,
       };
     }
     return {
@@ -92,6 +97,7 @@ export function HunterScene(props: HunterSceneProps) {
       onSelectSector: props.onSelectSector,
       onFocusSubTheme: props.onFocusSubTheme,
       orbitControlsRef,
+      compact: props.compact ?? false,
     };
   })();
 
@@ -101,16 +107,31 @@ export function HunterScene(props: HunterSceneProps) {
       camera={{ position: [13, 13, 16], fov: 45 }}
       shadows
       gl={{ antialias: true }}
+      dpr={[1, 2]}
     >
       <color attach="background" args={["#10151b"]} />
       <ambientLight intensity={0.7} />
-      <directionalLight position={[8, 12, 8]} intensity={1.2} castShadow />
+      <directionalLight
+        position={[8, 12, 8]}
+        intensity={1.2}
+        castShadow
+        shadow-mapSize={props.compact ? [512, 512] : [1024, 1024]}
+      />
       <CapitalMapScene {...sceneProps} />
       <OrbitControls
         ref={orbitControlsRef}
         enableDamping
         dampingFactor={0.08}
         maxPolarAngle={Math.PI / 2.15}
+        touches={
+          props.compact
+            ? // Omitting ONE disables single-finger gestures so one finger
+              // scrolls the page; two fingers rotate + pinch-zoom. (This
+              // @types/three TOUCH enum lacks the runtime `NONE` member, and an
+              // undefined ONE is the type-safe equivalent of TOUCH.NONE.)
+              { TWO: TOUCH.DOLLY_ROTATE }
+            : { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }
+        }
       />
     </Canvas>
   );

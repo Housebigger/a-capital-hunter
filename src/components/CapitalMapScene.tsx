@@ -833,6 +833,7 @@ export interface SubThemeCapitalMapSceneProps {
   cameraPreset: CameraPreset;
   onSelectSector: (sectorId: SectorId) => void;
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
+  compact?: boolean;
 }
 
 /* ================================================================== */
@@ -846,6 +847,7 @@ export interface P3CapitalMapSceneProps {
   cameraPreset: CameraPreset;
   onSelectSector: (sectorId: SectorId) => void;
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
+  compact?: boolean;
 }
 
 /** Golden SubTheme boundary lines with 5-second breathing/pulsing opacity. */
@@ -1194,6 +1196,7 @@ export interface ThemeCapitalMapSceneProps {
   cameraPreset: CameraPreset;
   onSelectSector: (sectorId: SectorId) => void;
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
+  compact?: boolean;
 }
 
 
@@ -1352,6 +1355,7 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
         cameraPreset={props.cameraPreset}
         onSelectSector={props.onSelectSector}
         orbitControlsRef={props.orbitControlsRef}
+        compact={(props as P3CapitalMapSceneProps).compact}
       />
     );
   }
@@ -1365,6 +1369,7 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
         cameraPreset={props.cameraPreset}
         onSelectSector={props.onSelectSector}
         orbitControlsRef={props.orbitControlsRef}
+        compact={(props as SubThemeCapitalMapSceneProps).compact}
       />
     );
   }
@@ -1377,6 +1382,7 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
         cameraPreset={props.cameraPreset}
         onSelectSector={props.onSelectSector}
         orbitControlsRef={props.orbitControlsRef}
+        compact={(props as ThemeCapitalMapSceneProps).compact}
       />
     );
   }
