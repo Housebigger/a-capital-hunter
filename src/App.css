@@ -31,6 +31,7 @@ button {
   background: #1a2022;
   color: #dce6ef;
   cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
 }
 
 button:hover {
@@ -66,7 +67,7 @@ button.active {
 
 .eyebrow {
   margin: 0 0 4px;
-  color: #9ba8a7;
+  color: #aeb9b7;
   font-size: 13px;
 }
 
@@ -178,7 +179,7 @@ select {
 }
 
 .compact-note p {
-  color: #a4afad;
+  color: #b3bdbb;
   font-size: 13px;
   line-height: 1.55;
 }
@@ -252,7 +253,7 @@ select {
 
 .inspector-kicker {
   margin-bottom: 8px;
-  color: #9ba8a7;
+  color: #aeb9b7;
   font-size: 12px;
 }
 
@@ -270,7 +271,7 @@ select {
 }
 
 .inspector-panel p {
-  color: #aab7b3;
+  color: #bcc7c4;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -522,4 +523,13 @@ select {
   color: #8a96ad;
   font-size: 14px;
   letter-spacing: 0.04em;
+  animation: loading-pulse 1.4s ease-in-out infinite;
 }
+@keyframes loading-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+/* ---------------------------------------------------------------------------
+   Inspector overview lists (Part A — SP4 Task 7)
+   --------------------------------------------------------------------------- */
+.overview-list { display: grid; gap: 6px; margin: 8px 0 14px; padding: 0; list-style: none; }
+.overview-row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-size: 13px; color: #b7c3c0; }
+.rel-tag { font-size: 11px; font-weight: 600; }

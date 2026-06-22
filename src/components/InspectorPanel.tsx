@@ -1,5 +1,6 @@
 import type { RenderNode, StockRenderNode } from "../domain/types";
 import type { CapitalFlowOverview } from "../domain/capitalFlowOverview";
+import type { SelectionDetail } from "../domain/selectionDetail";
 
 const RELATIONSHIP_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   "industrial-chain": { label: "产业链", color: "#4a9eff" },
@@ -14,9 +15,29 @@ interface InspectorPanelProps {
   selectedStockNode?: StockRenderNode;
   overview?: CapitalFlowOverview;
   overviewTitle?: string;
+  selection?: SelectionDetail;
+  isDemo?: boolean;
 }
 
-export function InspectorPanel({ node, selectedStockNode, overview, overviewTitle }: InspectorPanelProps) {
+export function InspectorPanel({ node, selectedStockNode, overview, overviewTitle, selection, isDemo }: InspectorPanelProps) {
+  // Live selection detail (takes precedence over all legacy branches)
+  if (selection) {
+    const fmt = (v: number) => `${v >= 0 ? "+" : "−"}${(Math.abs(v) / 1e8).toFixed(2)}亿`;
+    const label = isDemo ? "模拟净流入" : "主力净流入";
+    const color =
+      selection.direction === "inflow" ? "#e64646" : selection.direction === "outflow" ? "#3fae6a" : "#9ba8a7";
+    const dirText =
+      selection.direction === "inflow" ? "流入" : selection.direction === "outflow" ? "流出" : "平盘";
+    return (
+      <section className="inspector-panel" aria-label="板块详情">
+        {selection.parentThemeName && <div className="inspector-kicker">主线：{selection.parentThemeName}</div>}
+        <h2>{selection.name}</h2>
+        <div className="metric-row"><span>{label}</span><strong style={{ color }}>{fmt(selection.netInflow)}</strong></div>
+        <div className="metric-row"><span>状态</span><strong>{dirText}</strong></div>
+      </section>
+    );
+  }
+
   // Stock-level detail view
   if (selectedStockNode) {
     const { stock, subTheme, theme, metric } = selectedStockNode;
@@ -30,7 +51,7 @@ export function InspectorPanel({ node, selectedStockNode, overview, overviewTitl
           <strong>{stock.code}</strong>
         </div>
         <div className="metric-row">
-          <span>模拟净流入</span>
+          <span>{isDemo ? "模拟净流入" : "主力净流入"}</span>
           <strong style={{ color: metric.color }}>{metric.labelValue}</strong>
         </div>
         <div className="metric-row">
@@ -60,18 +81,18 @@ export function InspectorPanel({ node, selectedStockNode, overview, overviewTitl
           <div className="metric-row"><span>主力净流入合计</span>
             <strong style={{ color: overview.totalNetInflow >= 0 ? "#e64646" : "#3fae6a" }}>{fmt(overview.totalNetInflow)}</strong></div>
           <h3>净流入 Top</h3>
-          <ul>{overview.topInflow.map((e) => (
-            <li key={e.id}>{e.name} <strong style={{ color: "#e64646" }}>{fmt(e.value)}</strong></li>))}</ul>
+          <ul className="overview-list">{overview.topInflow.map((e) => (
+            <li className="overview-row" key={e.id}>{e.name} <strong style={{ color: "#e64646" }}>{fmt(e.value)}</strong></li>))}</ul>
           <h3>净流出 Top</h3>
-          <ul>{overview.topOutflow.map((e) => (
-            <li key={e.id}>{e.name} <strong style={{ color: "#3fae6a" }}>{fmt(e.value)}</strong></li>))}</ul>
+          <ul className="overview-list">{overview.topOutflow.map((e) => (
+            <li className="overview-row" key={e.id}>{e.name} <strong style={{ color: "#3fae6a" }}>{fmt(e.value)}</strong></li>))}</ul>
         </section>
       );
     }
     return (
       <section className="inspector-panel" aria-label="板块详情">
-        <h2>点击板块查看资金状态</h2>
-        <p>第三版展示资金方向、模拟净流入、算法布局解释和分题材信息。</p>
+        <h2>点击地图上的板块查看详情</h2>
+        <p>查看该板块的主力净流入、资金方向与产业链/联动关系解释。</p>
       </section>
     );
   }
@@ -85,7 +106,7 @@ export function InspectorPanel({ node, selectedStockNode, overview, overviewTitl
         <div className="inspector-kicker">分题材：{subTheme.name}</div>
         <h2>{node.sector.name}</h2>
         <div className="metric-row">
-          <span>模拟净流入</span>
+          <span>{isDemo ? "模拟净流入" : "主力净流入"}</span>
           <strong style={{ color: node.metric.color }}>{node.metric.labelValue}</strong>
         </div>
         <div className="metric-row">
@@ -122,7 +143,7 @@ export function InspectorPanel({ node, selectedStockNode, overview, overviewTitl
       <div className="inspector-kicker">主线：{node.theme.name}</div>
       <h2>{node.sector.name}</h2>
       <div className="metric-row">
-        <span>模拟净流入</span>
+        <span>{isDemo ? "模拟净流入" : "主力净流入"}</span>
         <strong style={{ color: node.metric.color }}>{node.metric.labelValue}</strong>
       </div>
       <div className="metric-row">
@@ -159,7 +180,7 @@ function renderRelationshipReasons(node: RenderNode) {
         const typeInfo = RELATIONSHIP_TYPE_LABELS[reason.relationshipType] ?? { label: reason.relationshipType, color: "#888" };
         return (
           <li key={`${reason.relatedSectorId}-${reason.note}`}>
-            <span style={{ color: typeInfo.color, fontSize: "11px", fontWeight: 600 }}>
+            <span className="rel-tag" style={{ color: typeInfo.color }}>
               [{typeInfo.label}]
             </span>{" "}
             <span>{reason.note}</span>

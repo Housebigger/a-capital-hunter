@@ -41,7 +41,33 @@ describe("InspectorPanel", () => {
 
   it("renders an empty state without a selection", () => {
     render(<InspectorPanel node={undefined} />);
-    expect(screen.getByText("点击板块查看资金状态")).toBeInTheDocument();
-    expect(screen.getByText("第三版展示资金方向、模拟净流入、算法布局解释和分题材信息。")).toBeInTheDocument();
+    expect(screen.getByText("点击地图上的板块查看详情")).toBeInTheDocument();
+    expect(screen.queryByText(/第三版/)).toBeNull();
+    expect(screen.queryByText(/模拟/)).toBeNull();
+  });
+});
+
+import { buildSelectionDetail } from "../domain/selectionDetail";
+
+const selData = {
+  themes: [{ id: "ai", name: "AI算力", shortName: "AI", color: "#fff" }] as any,
+  subThemes: [{ id: "chips", themeId: "ai", name: "AI芯片", shortName: "芯片" }] as any,
+  byTheme: new Map([["ai", 5e8]]),
+  bySubTheme: new Map([["chips", 2e8]]),
+};
+
+describe("InspectorPanel live selection detail", () => {
+  it("labels real data 主力净流入 (not 模拟) and shows parent + name", () => {
+    const sel = buildSelectionDetail("chips", "P2", selData)!;
+    render(<InspectorPanel selection={sel} isDemo={false} />);
+    expect(screen.getByText("主力净流入")).toBeInTheDocument();
+    expect(screen.queryByText("模拟净流入")).toBeNull();
+    expect(screen.getByText("主线：AI算力")).toBeInTheDocument();
+    expect(screen.getByText("AI芯片")).toBeInTheDocument();
+  });
+  it("labels demo data 模拟净流入", () => {
+    const sel = buildSelectionDetail("ai", "P1", selData)!;
+    render(<InspectorPanel selection={sel} isDemo={true} />);
+    expect(screen.getByText("模拟净流入")).toBeInTheDocument();
   });
 });

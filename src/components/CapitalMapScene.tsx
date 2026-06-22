@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import * as THREE from "three";
 import { approach } from "../domain/layoutEasing";
+import type { Point2D } from "../domain/polygonClip";
 import { selectTopLabelsPerGroup, selectTopLabels } from "../domain/labelDensity";
 import { subThemes as subThemeList } from "../domain/subThemeRegistry";
 import { themes as themeList } from "../domain/themeRegistry";
@@ -267,6 +268,36 @@ function AnimatedColumnMesh({
         />
       </mesh>
     </group>
+  );
+}
+
+/* ================================================================== */
+/*  SelectedRing — gold highlight loop on the selected cell             */
+/* ================================================================== */
+
+const SELECT_RING_COLOR = "#ffd54a";
+const SELECT_RING_TAU = 0.2;
+
+/** A gold line-loop just above a cell's polygon, fading in over ~0.2s. */
+function SelectedRing({ polygon, y }: { polygon: ReadonlyArray<Point2D>; y: number }) {
+  const matRef = useRef<THREE.LineBasicMaterial | null>(null);
+  const geometry = useMemo(() => {
+    const pts: number[] = [];
+    for (const p of polygon) pts.push(p.x, y, p.z);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    return g;
+  }, [polygon, y]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  useFrame((_, dt) => {
+    const m = matRef.current;
+    if (m) m.opacity = approach(m.opacity, 1, dt, SELECT_RING_TAU);
+  });
+  if (polygon.length < 3) return null;
+  return (
+    <lineLoop geometry={geometry}>
+      <lineBasicMaterial ref={matRef} color={SELECT_RING_COLOR} transparent opacity={0} />
+    </lineLoop>
   );
 }
 
@@ -847,6 +878,7 @@ export interface SubThemeCapitalMapSceneProps {
   voronoiCells: ReadonlyArray<VoronoiCell>;
   subThemeNodes: SubThemeRenderNode[];
   cameraPreset: CameraPreset;
+  selectedSectorId?: SectorId;
   onSelectSector: (sectorId: SectorId) => void;
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
   compact?: boolean;
@@ -861,6 +893,7 @@ export interface P3CapitalMapSceneProps {
   voronoiCells: ReadonlyArray<VoronoiCell>;
   stockNodes: StockRenderNode3[];
   cameraPreset: CameraPreset;
+  selectedSectorId?: SectorId;
   onSelectSector: (sectorId: SectorId) => void;
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
   compact?: boolean;
@@ -966,8 +999,12 @@ function SubThemeBoundaryLines({
  */
 function SubThemeCylinderColumn({
   node,
+  selected = false,
+  onClick,
 }: {
   node: SubThemeRenderNode;
+  selected?: boolean;
+  onClick?: () => void;
 }) {
   const { metric, position } = node;
   const rawHeight = Math.max(Math.abs(metric.height), 0.12);
@@ -979,23 +1016,25 @@ function SubThemeCylinderColumn({
   const columnOpacity = isOutflow ? 0.9 : 0.7;
 
   return (
-    <AnimatedColumnMesh
-      targetX={position.x}
-      targetZ={position.z}
-      baseY={baseY}
-      height={rawHeight}
-      flip={isOutflow}
-      radius={SUBTHEME_COLUMN_RADIUS}
-      segments={SUBTHEME_COLUMN_SEGMENTS}
-      color={metric.color}
-      opacity={columnOpacity}
-      emissiveIntensity={0.08}
-    />
+    <group onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}>
+      <AnimatedColumnMesh
+        targetX={position.x}
+        targetZ={position.z}
+        baseY={baseY}
+        height={rawHeight}
+        flip={isOutflow}
+        radius={SUBTHEME_COLUMN_RADIUS}
+        segments={SUBTHEME_COLUMN_SEGMENTS}
+        color={metric.color}
+        opacity={columnOpacity}
+        emissiveIntensity={selected ? 0.35 : 0.08}
+      />
+    </group>
   );
 }
 
 /** Cylindrical column for individual stock (P3), smaller than SubTheme column. */
-function P3StockColumn({ node }: { node: StockRenderNode3 }) {
+function P3StockColumn({ node, onClick }: { node: StockRenderNode3; onClick?: () => void }) {
   const { metric, position } = node;
   const rawHeight = Math.max(Math.abs(metric.height), MIN_COLUMN_HEIGHT);
   const isInflow = metric.direction === "inflow";
@@ -1006,7 +1045,11 @@ function P3StockColumn({ node }: { node: StockRenderNode3 }) {
   const columnOpacity = isOutflow ? 0.9 : 0.75;
 
   return (
-    <mesh position={[position.x, positionY, position.z]} castShadow>
+    <mesh
+      position={[position.x, positionY, position.z]}
+      castShadow
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}
+    >
       <cylinderGeometry args={[P3_STOCK_COLUMN_RADIUS, P3_STOCK_COLUMN_RADIUS, rawHeight, P3_STOCK_COLUMN_SEGMENTS]} />
       <meshStandardMaterial
         color={metric.color}
@@ -1062,9 +1105,19 @@ function SubThemeCapitalMapScene(props: SubThemeCapitalMapSceneProps) {
       {/* Layer 3: SubTheme boundary lines */}
       <SubThemeBoundaryLines voronoiCells={voronoiCells} themeCells={themeCells} />
 
+      {/* Selected sub-theme highlight ring */}
+      {props.selectedSectorId && voronoiCells
+        .filter((c) => c.subThemeId === props.selectedSectorId)
+        .map((c) => <SelectedRing key={`sel-${c.subThemeId}`} polygon={c.polygon} y={THEME_PLATE_THICKNESS + 0.03} />)}
+
       {/* Layer 4: Cylindrical columns */}
       {subThemeNodes.map((node) => (
-        <SubThemeCylinderColumn key={`p2-col-${node.subTheme.id}`} node={node} />
+        <SubThemeCylinderColumn
+          key={`p2-col-${node.subTheme.id}`}
+          node={node}
+          selected={node.subTheme.id === props.selectedSectorId}
+          onClick={() => props.onSelectSector(node.subTheme.id)}
+        />
       ))}
 
       {/* Layer 5: SubTheme labels */}
@@ -1154,9 +1207,14 @@ function P3CapitalMapScene(props: P3CapitalMapSceneProps) {
       {/* Layer 3: SubTheme boundary lines (golden) */}
       <SubThemeBoundaryLines voronoiCells={voronoiCells} themeCells={themeCells} />
 
+      {/* Selected sub-theme highlight ring */}
+      {props.selectedSectorId && voronoiCells
+        .filter((c) => c.subThemeId === props.selectedSectorId)
+        .map((c) => <SelectedRing key={`sel-${c.subThemeId}`} polygon={c.polygon} y={THEME_PLATE_THICKNESS + 0.03} />)}
+
       {/* Layer 4: Individual stock columns */}
       {stockNodes.filter(n => n.visible).map((node) => (
-        <P3StockColumn key={`p3-col-${node.stock.id}`} node={node} />
+        <P3StockColumn key={`p3-col-${node.stock.id}`} node={node} onClick={() => props.onSelectSector(node.subTheme.id)} />
       ))}
 
       {/* Layer 5: Stock labels (show shortName for top stocks per SubTheme) */}
@@ -1223,6 +1281,7 @@ export interface ThemeCapitalMapSceneProps {
   themeCells: ReadonlyArray<ThemeCell>;
   themeNodes: ThemeRenderNode[];
   cameraPreset: CameraPreset;
+  selectedSectorId?: SectorId;
   onSelectSector: (sectorId: SectorId) => void;
   orbitControlsRef?: RefObject<SceneOrbitControls | null>;
   compact?: boolean;
@@ -1232,9 +1291,11 @@ export interface ThemeCapitalMapSceneProps {
 function ThemePlate({
   cell,
   themeColor,
+  onClick,
 }: {
   cell: ThemeCell;
   themeColor: string;
+  onClick?: () => void;
 }) {
   const shape = useMemo(() => {
     const poly = cell.polygon;
@@ -1258,6 +1319,7 @@ function ThemePlate({
       position-y={THEME_PLATE_THICKNESS / 2}
       rotation={[Math.PI / 2, 0, 0]}
       receiveShadow
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}
     >
       <extrudeGeometry args={[shape, { depth: THEME_PLATE_THICKNESS, bevelEnabled: false }]} />
       <meshStandardMaterial
@@ -1288,6 +1350,7 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
             key={theme.id}
             cell={cell}
             themeColor={theme.color}
+            onClick={() => props.onSelectSector(theme.id)}
           />
         );
       })}
@@ -1319,6 +1382,12 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
         );
       })}
 
+      {/* Selected theme highlight ring */}
+      {props.selectedSectorId && themeCells
+        .map((cell, i) => ({ cell, id: themeList[i]?.id }))
+        .filter((x) => x.id === props.selectedSectorId)
+        .map((x) => <SelectedRing key={`sel-theme-${x.id}`} polygon={x.cell.polygon} y={THEME_PLATE_THICKNESS + 0.03} />)}
+
       {/* Capital columns */}
       {themeNodes.map((node) => {
         const rawHeight = Math.max(Math.abs(node.metric.height), 0.15);
@@ -1340,7 +1409,7 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
               segments={THEME_COLUMN_SEGMENTS}
               color={node.metric.color}
               opacity={columnOpacity}
-              emissiveIntensity={0.08}
+              emissiveIntensity={props.selectedSectorId === node.theme.id ? 0.35 : 0.08}
             />
             {/* Theme label */}
             <Text
@@ -1382,6 +1451,7 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
         voronoiCells={(props as P3CapitalMapSceneProps).voronoiCells}
         stockNodes={(props as P3CapitalMapSceneProps).stockNodes}
         cameraPreset={props.cameraPreset}
+        selectedSectorId={(props as P3CapitalMapSceneProps).selectedSectorId}
         onSelectSector={props.onSelectSector}
         orbitControlsRef={props.orbitControlsRef}
         compact={(props as P3CapitalMapSceneProps).compact}
@@ -1396,6 +1466,7 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
         voronoiCells={(props as SubThemeCapitalMapSceneProps).voronoiCells}
         subThemeNodes={(props as SubThemeCapitalMapSceneProps).subThemeNodes}
         cameraPreset={props.cameraPreset}
+        selectedSectorId={(props as SubThemeCapitalMapSceneProps).selectedSectorId}
         onSelectSector={props.onSelectSector}
         orbitControlsRef={props.orbitControlsRef}
         compact={(props as SubThemeCapitalMapSceneProps).compact}
@@ -1409,6 +1480,7 @@ export function CapitalMapScene(props: CapitalMapSceneProps) {
         themeCells={(props as ThemeCapitalMapSceneProps).themeCells}
         themeNodes={(props as ThemeCapitalMapSceneProps).themeNodes}
         cameraPreset={props.cameraPreset}
+        selectedSectorId={(props as ThemeCapitalMapSceneProps).selectedSectorId}
         onSelectSector={props.onSelectSector}
         orbitControlsRef={props.orbitControlsRef}
         compact={(props as ThemeCapitalMapSceneProps).compact}

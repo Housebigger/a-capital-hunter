@@ -19,6 +19,7 @@ import { buildSubThemeRenderNodes } from "./domain/subThemeRenderNodes";
 import { buildP3StockRenderNodes } from "./domain/stockRenderNodes";
 import { buildCapitalFlowAggregates } from "./domain/capitalFlowAggregation";
 import { buildOverview } from "./domain/capitalFlowOverview";
+import { buildSelectionDetail } from "./domain/selectionDetail";
 import { buildHeatMap } from "./domain/heatMap";
 import { subThemes } from "./domain/subThemeRegistry";
 import { useHunterState } from "./state/useHunterState";
@@ -120,6 +121,19 @@ export default function App({ provider }: AppProps = {}) {
     const nameOf = (id: string) => subThemes.find((s) => s.id === id)?.name ?? id;
     return buildOverview(aggregates.bySubTheme, nameOf);
   }, [aggregates, viewMode]);
+
+  const selectionDetail = useMemo(
+    () =>
+      aggregates
+        ? buildSelectionDetail(hunterState.selectedSectorId, viewMode, {
+            themes,
+            subThemes,
+            byTheme: aggregates.byTheme,
+            bySubTheme: aggregates.bySubTheme,
+          })
+        : null,
+    [hunterState.selectedSectorId, viewMode, aggregates]
+  );
 
   // Live market heat → the layout re-flows when the data window/snapshot changes.
   const heatMap = useMemo(
@@ -309,7 +323,12 @@ export default function App({ provider }: AppProps = {}) {
           <SceneLegend />
         </section>
 
-        <InspectorPanel overview={overview} overviewTitle={viewMode === "P1" ? "主线概览" : "子题材概览"} />
+        <InspectorPanel
+          selection={selectionDetail ?? undefined}
+          isDemo={isDemo}
+          overview={overview}
+          overviewTitle={viewMode === "P1" ? "主线概览" : "子题材概览"}
+        />
       </section>
       <SiteDisclaimer />
     </main>
