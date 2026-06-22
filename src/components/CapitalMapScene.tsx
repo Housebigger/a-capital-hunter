@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import * as THREE from "three";
 import { approach } from "../domain/layoutEasing";
+import type { Point2D } from "../domain/polygonClip";
 import { selectTopLabelsPerGroup, selectTopLabels } from "../domain/labelDensity";
 import { subThemes as subThemeList } from "../domain/subThemeRegistry";
 import { themes as themeList } from "../domain/themeRegistry";
@@ -267,6 +268,36 @@ function AnimatedColumnMesh({
         />
       </mesh>
     </group>
+  );
+}
+
+/* ================================================================== */
+/*  SelectedRing — gold highlight loop on the selected cell             */
+/* ================================================================== */
+
+const SELECT_RING_COLOR = "#ffd54a";
+const SELECT_RING_TAU = 0.2;
+
+/** A gold line-loop just above a cell's polygon, fading in over ~0.2s. */
+function SelectedRing({ polygon, y }: { polygon: ReadonlyArray<Point2D>; y: number }) {
+  const matRef = useRef<THREE.LineBasicMaterial | null>(null);
+  const geometry = useMemo(() => {
+    const pts: number[] = [];
+    for (const p of polygon) pts.push(p.x, y, p.z);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    return g;
+  }, [polygon, y]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  useFrame((_, dt) => {
+    const m = matRef.current;
+    if (m) m.opacity = approach(m.opacity, 1, dt, SELECT_RING_TAU);
+  });
+  if (polygon.length < 3) return null;
+  return (
+    <lineLoop geometry={geometry}>
+      <lineBasicMaterial ref={matRef} color={SELECT_RING_COLOR} transparent opacity={0} />
+    </lineLoop>
   );
 }
 
@@ -968,8 +999,10 @@ function SubThemeBoundaryLines({
  */
 function SubThemeCylinderColumn({
   node,
+  selected = false,
 }: {
   node: SubThemeRenderNode;
+  selected?: boolean;
 }) {
   const { metric, position } = node;
   const rawHeight = Math.max(Math.abs(metric.height), 0.12);
@@ -991,7 +1024,7 @@ function SubThemeCylinderColumn({
       segments={SUBTHEME_COLUMN_SEGMENTS}
       color={metric.color}
       opacity={columnOpacity}
-      emissiveIntensity={0.08}
+      emissiveIntensity={selected ? 0.35 : 0.08}
     />
   );
 }
@@ -1064,9 +1097,18 @@ function SubThemeCapitalMapScene(props: SubThemeCapitalMapSceneProps) {
       {/* Layer 3: SubTheme boundary lines */}
       <SubThemeBoundaryLines voronoiCells={voronoiCells} themeCells={themeCells} />
 
+      {/* Selected sub-theme highlight ring */}
+      {props.selectedSectorId && voronoiCells
+        .filter((c) => c.subThemeId === props.selectedSectorId)
+        .map((c) => <SelectedRing key={`sel-${c.subThemeId}`} polygon={c.polygon} y={THEME_PLATE_THICKNESS + 0.03} />)}
+
       {/* Layer 4: Cylindrical columns */}
       {subThemeNodes.map((node) => (
-        <SubThemeCylinderColumn key={`p2-col-${node.subTheme.id}`} node={node} />
+        <SubThemeCylinderColumn
+          key={`p2-col-${node.subTheme.id}`}
+          node={node}
+          selected={node.subTheme.id === props.selectedSectorId}
+        />
       ))}
 
       {/* Layer 5: SubTheme labels */}
@@ -1155,6 +1197,11 @@ function P3CapitalMapScene(props: P3CapitalMapSceneProps) {
 
       {/* Layer 3: SubTheme boundary lines (golden) */}
       <SubThemeBoundaryLines voronoiCells={voronoiCells} themeCells={themeCells} />
+
+      {/* Selected sub-theme highlight ring */}
+      {props.selectedSectorId && voronoiCells
+        .filter((c) => c.subThemeId === props.selectedSectorId)
+        .map((c) => <SelectedRing key={`sel-${c.subThemeId}`} polygon={c.polygon} y={THEME_PLATE_THICKNESS + 0.03} />)}
 
       {/* Layer 4: Individual stock columns */}
       {stockNodes.filter(n => n.visible).map((node) => (
@@ -1326,6 +1373,12 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
         );
       })}
 
+      {/* Selected theme highlight ring */}
+      {props.selectedSectorId && themeCells
+        .map((cell, i) => ({ cell, id: themeList[i]?.id }))
+        .filter((x) => x.id === props.selectedSectorId)
+        .map((x) => <SelectedRing key={`sel-theme-${x.id}`} polygon={x.cell.polygon} y={THEME_PLATE_THICKNESS + 0.03} />)}
+
       {/* Capital columns */}
       {themeNodes.map((node) => {
         const rawHeight = Math.max(Math.abs(node.metric.height), 0.15);
@@ -1347,7 +1400,7 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
               segments={THEME_COLUMN_SEGMENTS}
               color={node.metric.color}
               opacity={columnOpacity}
-              emissiveIntensity={0.08}
+              emissiveIntensity={props.selectedSectorId === node.theme.id ? 0.35 : 0.08}
             />
             {/* Theme label */}
             <Text
