@@ -1235,9 +1235,11 @@ export interface ThemeCapitalMapSceneProps {
 function ThemePlate({
   cell,
   themeColor,
+  onClick,
 }: {
   cell: ThemeCell;
   themeColor: string;
+  onClick?: () => void;
 }) {
   const shape = useMemo(() => {
     const poly = cell.polygon;
@@ -1261,6 +1263,7 @@ function ThemePlate({
       position-y={THEME_PLATE_THICKNESS / 2}
       rotation={[Math.PI / 2, 0, 0]}
       receiveShadow
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}
     >
       <extrudeGeometry args={[shape, { depth: THEME_PLATE_THICKNESS, bevelEnabled: false }]} />
       <meshStandardMaterial
@@ -1291,6 +1294,7 @@ function ThemeCapitalMapScene(props: ThemeCapitalMapSceneProps) {
             key={theme.id}
             cell={cell}
             themeColor={theme.color}
+            onClick={() => props.onSelectSector(theme.id)}
           />
         );
       })}
