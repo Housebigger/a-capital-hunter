@@ -7,6 +7,8 @@ import type {
   ThemeFilter
 } from "../domain/types";
 import type { CapitalFlowWindowKey } from "../data/capitalFlowDataProvider";
+import { WindowSelector } from "./WindowSelector";
+import { ViewModeSelector } from "./ViewModeSelector";
 
 interface ControlsPanelProps {
   themes: readonly Theme[];
@@ -21,13 +23,6 @@ interface ControlsPanelProps {
   onCapitalStateFilterChange: (filter: CapitalStateFilter) => void;
   onCameraPresetChange: (preset: CameraPreset) => void;
 }
-
-const WINDOW_OPTIONS: readonly { value: CapitalFlowWindowKey; label: string }[] = [
-  { value: "1d", label: "今日" },
-  { value: "5d", label: "近5日" },
-  { value: "10d", label: "近10日" },
-  { value: "20d", label: "近20日" },
-];
 
 const CAMERA_PRESET_OPTIONS: readonly { value: CameraPreset; label: string }[] = [
   { value: "angled", label: "斜视" },
@@ -44,19 +39,7 @@ export function ControlsPanel(props: ControlsPanelProps) {
           <Activity size={16} aria-hidden="true" />
           <span>资金流快照</span>
         </div>
-        <div className="segmented" role="group" aria-label="时间档位">
-          {WINDOW_OPTIONS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              className={props.activeWindow === value ? "active" : ""}
-              aria-pressed={props.activeWindow === value}
-              onClick={() => props.onWindowChange(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <WindowSelector activeWindow={props.activeWindow} onWindowChange={props.onWindowChange} />
       </section>
 
       <section className="control-section">
@@ -64,32 +47,7 @@ export function ControlsPanel(props: ControlsPanelProps) {
           <Layers3 size={16} aria-hidden="true" />
           <span>视图层级</span>
         </div>
-        <div className="segmented" role="group" aria-label="视图层级">
-          <button
-            type="button"
-            className={props.viewMode === "P1" ? "active" : ""}
-            aria-pressed={props.viewMode === "P1"}
-            onClick={() => props.onViewModeChange("P1")}
-          >
-            P1 主线
-          </button>
-          <button
-            type="button"
-            className={props.viewMode === "P2" ? "active" : ""}
-            aria-pressed={props.viewMode === "P2"}
-            onClick={() => props.onViewModeChange("P2")}
-          >
-            P2 子题材
-          </button>
-          <button
-            type="button"
-            className={props.viewMode === "P3" ? "active" : ""}
-            aria-pressed={props.viewMode === "P3"}
-            onClick={() => props.onViewModeChange("P3")}
-          >
-            P3 个股
-          </button>
-        </div>
+        <ViewModeSelector viewMode={props.viewMode} onViewModeChange={props.onViewModeChange} />
       </section>
 
       <section className="control-section">
