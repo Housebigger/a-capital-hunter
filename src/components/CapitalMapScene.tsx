@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import * as THREE from "three";
 import { approach } from "../domain/layoutEasing";
+import { selectTopLabelsPerGroup, selectTopLabels } from "../domain/labelDensity";
 import { subThemes as subThemeList } from "../domain/subThemeRegistry";
 import { themes as themeList } from "../domain/themeRegistry";
 import type {
@@ -19,6 +20,21 @@ import type { ThemeCell } from "../domain/themeVoronoiLayoutEngine";
 import type { ThemeRenderNode } from "../domain/themeRenderNodes";
 import type { SubThemeRenderNode } from "../domain/subThemeRenderNodes";
 import type { StockRenderNode3 } from "../domain/stockRenderNodes";
+
+/* ================================================================== */
+/*  Label-density helpers                                              */
+/* ================================================================== */
+
+function subThemeWeightsForCells(
+  cells: ReadonlyArray<{ subThemeId: string }>,
+  stockNodes: ReadonlyArray<StockRenderNode3>
+): { id: string; weight: number }[] {
+  const weight = new Map<string, number>();
+  for (const n of stockNodes) {
+    weight.set(n.subTheme.id, Math.max(weight.get(n.subTheme.id) ?? 0, Math.abs(n.metric.height)));
+  }
+  return cells.map((c) => ({ id: c.subThemeId, weight: weight.get(c.subThemeId) ?? 0 }));
+}
 
 /* ================================================================== */
 /*  Constants                                                          */
@@ -1052,22 +1068,32 @@ function SubThemeCapitalMapScene(props: SubThemeCapitalMapSceneProps) {
       ))}
 
       {/* Layer 5: SubTheme labels */}
-      {subThemeNodes.map((node) => (
-        <Text
-          key={`p2-label-${node.subTheme.id}`}
-          position={[node.position.x, THEME_PLATE_THICKNESS + 0.02, node.position.z]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={0.18}
-          color="#ffffff"
-          anchorX="center"
-          anchorY="middle"
-          maxWidth={1.6}
-          outlineWidth={0.02}
-          outlineColor="#000000"
-        >
-          {node.subTheme.shortName}
-        </Text>
-      ))}
+      {(() => {
+        const allowed = props.compact
+          ? selectTopLabels(
+              subThemeNodes.map((n) => ({ id: n.subTheme.id, weight: Math.abs(n.metric.height) })),
+              10
+            )
+          : null;
+        return subThemeNodes
+          .filter((node) => allowed === null || allowed.has(node.subTheme.id))
+          .map((node) => (
+            <Text
+              key={`p2-label-${node.subTheme.id}`}
+              position={[node.position.x, THEME_PLATE_THICKNESS + 0.02, node.position.z]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              fontSize={0.18}
+              color="#ffffff"
+              anchorX="center"
+              anchorY="middle"
+              maxWidth={1.6}
+              outlineWidth={0.02}
+              outlineColor="#000000"
+            >
+              {node.subTheme.shortName}
+            </Text>
+          ));
+      })()}
     </group>
   );
 }
@@ -1135,53 +1161,56 @@ function P3CapitalMapScene(props: P3CapitalMapSceneProps) {
 
       {/* Layer 5: Stock labels (show shortName for top stocks per SubTheme) */}
       {(() => {
-        // Group by SubTheme, show label for top 3 by absolute metric height
-        const bySubTheme = new Map<string, StockRenderNode3[]>();
-        for (const n of stockNodes.filter(n => n.visible)) {
-          const arr = bySubTheme.get(n.subTheme.id) ?? [];
-          arr.push(n);
-          bySubTheme.set(n.subTheme.id, arr);
-        }
-        const labeled: StockRenderNode3[] = [];
-        for (const [, nodes] of bySubTheme) {
-          nodes.sort((a, b) => Math.abs(b.metric.height) - Math.abs(a.metric.height));
-          labeled.push(...nodes.slice(0, 3));
-        }
-        return labeled.map((node) => (
-          <Text
-            key={`p3-label-${node.stock.id}`}
-            position={[node.position.x, THEME_PLATE_THICKNESS + Math.abs(node.metric.height) + 0.08, node.position.z]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={0.12}
-            color="#f3f6fa"
-            outlineWidth={0.012}
-            outlineColor="#0b0f14"
-            anchorX="center"
-            anchorY="middle"
-            maxWidth={0.9}
-          >
-            {node.stock.shortName}
-          </Text>
-        ));
+        const visible = stockNodes.filter((n) => n.visible);
+        const perGroup = props.compact ? 1 : 3;
+        const labeledIds = selectTopLabelsPerGroup(
+          visible.map((n) => ({ id: n.stock.id, subThemeId: n.subTheme.id, weight: Math.abs(n.metric.height) })),
+          perGroup
+        );
+        return visible
+          .filter((node) => labeledIds.has(node.stock.id))
+          .map((node) => (
+            <Text
+              key={`p3-label-${node.stock.id}`}
+              position={[node.position.x, THEME_PLATE_THICKNESS + Math.abs(node.metric.height) + 0.08, node.position.z]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              fontSize={0.12}
+              color="#f3f6fa"
+              outlineWidth={0.012}
+              outlineColor="#0b0f14"
+              anchorX="center"
+              anchorY="middle"
+              maxWidth={0.9}
+            >
+              {node.stock.shortName}
+            </Text>
+          ));
       })()}
 
       {/* Layer 6: SubTheme name labels at cell centers */}
-      {voronoiCells.map((cell) => (
-        <Text
-          key={`p3-sublabel-${cell.subThemeId}`}
-          position={[cell.center.x, THEME_PLATE_THICKNESS + 0.02, cell.center.z]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={0.13}
-          color="#b0bec5"
-          anchorX="center"
-          anchorY="middle"
-          maxWidth={1.2}
-          outlineWidth={0.01}
-          outlineColor="#000000"
-        >
-          {subThemeNameMap.get(cell.subThemeId) ?? cell.subThemeId}
-        </Text>
-      ))}
+      {(() => {
+        const allowed = props.compact
+          ? selectTopLabels(subThemeWeightsForCells(voronoiCells, stockNodes), 10)
+          : null; // null = show all (desktop, unchanged)
+        return voronoiCells
+          .filter((cell) => allowed === null || allowed.has(cell.subThemeId))
+          .map((cell) => (
+            <Text
+              key={`p3-sublabel-${cell.subThemeId}`}
+              position={[cell.center.x, THEME_PLATE_THICKNESS + 0.02, cell.center.z]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              fontSize={0.13}
+              color="#b0bec5"
+              anchorX="center"
+              anchorY="middle"
+              maxWidth={1.2}
+              outlineWidth={0.01}
+              outlineColor="#000000"
+            >
+              {subThemeNameMap.get(cell.subThemeId) ?? cell.subThemeId}
+            </Text>
+          ));
+      })()}
     </group>
   );
 }
