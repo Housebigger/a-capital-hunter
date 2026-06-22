@@ -148,15 +148,34 @@ SQLite）。
 sync --backfill 20  →  export_static_data.py  →  build:pages  →  deploy-pages
 ```
 
-一次性配置（需你自己完成）：
+### 一次性配置（在 GitHub 网页端各做一次）
 
-1. **添加 token 密钥：** Settings → Secrets and variables → Actions → New
-   repository secret → 名称 `TUSHARE_TOKEN`，值为你的 tushare.pro token。
-2. **启用 Pages：** Settings → Pages → Build and deployment → Source：
-   **GitHub Actions**。
-3. **首次部署：** Actions 页 →《Deploy to GitHub Pages》→《Run workflow》（或
-   等待定时任务）。站点上线于
-   `https://housebigger.github.io/a-capital-hunter/`。
+**1. 添加 `TUSHARE_TOKEN` 仓库密钥** —— 让 Action 能取数据，又不暴露你的 token。
+
+- 在 GitHub 打开仓库 → **Settings** → 左侧 **Secrets and variables** → **Actions**。
+- 在 **Secrets** 标签页点 **New repository secret**。
+- **Name（名称）：** `TUSHARE_TOKEN`（必须完全一致——工作流按这个名字读取）。
+- **Secret（值）：** 粘贴你在 <https://tushare.pro/user/token> 的 token。
+- 点 **Add secret**。它加密存储，仅在 Action 运行时可见，绝不下发到浏览器。
+
+**2. 以 GitHub Actions 为源启用 Pages** —— 让构建产物得以发布。
+
+- 仓库 → **Settings** → 左侧 **Pages**。
+- 在 **Build and deployment → Source** 选 **GitHub Actions**（不是 "Deploy from a
+  branch"）。无需选择分支或 `/docs` 目录。
+- 权限无需手动改——`deploy.yml` 已声明 `pages: write` + `id-token: write`。
+
+**3. 触发首次部署。**
+
+- 仓库 → **Actions** 标签页 → **Deploy to GitHub Pages** 工作流 → **Run workflow**
+  （或直接推送到 `main`，或等工作日定时任务）。
+- 在 **Actions** 页看运行状态；变绿后站点上线于
+  **`https://housebigger.github.io/a-capital-hunter/`**。
+- 随后把该网址粘到分享卡片调试器（如 <https://www.opengraph.xyz/>）确认 Open
+  Graph 预览正常。
+
+> 若运行在同步步骤失败，最常见的原因是 `TUSHARE_TOKEN` 缺失/错误或 Tushare 积分
+> 不足（见上文「权限说明」）——Action 日志会指出具体原因。
 
 本地自行构建：
 
