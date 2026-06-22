@@ -111,11 +111,13 @@ export function HunterScene(props: HunterSceneProps) {
     >
       <color attach="background" args={["#10151b"]} />
       <ambientLight intensity={0.7} />
+      {/* Desktop keeps three.js's default 512 shadow map (unchanged); mobile
+          uses a lighter 256 map to cheapen the shadow pass. */}
       <directionalLight
         position={[8, 12, 8]}
         intensity={1.2}
         castShadow
-        shadow-mapSize={props.compact ? [512, 512] : [1024, 1024]}
+        shadow-mapSize={props.compact ? [256, 256] : undefined}
       />
       <CapitalMapScene {...sceneProps} />
       <OrbitControls
