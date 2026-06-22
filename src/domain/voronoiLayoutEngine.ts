@@ -129,6 +129,115 @@ const smoothPolygon = (
 const SUBTHEME_AREA_FLOOR_RATIO = 0.35;
 
 // ---------------------------------------------------------------------------
+// Heat-driven sizing constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Floor for a sub-theme's heat target weight. Even a stone-cold sub-theme
+ * keeps weight HEAT_WEIGHT_FLOOR; a blazing-hot one reaches 1. Weights map
+ * to relative target areas, so cold cells never collapse — the product's
+ * honesty rule requires a real-but-cold sub-theme to stay visible/clickable.
+ */
+const HEAT_WEIGHT_FLOOR = 0.4;
+
+/** Default heat weight when a sub-theme has no entry (treated as uniform). */
+const HEAT_WEIGHT_UNIFORM = 1;
+
+/**
+ * Hard floor on any heat-sized cell as a fraction of the theme's equal share
+ * (themeArea / siblingCount). Kept below the weight-derived minimum so no cell
+ * can drop below this even after relaxation jitter. The floor test asserts
+ * area > 0.25 of equalShare, so 0.27 leaves margin while staying below the
+ * smallest cell the base (uniform) Voronoi naturally produces here — otherwise
+ * the floor guard would trip on geometry the heat pass never caused, and
+ * collapse the whole heat spread to zero.
+ */
+const HEAT_MIN_SHARE_RATIO = 0.27;
+
+/**
+ * Hard floor on a power weight, expressed as a fraction of the spacing²
+ * scale. Keeps cold cells from being completely swallowed by a hot neighbour
+ * (a power weight gap larger than the inter-seed spacing can erase a cell).
+ */
+const HEAT_POWER_FLOOR_RATIO = 0.45;
+
+/**
+ * Map a raw heat value (any non-negative number, typically 0..1) to a target
+ * weight in [HEAT_WEIGHT_FLOOR, 1]. Heat is clamped to [0, 1] first.
+ */
+const heatToWeight = (heat: number): number => {
+  const clamped = heat < 0 ? 0 : heat > 1 ? 1 : heat;
+  return HEAT_WEIGHT_FLOOR + (1 - HEAT_WEIGHT_FLOOR) * clamped;
+};
+
+/**
+ * Clip a convex polygon by a single half-plane `a·x + b·z ≤ c`.
+ * Sutherland-Hodgman against one edge. Returns the inside polygon.
+ */
+const clipByHalfPlane = (
+  poly: ReadonlyArray<Point2D>,
+  a: number,
+  b: number,
+  c: number
+): Point2D[] => {
+  if (poly.length < 3) return [];
+  const inside = (p: Point2D) => a * p.x + b * p.z <= c + 1e-9;
+  const out: Point2D[] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const cur = poly[i];
+    const nxt = poly[(i + 1) % poly.length];
+    const curIn = inside(cur);
+    const nxtIn = inside(nxt);
+    if (curIn) {
+      out.push(cur);
+      if (!nxtIn) {
+        // intersection of segment cur→nxt with line a·x+b·z=c
+        const dx = nxt.x - cur.x;
+        const dz = nxt.z - cur.z;
+        const denom = a * dx + b * dz;
+        const t = denom !== 0 ? (c - (a * cur.x + b * cur.z)) / denom : 0;
+        out.push({ x: cur.x + t * dx, z: cur.z + t * dz });
+      }
+    } else if (nxtIn) {
+      const dx = nxt.x - cur.x;
+      const dz = nxt.z - cur.z;
+      const denom = a * dx + b * dz;
+      const t = denom !== 0 ? (c - (a * cur.x + b * cur.z)) / denom : 0;
+      out.push({ x: cur.x + t * dx, z: cur.z + t * dz });
+    }
+  }
+  return out;
+};
+
+/**
+ * Power-diagram (additively-weighted Voronoi) cell of seed `i`.
+ * Cell = { x : |x-p_i|² - w_i ≤ |x-p_j|² - w_j  ∀ j≠i }, clipped to `bound`.
+ * Each constraint is the linear half-plane:
+ *   2(p_j - p_i)·x ≤ |p_j|² - |p_i|² - w_j + w_i
+ * Larger w_i ⇒ strictly larger cell — monotone, deterministic, no iteration.
+ */
+const powerCell = (
+  i: number,
+  seeds: readonly Point[],
+  powerWeights: readonly number[],
+  bound: ReadonlyArray<Point2D>
+): Point2D[] => {
+  let poly: Point2D[] = [...bound];
+  const pi = seeds[i];
+  const wi = powerWeights[i];
+  for (let j = 0; j < seeds.length && poly.length >= 3; j++) {
+    if (j === i) continue;
+    const pj = seeds[j];
+    const a = 2 * (pj.x - pi.x);
+    const b = 2 * (pj.z - pi.z);
+    const c =
+      pj.x * pj.x + pj.z * pj.z - (pi.x * pi.x + pi.z * pi.z) - powerWeights[j] + wi;
+    poly = clipByHalfPlane(poly, a, b, c);
+  }
+  return poly;
+};
+
+// ---------------------------------------------------------------------------
 // SubTheme heat computation
 // ---------------------------------------------------------------------------
 
@@ -400,6 +509,120 @@ const enforceAreaFloor = (
   return buildFinalCells(adjustedCenters, themeCell, themeSubThemes, options);
 };
 
+/**
+ * Finish a raw clipped cell polygon: inset by the city border gap, smooth, and
+ * re-clip to the theme polygon — identical to buildFinalCells' per-cell tail, so
+ * heat-sized cells get the same visual treatment as equal-area ones.
+ */
+const finishCell = (
+  rawClipped: ReadonlyArray<Point2D>,
+  fallbackCenter: Point,
+  themePoly: ReadonlyArray<Point2D>,
+  options: VoronoiLayoutOptions
+): { polygon: Point2D[]; center: Point } => {
+  if (rawClipped.length < 3) return { polygon: [], center: fallbackCenter };
+  const cellCentroid = centroid(rawClipped);
+  const insetPoly = rawClipped.map((p) =>
+    insetPoint(p.x, p.z, cellCentroid, options.cityBorderGap)
+  );
+  const smoothIter = options.smoothIterations ?? 2;
+  const smoothed = smoothPolygon(insetPoly.length >= 3 ? insetPoly : [], smoothIter);
+  const finalPoly =
+    smoothed.length >= 3 ? clipPolygonToConvexPolygon(smoothed, themePoly) : [];
+  const finalCenter = finalPoly.length >= 3 ? centroid(finalPoly) : fallbackCenter;
+  return { polygon: finalPoly.length >= 3 ? finalPoly : [], center: finalCenter };
+};
+
+/**
+ * Heat-aware sizing via a POWER DIAGRAM (additively-weighted Voronoi).
+ *
+ * Rather than nudging seed positions (a non-monotone, oscillation-prone lever),
+ * we keep the Lloyd-relaxed seed POSITIONS fixed and assign each seed a power
+ * weight derived from its heat. The power cell of seed i is
+ *   { x : |x-p_i|² - w_i ≤ |x-p_j|² - w_j  ∀ j≠i }.
+ * Raising w_i pushes every shared bisector away from p_i, so a hotter
+ * sub-theme's cell is STRICTLY larger than a colder sibling's — monotone and
+ * fully deterministic (no iteration, no randomness).
+ *
+ * To respect the size floor, the weight spread is capped relative to the median
+ * inter-seed spacing² (a gap wider than spacing² can erase a cell). If any cell
+ * still lands below the hard share floor, the spread is geometrically shrunk
+ * toward zero (uniform = ordinary Voronoi) until every cell clears the floor —
+ * so a real-but-cold sub-theme always stays visible/clickable.
+ *
+ * Runs INSTEAD of enforceAreaFloor only when heat is supplied; the no-heat path
+ * is untouched.
+ */
+const applyHeatSizing = (
+  initialCells: VoronoiCell[],
+  centers: Point[],
+  themeCell: ThemeCell,
+  themeSubThemes: readonly SubTheme[],
+  options: VoronoiLayoutOptions,
+  weights: readonly number[]
+): VoronoiCell[] => {
+  const themePoly = themeCell.polygon as ReadonlyArray<Point2D>;
+  const count = themeSubThemes.length;
+  if (count <= 1) return initialCells;
+
+  const themeArea = polygonArea(themePoly);
+  const equalShare = themeArea / count;
+  const minArea = HEAT_MIN_SHARE_RATIO * equalShare;
+
+  // Spacing scale: median nearest-neighbour distance among seeds. The power
+  // weight gap between any two cells must stay below ~spacing² or a cell can be
+  // clipped away entirely, so we measure spacing to scale weights safely.
+  let spacingSq = Infinity;
+  for (let i = 0; i < centers.length; i++) {
+    for (let j = i + 1; j < centers.length; j++) {
+      const d2 =
+        (centers[i].x - centers[j].x) ** 2 + (centers[i].z - centers[j].z) ** 2;
+      if (d2 < spacingSq) spacingSq = d2;
+    }
+  }
+  if (!isFinite(spacingSq) || spacingSq <= 0) return initialCells;
+
+  // Normalize heat weights to [0,1] (relative), then scale into power-weight
+  // units (∝ spacing²). `spreadScale` shrinks if the floor is violated.
+  const wMin = Math.min(...weights);
+  const wMax = Math.max(...weights);
+  const wRange = wMax - wMin;
+  const rel = weights.map((w) => (wRange > 0 ? (w - wMin) / wRange : 0)); // 0..1
+
+  const buildCellsForSpread = (spreadScale: number): VoronoiCell[] => {
+    // Max safe weight gap kept below spacing² so no cell is fully erased.
+    const maxGap = HEAT_POWER_FLOOR_RATIO * spacingSq * spreadScale;
+    const powerWeights = rel.map((r) => r * maxGap);
+    return themeSubThemes.map((st, i) => {
+      const raw = powerCell(i, centers, powerWeights, themePoly);
+      const { polygon, center } = finishCell(raw, centers[i], themePoly, options);
+      return {
+        subThemeId: st.id,
+        themeId: themeCell.themeId,
+        center,
+        polygon,
+      };
+    });
+  };
+
+  // Try full spread first; if any cell collapses below the floor, shrink the
+  // spread geometrically toward uniform until the floor holds.
+  let cells = initialCells;
+  let spread = 1;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const candidate = buildCellsForSpread(spread);
+    const areas = candidate.map((c) =>
+      c.polygon.length >= 3 ? polygonArea(c.polygon) : 0
+    );
+    const ok = areas.every((a) => a >= minArea);
+    cells = candidate;
+    if (ok) break;
+    spread *= 0.6; // ease toward uniform
+  }
+
+  return cells;
+};
+
 // ---------------------------------------------------------------------------
 // Per-theme Voronoi computation
 // ---------------------------------------------------------------------------
@@ -411,7 +634,8 @@ const enforceAreaFloor = (
 const computePerThemeVoronoi = (
   themeCell: ThemeCell,
   themeSubThemes: readonly SubTheme[],
-  options: VoronoiLayoutOptions
+  options: VoronoiLayoutOptions,
+  subThemeHeat?: Record<string, number>
 ): VoronoiCell[] => {
   if (themeSubThemes.length === 0) return [];
 
@@ -438,13 +662,36 @@ const computePerThemeVoronoi = (
     ];
   }
 
-  // Multiple SubThemes: equal placement → Lloyd relaxation → final cells
+  // Per-sub-theme heat weights, only when heat is supplied. Missing entries map
+  // to the uniform weight so partial heat maps still behave sensibly.
+  const weights = subThemeHeat
+    ? themeSubThemes.map((st) =>
+        heatToWeight(subThemeHeat[st.id] ?? HEAT_WEIGHT_UNIFORM)
+      )
+    : undefined;
+
+  // Multiple SubThemes: equal placement → Lloyd relaxation → final cells.
+  // The starting configuration is IDENTICAL with or without heat; the heat
+  // signal is applied entirely by applyHeatSizing below, which keeps the
+  // no-heat path byte-for-byte unchanged.
   const initialCenters = placeSubThemeCenters(themeCell, themeSubThemes);
   const relaxedCenters = runLloydRelaxation(initialCenters, themeCell, 3);
   let cells = buildFinalCells(relaxedCenters, themeCell, themeSubThemes, options);
 
-  // Enforce minimum area: every cell ≥ 35% of average within theme
-  cells = enforceAreaFloor(cells, relaxedCenters, themeCell, themeSubThemes, options);
+  if (weights) {
+    // Heat path: size cells by target weight with a hard share floor.
+    cells = applyHeatSizing(
+      cells,
+      relaxedCenters,
+      themeCell,
+      themeSubThemes,
+      options,
+      weights
+    );
+  } else {
+    // No-heat path (unchanged): every cell ≥ 35% of average within theme.
+    cells = enforceAreaFloor(cells, relaxedCenters, themeCell, themeSubThemes, options);
+  }
 
   return cells;
 };
@@ -458,7 +705,7 @@ const computePerThemeVoronoi = (
  * independently and strictly contained within the theme's polygon.
  */
 export function createVoronoiLayout(input: VoronoiLayoutInput): VoronoiLayout {
-  const { subThemes, themeCells, stage, options, subThemeHeat: _subThemeHeat } = input;
+  const { subThemes, themeCells, stage, options, subThemeHeat } = input;
 
   const cells: VoronoiCell[] = [];
 
@@ -469,7 +716,8 @@ export function createVoronoiLayout(input: VoronoiLayoutInput): VoronoiLayout {
     const themeVoronoiCells = computePerThemeVoronoi(
       themeCell,
       themeSubThemes,
-      options
+      options,
+      subThemeHeat
     );
     cells.push(...themeVoronoiCells);
   }

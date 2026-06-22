@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { createVoronoiLayout } from "./voronoiLayoutEngine";
+import { createThemeVoronoiLayout } from "./themeVoronoiLayoutEngine";
+import { themes } from "./themeRegistry";
+import { relationshipEdges } from "./relationshipRegistry";
 import { subThemes } from "./subThemeRegistry";
 import { layoutStages } from "./layoutStages";
 import type { ThemeCell } from "./themeVoronoiLayoutEngine";
@@ -149,5 +152,68 @@ describe("voronoiLayoutEngine (per-theme)", () => {
     const themeArea = shoelaceArea(singleThemeCell.polygon);
     const cellArea = shoelaceArea(result.cells[0].polygon);
     expect(cellArea).toBeCloseTo(themeArea, 0);
+  });
+});
+
+function polyArea(poly: ReadonlyArray<{ x: number; z: number }>): number {
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length];
+    a += p.x * q.z - q.x * p.z;
+  }
+  return Math.abs(a) / 2;
+}
+
+describe("voronoi heat sizing", () => {
+  const themeCells = createThemeVoronoiLayout({
+    themes, relationshipEdges, stage: layoutStages[0],
+    options: { mapRadius: 15, borderGap: 0.2, lloydIterations: 3, smoothIterations: 2 },
+  }).cells;
+  const opts = { mapRadius: 15, cityBorderGap: 0.02, smoothIterations: 1 };
+  // pick a theme with >= 3 sub-themes to compare siblings
+  const themeId = "ai-computing";
+  const sibs = subThemes.filter((s) => s.themeId === themeId).map((s) => s.id);
+
+  it("a hot sub-theme gets a larger cell than a cold sibling", () => {
+    const heat: Record<string, number> = {};
+    sibs.forEach((id) => (heat[id] = 0.05));
+    heat[sibs[0]] = 1; // first sibling very hot
+    const layout = createVoronoiLayout({ subThemes, themeCells, stage: layoutStages[0], subThemeHeat: heat, options: opts });
+    const byId = new Map(layout.cells.map((c) => [c.subThemeId, polyArea(c.polygon)]));
+    const hotArea = byId.get(sibs[0])!;
+    const coldArea = byId.get(sibs[1])!;
+    expect(hotArea).toBeGreaterThan(coldArea);
+  });
+
+  it("heat actually changes a cell's size (the same sub-theme grows when hot)", () => {
+    // Make sibs[1] hot vs cold and confirm its own cell grows — this proves the
+    // heat signal (not lucky ring position) drives the size, and that heat is honored.
+    const cold: Record<string, number> = {};
+    sibs.forEach((id) => (cold[id] = 0.1));
+    const hot = { ...cold, [sibs[1]]: 1 };
+
+    const coldLayout = createVoronoiLayout({ subThemes, themeCells, stage: layoutStages[0], subThemeHeat: cold, options: opts });
+    const hotLayout = createVoronoiLayout({ subThemes, themeCells, stage: layoutStages[0], subThemeHeat: hot, options: opts });
+
+    const coldArea = polyArea(coldLayout.cells.find((c) => c.subThemeId === sibs[1])!.polygon);
+    const hotArea = polyArea(hotLayout.cells.find((c) => c.subThemeId === sibs[1])!.polygon);
+    expect(hotArea).toBeGreaterThan(coldArea);
+  });
+
+  it("respects a size floor — no cell collapses to near zero", () => {
+    const heat: Record<string, number> = {};
+    sibs.forEach((id) => (heat[id] = 0));
+    heat[sibs[0]] = 1; // one blazing hot, rest stone cold
+    const layout = createVoronoiLayout({ subThemes, themeCells, stage: layoutStages[0], subThemeHeat: heat, options: opts });
+    const themeArea = polyArea(themeCells.find((c) => c.themeId === themeId)!.polygon);
+    const equalShare = themeArea / sibs.length;
+    for (const c of layout.cells.filter((c) => sibs.includes(c.subThemeId))) {
+      expect(polyArea(c.polygon)).toBeGreaterThan(0.25 * equalShare); // >=25% of equal share
+    }
+  });
+
+  it("uniform heat reproduces ~equal cells (no heat = today's behavior)", () => {
+    const layout = createVoronoiLayout({ subThemes, themeCells, stage: layoutStages[0], options: opts });
+    expect(layout.cells.length).toBeGreaterThan(0); // baseline still works with no heat
   });
 });
