@@ -174,15 +174,43 @@ describe("voronoi heat sizing", () => {
   const themeId = "ai-computing";
   const sibs = subThemes.filter((s) => s.themeId === themeId).map((s) => s.id);
 
-  it("a hot sub-theme gets a larger cell than a cold sibling", () => {
+  // Base (no-heat) cell areas — used to pick the HARD reorder case below.
+  const baseArea = (() => {
+    const base = createVoronoiLayout({ subThemes, themeCells, stage: layoutStages[0], options: opts });
+    return new Map(base.cells.map((c) => [c.subThemeId, polyArea(c.polygon)]));
+  })();
+
+  it("reorders the HARD case — smallest base cell hot beats largest base cell cold", () => {
+    // Heat must overcome base geometry: make the naturally-SMALLEST sibling hot
+    // and the naturally-LARGEST sibling cold. A coincidental pass is impossible.
+    const sorted = [...sibs].sort((a, b) => baseArea.get(a)! - baseArea.get(b)!);
+    const smallest = sorted[0];
+    const largest = sorted[sorted.length - 1];
+    expect(baseArea.get(smallest)!).toBeLessThan(baseArea.get(largest)!); // sanity: distinct
+
     const heat: Record<string, number> = {};
-    sibs.forEach((id) => (heat[id] = 0.05));
-    heat[sibs[0]] = 1; // first sibling very hot
+    sibs.forEach((id) => (heat[id] = 0.5));
+    heat[smallest] = 1; // blazing hot
+    heat[largest] = 0; // stone cold
     const layout = createVoronoiLayout({ subThemes, themeCells, stage: layoutStages[0], subThemeHeat: heat, options: opts });
-    const byId = new Map(layout.cells.map((c) => [c.subThemeId, polyArea(c.polygon)]));
-    const hotArea = byId.get(sibs[0])!;
-    const coldArea = byId.get(sibs[1])!;
-    expect(hotArea).toBeGreaterThan(coldArea);
+    const area = new Map(layout.cells.map((c) => [c.subThemeId, polyArea(c.polygon)]));
+    expect(area.get(smallest)!).toBeGreaterThan(area.get(largest)!);
+  });
+
+  it("orders cells by heat for EVERY sibling pair (no coincidental passes)", () => {
+    // Distinct heat ramp across all siblings; higher heat must yield larger area
+    // for every pair — the property a single coincidental test cannot fake.
+    const heat: Record<string, number> = {};
+    sibs.forEach((id, k) => (heat[id] = sibs.length > 1 ? k / (sibs.length - 1) : 1));
+    const layout = createVoronoiLayout({ subThemes, themeCells, stage: layoutStages[0], subThemeHeat: heat, options: opts });
+    const area = new Map(layout.cells.map((c) => [c.subThemeId, polyArea(c.polygon)]));
+    for (const a of sibs) {
+      for (const b of sibs) {
+        if (heat[a] > heat[b]) {
+          expect(area.get(a)!).toBeGreaterThan(area.get(b)!);
+        }
+      }
+    }
   });
 
   it("heat actually changes a cell's size (the same sub-theme grows when hot)", () => {

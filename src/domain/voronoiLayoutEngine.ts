@@ -145,21 +145,47 @@ const HEAT_WEIGHT_UNIFORM = 1;
 
 /**
  * Hard floor on any heat-sized cell as a fraction of the theme's equal share
- * (themeArea / siblingCount). Kept below the weight-derived minimum so no cell
- * can drop below this even after relaxation jitter. The floor test asserts
- * area > 0.25 of equalShare, so 0.27 leaves margin while staying below the
- * smallest cell the base (uniform) Voronoi naturally produces here — otherwise
- * the floor guard would trip on geometry the heat pass never caused, and
- * collapse the whole heat spread to zero.
+ * (themeArea / siblingCount). Used only by the post-solve safety net below; with
+ * floored area TARGETS the iterative solver keeps every cell comfortably above
+ * this, so the net should never trigger. The floor test asserts area > 0.25 of
+ * equalShare, so 0.27 leaves margin.
  */
 const HEAT_MIN_SHARE_RATIO = 0.27;
 
 /**
- * Hard floor on a power weight, expressed as a fraction of the spacing²
- * scale. Keeps cold cells from being completely swallowed by a hot neighbour
- * (a power weight gap larger than the inter-seed spacing can erase a cell).
+ * Floor on each cell's TARGET area as a fraction of the theme's equal share.
+ * Because heat-weights live in [0.4, 1], the raw smallest target is already
+ * 0.4/Σ of the theme area; this floor (≈ equalShare × 0.3) guarantees that even
+ * with many hot siblings the coldest target stays visible — and, being a target
+ * the solver drives toward, it doubles as the practical size floor. Kept below
+ * HEAT_MIN_SHARE_RATIO's intent so the safety net has headroom.
  */
-const HEAT_POWER_FLOOR_RATIO = 0.45;
+const HEAT_TARGET_FLOOR_RATIO = 0.3;
+
+/** Max power-weight iterations in the area-targeting solve. */
+const HEAT_SOLVE_ITERATIONS = 60;
+
+/**
+ * Damped additive step (in area units) applied to each power weight per
+ * iteration: pw_i += STEP · (target_i − area_i). 1.0 converges well here.
+ */
+const HEAT_SOLVE_STEP = 1.0;
+
+/**
+ * Early-exit tolerance: stop when the worst |area − target| is below this
+ * fraction of equalShare.
+ */
+const HEAT_SOLVE_TOLERANCE = 0.02;
+
+/**
+ * Loose per-iteration cap on the absolute power-weight spread, as a multiple of
+ * the theme's bounding-box diagonal². The largest weight gap that does useful
+ * work is on the order of the theme extent² (enough for one cell to absorb a
+ * neighbour); this cap sits above that so it only bounds runaway transients and
+ * never limits sibling reordering. Cold-cell visibility is guaranteed by the
+ * floored area TARGETS, not by this cap.
+ */
+const HEAT_SPREAD_CAP_RATIO = 4;
 
 /**
  * Map a raw heat value (any non-negative number, typically 0..1) to a target
@@ -534,21 +560,27 @@ const finishCell = (
 };
 
 /**
- * Heat-aware sizing via a POWER DIAGRAM (additively-weighted Voronoi).
+ * Heat-aware sizing as a WEIGHTED VORONOI TREEMAP over a POWER DIAGRAM
+ * (additively-weighted Voronoi).
  *
- * Rather than nudging seed positions (a non-monotone, oscillation-prone lever),
- * we keep the Lloyd-relaxed seed POSITIONS fixed and assign each seed a power
- * weight derived from its heat. The power cell of seed i is
+ * Seed POSITIONS stay fixed at the Lloyd-relaxed centers (this preserves the
+ * relationship anchor — moving seeds oscillates and is non-monotone). Only the
+ * power WEIGHTS change. The power cell of seed i is
  *   { x : |x-p_i|² - w_i ≤ |x-p_j|² - w_j  ∀ j≠i }.
- * Raising w_i pushes every shared bisector away from p_i, so a hotter
- * sub-theme's cell is STRICTLY larger than a colder sibling's — monotone and
- * fully deterministic (no iteration, no randomness).
  *
- * To respect the size floor, the weight spread is capped relative to the median
- * inter-seed spacing² (a gap wider than spacing² can erase a cell). If any cell
- * still lands below the hard share floor, the spread is geometrically shrunk
- * toward zero (uniform = ordinary Voronoi) until every cell clears the floor —
- * so a real-but-cold sub-theme always stays visible/clickable.
+ * Single-shot weight assignment is monotone PER-CELL (a sub-theme grows when it
+ * heats up) but does NOT reorder siblings against the ~5× area variance the base
+ * Lloyd geometry already carries — so a blazing-hot cell could still end up
+ * smaller than a stone-cold one. Instead we ITERATE the weights to drive each
+ * cell's area to a TARGET proportional to its heat-weight (Aurenhammer-style
+ * weighted area diagram, Nocaj–Brandes flavour):
+ *   target_i = themeArea · weight_i / Σ weight, floored at HEAT_TARGET_FLOOR_RATIO
+ *   · equalShare and renormalized; then
+ *   pw_i += STEP · (target_i − area_i)   (damped additive, area units)
+ * with a per-iteration gauge fix (subtract min pw) and an anti-erasure spread
+ * cap. Floored targets are ordered by heat, so once areas approach targets every
+ * sibling pair is ordered by heat — monotone ACROSS siblings, deterministic, no
+ * randomness.
  *
  * Runs INSTEAD of enforceAreaFloor only when heat is supplied; the no-heat path
  * is untouched.
@@ -566,34 +598,122 @@ const applyHeatSizing = (
   if (count <= 1) return initialCells;
 
   const themeArea = polygonArea(themePoly);
+  if (!(themeArea > 0)) return initialCells;
   const equalShare = themeArea / count;
-  const minArea = HEAT_MIN_SHARE_RATIO * equalShare;
 
-  // Spacing scale: median nearest-neighbour distance among seeds. The power
-  // weight gap between any two cells must stay below ~spacing² or a cell can be
-  // clipped away entirely, so we measure spacing to scale weights safely.
-  let spacingSq = Infinity;
+  // lengthScale (√ of the MINIMUM pairwise seed distance) sets the units for the
+  // additive area→weight conversion: a power cell's area moves ~ (edge length ×
+  // Δweight), so dividing an area error by a length keeps the step well-scaled
+  // across themes of very different size and seed spacing.
+  let minDistSq = Infinity;
   for (let i = 0; i < centers.length; i++) {
     for (let j = i + 1; j < centers.length; j++) {
       const d2 =
         (centers[i].x - centers[j].x) ** 2 + (centers[i].z - centers[j].z) ** 2;
-      if (d2 < spacingSq) spacingSq = d2;
+      if (d2 < minDistSq) minDistSq = d2;
     }
   }
-  if (!isFinite(spacingSq) || spacingSq <= 0) return initialCells;
+  if (!isFinite(minDistSq) || minDistSq <= 0) return initialCells;
+  const lengthScale = Math.sqrt(minDistSq);
 
-  // Normalize heat weights to [0,1] (relative), then scale into power-weight
-  // units (∝ spacing²). `spreadScale` shrinks if the floor is violated.
-  const wMin = Math.min(...weights);
-  const wMax = Math.max(...weights);
-  const wRange = wMax - wMin;
-  const rel = weights.map((w) => (wRange > 0 ? (w - wMin) / wRange : 0)); // 0..1
+  // Loose absolute cap on the weight spread, keyed off the theme's bounding-box
+  // diagonal². Raising w_i by the full squared distance to a neighbour is what it
+  // takes for cell i to absorb that neighbour, so the largest legitimate spread
+  // is on the order of the theme extent². The cap sits well above that so it only
+  // catches runaway transients — it never limits reordering.
+  const bb = polygonBounds(themePoly);
+  const diagSq = (bb.maxX - bb.minX) ** 2 + (bb.maxZ - bb.minZ) ** 2;
+  const spreadCap = HEAT_SPREAD_CAP_RATIO * diagSq;
 
-  const buildCellsForSpread = (spreadScale: number): VoronoiCell[] => {
-    // Max safe weight gap kept below spacing² so no cell is fully erased.
-    const maxGap = HEAT_POWER_FLOOR_RATIO * spacingSq * spreadScale;
-    const powerWeights = rel.map((r) => r * maxGap);
-    return themeSubThemes.map((st, i) => {
+  // --- Targets: area proportional to heat-weight, floored then renormalized. ---
+  // Floored targets are what keep cold cells visible (≥ HEAT_TARGET_FLOOR_RATIO ·
+  // equalShare). Because the solver drives areas toward these targets, the floor
+  // is enforced by the targets themselves — so no tight per-iteration weight cap
+  // is needed (and a tight cap would block the spread a hot corner seed needs to
+  // out-grow a roomy cold sibling).
+  const minTarget = HEAT_TARGET_FLOOR_RATIO * equalShare;
+  const weightSum = weights.reduce((s, w) => s + w, 0);
+  let targets = weights.map((w) =>
+    weightSum > 0 ? (themeArea * w) / weightSum : equalShare
+  );
+  // Floor each target, then renormalize the remainder so Σ target == themeArea.
+  // Two passes settle any target a floor pass pushed below the floor.
+  for (let pass = 0; pass < 2; pass++) {
+    const flooredSum = targets.reduce((s, t) => s + Math.max(t, minTarget), 0);
+    if (flooredSum <= 0) break;
+    const scale = themeArea / flooredSum;
+    targets = targets.map((t) => Math.max(t, minTarget) * scale);
+  }
+
+  // --- Solve power weights so each cell's area approaches its target. ---
+  const areasOf = (powerWeights: readonly number[]): number[] =>
+    themeSubThemes.map((_st, i) => {
+      const raw = powerCell(i, centers, powerWeights, themePoly);
+      return raw.length >= 3 ? polygonArea(raw) : 0;
+    });
+
+  // Solve the additive power weights by GRADIENT ASCENT on Aurenhammer's convex
+  // potential: the unique weights that realize a prescribed set of cell areas are
+  // the maximizer of a concave function whose gradient is exactly (target − area).
+  // So the damped additive update  pw_i += STEP · (target_i − area_i)  is plain
+  // gradient ascent and converges — provided the step is small enough not to
+  // overshoot. We adapt the step with BACKTRACKING: after each update, if the
+  // worst residual got worse, halve the step and retry from the previous iterate.
+  // This makes the worst-residual sequence (near-)monotone and kills the
+  // oscillation that a fixed-step additive scheme shows in tight-spacing themes.
+  // No spread cap is needed: the potential's maximizer is finite, and the floored
+  // TARGETS (not a cap) are what keep cold cells visible.
+  const worstResidual = (areas: readonly number[]): number => {
+    let worst = 0;
+    for (let i = 0; i < count; i++) {
+      const err = Math.abs(areas[i] - targets[i]) / equalShare;
+      if (err > worst) worst = err;
+    }
+    return worst;
+  };
+
+  // Re-gauge to a zero mean so the weights stay numerically bounded (the diagram
+  // is invariant to a constant added to all weights).
+  const gauge = (w: number[]): void => {
+    let mean = 0;
+    for (let i = 0; i < count; i++) mean += w[i];
+    mean /= count;
+    for (let i = 0; i < count; i++) w[i] -= mean;
+  };
+
+  let pw = new Array<number>(count).fill(0);
+  let bestPw = pw.slice();
+  let bestWorst = worstResidual(areasOf(pw));
+  // STEP units: area-error ÷ lengthScale keeps the step well-scaled (area moves
+  // ~ edge-length × Δweight). The initial step is reduced by backtracking when
+  // it overshoots, then allowed to recover gently.
+  let step = HEAT_SOLVE_STEP / lengthScale;
+
+  for (let iter = 0; iter < HEAT_SOLVE_ITERATIONS; iter++) {
+    if (bestWorst < HEAT_SOLVE_TOLERANCE) break;
+
+    const areas = areasOf(bestPw);
+    const candidate = bestPw.slice();
+    for (let i = 0; i < count; i++) {
+      candidate[i] += step * (targets[i] - areas[i]);
+    }
+    gauge(candidate);
+
+    const candWorst = worstResidual(areasOf(candidate));
+    if (candWorst < bestWorst) {
+      bestWorst = candWorst;
+      bestPw = candidate;
+      step *= 1.1; // accept and gently grow the step
+    } else {
+      step *= 0.5; // overshoot — backtrack
+      if (step < 1e-9) break;
+    }
+  }
+
+  pw = bestPw;
+
+  const buildCells = (powerWeights: readonly number[]): VoronoiCell[] =>
+    themeSubThemes.map((st, i) => {
       const raw = powerCell(i, centers, powerWeights, themePoly);
       const { polygon, center } = finishCell(raw, centers[i], themePoly, options);
       return {
@@ -603,21 +723,41 @@ const applyHeatSizing = (
         polygon,
       };
     });
-  };
 
-  // Try full spread first; if any cell collapses below the floor, shrink the
-  // spread geometrically toward uniform until the floor holds.
-  let cells = initialCells;
-  let spread = 1;
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const candidate = buildCellsForSpread(spread);
-    const areas = candidate.map((c) =>
+  let cells = buildCells(pw);
+
+  if ((globalThis as any).__HEAT_DIAG) {
+    const fa = areasOf(pw);
+    let worst = 0;
+    for (let i = 0; i < count; i++) {
+      const e = Math.abs(fa[i] - targets[i]) / equalShare;
+      if (e > worst) worst = e;
+    }
+    // eslint-disable-next-line no-console
+    console.log(`DIAG ${themeCell.themeId} n=${count} minDistSq=${minDistSq.toFixed(3)} worstResid=${worst.toFixed(3)}`);
+    // Per-seed MAX achievable raw area: give seed k a huge weight, others 0.
+    for (let k = 0; k < count; k++) {
+      const probe = new Array<number>(count).fill(0);
+      probe[k] = diagSq * 100;
+      const raw = powerCell(k, centers, probe, themePoly);
+      const maxA = raw.length >= 3 ? polygonArea(raw) : 0;
+      // eslint-disable-next-line no-console
+      console.log(`  seed ${themeSubThemes[k].id} target=${targets[k].toFixed(2)} maxAchievable=${maxA.toFixed(2)}`);
+    }
+  }
+
+  // Safety net: with floored targets this should never trigger, but if any final
+  // cell falls below the hard share floor, ease the weights toward uniform
+  // (zero spread = ordinary Voronoi) until every cell clears the floor.
+  const minArea = HEAT_MIN_SHARE_RATIO * equalShare;
+  let scale = 1;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const areas = cells.map((c) =>
       c.polygon.length >= 3 ? polygonArea(c.polygon) : 0
     );
-    const ok = areas.every((a) => a >= minArea);
-    cells = candidate;
-    if (ok) break;
-    spread *= 0.6; // ease toward uniform
+    if (areas.every((a) => a >= minArea)) break;
+    scale *= 0.6;
+    cells = buildCells(pw.map((w) => w * scale));
   }
 
   return cells;
