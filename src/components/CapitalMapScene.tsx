@@ -1000,9 +1000,11 @@ function SubThemeBoundaryLines({
 function SubThemeCylinderColumn({
   node,
   selected = false,
+  onClick,
 }: {
   node: SubThemeRenderNode;
   selected?: boolean;
+  onClick?: () => void;
 }) {
   const { metric, position } = node;
   const rawHeight = Math.max(Math.abs(metric.height), 0.12);
@@ -1014,23 +1016,25 @@ function SubThemeCylinderColumn({
   const columnOpacity = isOutflow ? 0.9 : 0.7;
 
   return (
-    <AnimatedColumnMesh
-      targetX={position.x}
-      targetZ={position.z}
-      baseY={baseY}
-      height={rawHeight}
-      flip={isOutflow}
-      radius={SUBTHEME_COLUMN_RADIUS}
-      segments={SUBTHEME_COLUMN_SEGMENTS}
-      color={metric.color}
-      opacity={columnOpacity}
-      emissiveIntensity={selected ? 0.35 : 0.08}
-    />
+    <group onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}>
+      <AnimatedColumnMesh
+        targetX={position.x}
+        targetZ={position.z}
+        baseY={baseY}
+        height={rawHeight}
+        flip={isOutflow}
+        radius={SUBTHEME_COLUMN_RADIUS}
+        segments={SUBTHEME_COLUMN_SEGMENTS}
+        color={metric.color}
+        opacity={columnOpacity}
+        emissiveIntensity={selected ? 0.35 : 0.08}
+      />
+    </group>
   );
 }
 
 /** Cylindrical column for individual stock (P3), smaller than SubTheme column. */
-function P3StockColumn({ node }: { node: StockRenderNode3 }) {
+function P3StockColumn({ node, onClick }: { node: StockRenderNode3; onClick?: () => void }) {
   const { metric, position } = node;
   const rawHeight = Math.max(Math.abs(metric.height), MIN_COLUMN_HEIGHT);
   const isInflow = metric.direction === "inflow";
@@ -1041,7 +1045,11 @@ function P3StockColumn({ node }: { node: StockRenderNode3 }) {
   const columnOpacity = isOutflow ? 0.9 : 0.75;
 
   return (
-    <mesh position={[position.x, positionY, position.z]} castShadow>
+    <mesh
+      position={[position.x, positionY, position.z]}
+      castShadow
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}
+    >
       <cylinderGeometry args={[P3_STOCK_COLUMN_RADIUS, P3_STOCK_COLUMN_RADIUS, rawHeight, P3_STOCK_COLUMN_SEGMENTS]} />
       <meshStandardMaterial
         color={metric.color}
@@ -1108,6 +1116,7 @@ function SubThemeCapitalMapScene(props: SubThemeCapitalMapSceneProps) {
           key={`p2-col-${node.subTheme.id}`}
           node={node}
           selected={node.subTheme.id === props.selectedSectorId}
+          onClick={() => props.onSelectSector(node.subTheme.id)}
         />
       ))}
 
@@ -1205,7 +1214,7 @@ function P3CapitalMapScene(props: P3CapitalMapSceneProps) {
 
       {/* Layer 4: Individual stock columns */}
       {stockNodes.filter(n => n.visible).map((node) => (
-        <P3StockColumn key={`p3-col-${node.stock.id}`} node={node} />
+        <P3StockColumn key={`p3-col-${node.stock.id}`} node={node} onClick={() => props.onSelectSector(node.subTheme.id)} />
       ))}
 
       {/* Layer 5: Stock labels (show shortName for top stocks per SubTheme) */}
