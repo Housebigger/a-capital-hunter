@@ -7,13 +7,14 @@ import {
 } from "./themeVoronoiLayoutEngine";
 
 export interface ThemeLayoutProvider {
-  getLayout(stageId?: string): ThemeVoronoiLayout;
+  getLayout(stageId?: string, themeHeat?: Record<string, number>): ThemeVoronoiLayout;
 }
 
 export function createThemeLayoutProvider(): ThemeLayoutProvider {
   return {
-    getLayout: (stageId) => {
-      const stage = stageId ? getLayoutStageById(stageId) : layoutStages[0];
+    getLayout: (stageId, themeHeat) => {
+      const base = stageId ? getLayoutStageById(stageId) : layoutStages[0];
+      const stage = themeHeat ? { ...base, themeHeat } : base;
       return createThemeVoronoiLayout({
         themes,
         relationshipEdges,

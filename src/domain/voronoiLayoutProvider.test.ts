@@ -27,3 +27,11 @@ describe("voronoiLayoutProvider", () => {
     expect(a.cells).toEqual(b.cells);
   });
 });
+
+describe("createSubThemeLayoutProvider heat plumbing", () => {
+  it("accepts a subThemeHeat arg and still returns cells", () => {
+    const themeCells = createThemeLayoutProvider().getLayout().cells;
+    const layout = createSubThemeLayoutProvider().getLayout(undefined, themeCells, { "ai-optical-interconnect": 1 });
+    expect(layout.cells.length).toBeGreaterThan(0);
+  });
+});

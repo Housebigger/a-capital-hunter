@@ -17,6 +17,7 @@ import { buildSubThemeRenderNodes } from "./domain/subThemeRenderNodes";
 import { buildP3StockRenderNodes } from "./domain/stockRenderNodes";
 import { buildCapitalFlowAggregates } from "./domain/capitalFlowAggregation";
 import { buildOverview } from "./domain/capitalFlowOverview";
+import { buildHeatMap } from "./domain/heatMap";
 import { subThemes } from "./domain/subThemeRegistry";
 import { useHunterState } from "./state/useHunterState";
 import type { MarketScenario } from "./domain/types";
@@ -117,14 +118,26 @@ export default function App({ provider }: AppProps = {}) {
     return buildOverview(aggregates.bySubTheme, nameOf);
   }, [aggregates, viewMode]);
 
-  // Layout is independent of data — compute once.
+  // Live market heat → the layout re-flows when the data window/snapshot changes.
+  const heatMap = useMemo(
+    () =>
+      aggregates
+        ? buildHeatMap(aggregates.byTheme, aggregates.bySubTheme, subThemes)
+        : null,
+    [aggregates]
+  );
   const themeLayout = useMemo(
-    () => themeLayoutProvider.getLayout(activeLayoutStage.id),
-    [activeLayoutStage.id]
+    () => themeLayoutProvider.getLayout(activeLayoutStage.id, heatMap?.themeHeat),
+    [activeLayoutStage.id, heatMap]
   );
   const subThemeLayout = useMemo(
-    () => subThemeLayoutProvider.getLayout(activeLayoutStage.id, themeLayout.cells),
-    [activeLayoutStage.id, themeLayout]
+    () =>
+      subThemeLayoutProvider.getLayout(
+        activeLayoutStage.id,
+        themeLayout.cells,
+        heatMap?.subThemeHeat
+      ),
+    [activeLayoutStage.id, themeLayout, heatMap]
   );
 
   // P1: theme totals from real aggregation (or demo scenario).
