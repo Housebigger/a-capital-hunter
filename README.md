@@ -158,15 +158,40 @@ dispatch, and pushes to `main`):
 sync --backfill 20  →  export_static_data.py  →  build:pages  →  deploy-pages
 ```
 
-One-time setup (you must do these):
+### One-time setup (do these once, in the GitHub web UI)
 
-1. **Add the token secret:** Settings → Secrets and variables → Actions → New
-   repository secret → name `TUSHARE_TOKEN`, value = your tushare.pro token.
-2. **Enable Pages:** Settings → Pages → Build and deployment → Source:
-   **GitHub Actions**.
-3. **First deploy:** Actions tab → *Deploy to GitHub Pages* → *Run workflow*
-   (or wait for the cron). The site goes live at
-   `https://housebigger.github.io/a-capital-hunter/`.
+**1. Add the `TUSHARE_TOKEN` repository secret** — lets the Action fetch data
+without exposing your token.
+
+- Open the repo on GitHub → **Settings** → in the left sidebar **Secrets and
+  variables** → **Actions**.
+- On the **Secrets** tab, click **New repository secret**.
+- **Name:** `TUSHARE_TOKEN` (must match exactly — the workflow reads this name).
+- **Secret:** paste your token from <https://tushare.pro/user/token>.
+- Click **Add secret**. It's stored encrypted, exposed only to the Action at run
+  time, and never shipped to the browser.
+
+**2. Enable GitHub Pages with the GitHub Actions source** — lets the built site
+publish.
+
+- Repo → **Settings** → **Pages** (left sidebar).
+- Under **Build and deployment → Source**, choose **GitHub Actions** (not
+  "Deploy from a branch"). There's no branch or `/docs` folder to pick.
+- Permissions need no manual change — `deploy.yml` already declares
+  `pages: write` + `id-token: write`.
+
+**3. Run the first deploy.**
+
+- Repo → **Actions** tab → the **Deploy to GitHub Pages** workflow → **Run
+  workflow** (or just push to `main`, or wait for the weekday cron).
+- Watch the run in the **Actions** tab; when it's green the site is live at
+  **`https://housebigger.github.io/a-capital-hunter/`**.
+- Then paste that URL into a share-card debugger (e.g.
+  <https://www.opengraph.xyz/>) to confirm the Open Graph preview renders.
+
+> If a run fails on the sync step, the most common cause is a missing/incorrect
+> `TUSHARE_TOKEN` or insufficient Tushare points (see the entitlement caveat
+> above) — the Action logs say which.
 
 Build it yourself locally:
 
